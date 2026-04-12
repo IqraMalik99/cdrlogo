@@ -22,11 +22,35 @@ export default function Navbar() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
 
-        /* ── Theme tokens ─────────────────────────────── */
-        [data-theme="dark"]  { --nav-bg: rgba(10,10,15,0.85);   --nav-border: rgba(255,255,255,0.06); --nav-mobile-bg: rgba(10,10,15,0.98); --nav-mobile-border: rgba(255,255,255,0.07); --logo-text: #ffffff; --link-color: rgba(255,255,255,0.65); --link-hover-color: #fff; --link-hover-bg: rgba(255,255,255,0.07); --icon-color: rgba(255,255,255,0.55); --icon-hover-color: #fff; --icon-hover-bg: rgba(255,255,255,0.08); --hamburger-line: rgba(255,255,255,0.7); }
-        [data-theme="light"] { --nav-bg: rgba(255,255,255,0.88); --nav-border: rgba(0,0,0,0.08);       --nav-mobile-bg: rgba(250,250,252,0.99); --nav-mobile-border: rgba(0,0,0,0.07);     --logo-text: #0a0a14; --link-color: rgba(0,0,0,0.58);         --link-hover-color: #000; --link-hover-bg: rgba(0,0,0,0.05);         --icon-color: rgba(0,0,0,0.45);         --icon-hover-color: #000; --icon-hover-bg: rgba(0,0,0,0.06);         --hamburger-line: rgba(0,0,0,0.65); }
+        [data-theme="dark"]  {
+          --nav-bg: rgba(10,10,15,0.85);
+          --nav-border: rgba(255,255,255,0.06);
+          --nav-mobile-bg: rgba(10,10,15,0.98);
+          --nav-mobile-border: rgba(255,255,255,0.07);
+          --logo-text: #ffffff;
+          --link-color: rgba(255,255,255,0.65);
+          --link-hover-color: #fff;
+          --link-hover-bg: rgba(255,255,255,0.07);
+          --icon-color: rgba(255,255,255,0.55);
+          --icon-hover-color: #fff;
+          --icon-hover-bg: rgba(255,255,255,0.08);
+          --hamburger-line: rgba(255,255,255,0.7);
+        }
+        [data-theme="light"] {
+          --nav-bg: rgba(255,255,255,0.88);
+          --nav-border: rgba(0,0,0,0.08);
+          --nav-mobile-bg: rgba(250,250,252,0.99);
+          --nav-mobile-border: rgba(0,0,0,0.07);
+          --logo-text: #0a0a14;
+          --link-color: rgba(0,0,0,0.58);
+          --link-hover-color: #000;
+          --link-hover-bg: rgba(0,0,0,0.05);
+          --icon-color: rgba(0,0,0,0.45);
+          --icon-hover-color: #000;
+          --icon-hover-bg: rgba(0,0,0,0.06);
+          --hamburger-line: rgba(0,0,0,0.65);
+        }
 
-        /* ── Navbar shell ─────────────────────────────── */
         .navbar {
           position: fixed;
           top: 0; left: 0; right: 0;
@@ -54,26 +78,14 @@ export default function Navbar() {
         .navbar-logo {
           display: flex;
           align-items: center;
-          gap: 8px;
           text-decoration: none;
           flex-shrink: 0;
         }
-        .logo-icon {
-          width: 34px; height: 34px;
-          background: linear-gradient(135deg, #a855f7, #6366f1);
-          border-radius: 8px;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 16px; font-weight: 800;
-          color: #fff; letter-spacing: -0.5px;
-          flex-shrink: 0;
+        .navbar-logo img {
+          height: 32px;
+          width: auto;
+          display: block;
         }
-        .logo-text {
-          font-size: 15px; font-weight: 700;
-          color: var(--logo-text);
-          letter-spacing: -0.3px;
-          transition: color 0.3s;
-        }
-        .logo-text span { color: #a78bfa; }
 
         /* Nav links */
         .nav-links {
@@ -118,7 +130,6 @@ export default function Navbar() {
         /* Theme toggle pill */
         .theme-toggle {
           display: flex; align-items: center;
-          gap: 0;
           background: transparent;
           border: 1px solid var(--nav-border);
           border-radius: 10px;
@@ -132,15 +143,14 @@ export default function Navbar() {
           display: flex; align-items: center; justify-content: center;
           color: var(--icon-color);
           transition: background 0.2s, color 0.2s;
-          position: relative;
         }
         .theme-btn.active {
-          background: rgba(168,85,247,0.15);
-          color: #c084fc;
+          background: rgba(7,166,38,0.15);
+          color: #07A626;
         }
         [data-theme="light"] .theme-btn.active {
-          background: rgba(168,85,247,0.12);
-          color: #7c3aed;
+          background: rgba(7,166,38,0.1);
+          color: #07A626;
         }
         .theme-btn:not(.active):hover {
           background: var(--icon-hover-bg);
@@ -151,10 +161,10 @@ export default function Navbar() {
         .login-btn {
           display: flex; align-items: center; gap: 6px;
           padding: 7px 16px;
-          background: rgba(168,85,247,0.12);
-          border: 1px solid rgba(168,85,247,0.35);
+          background: rgba(7,166,38,0.1);
+          border: 1px solid rgba(7,166,38,0.35);
           border-radius: 9px;
-          color: #c084fc;
+          color: #07A626;
           font-size: 13.5px; font-weight: 600;
           cursor: pointer; text-decoration: none;
           transition: background 0.2s, border-color 0.2s, color 0.2s;
@@ -162,12 +172,20 @@ export default function Navbar() {
           font-family: 'Sora', sans-serif;
         }
         .login-btn:hover {
-          background: rgba(168,85,247,0.22);
-          border-color: rgba(168,85,247,0.6);
-          color: #e9d5ff;
+          background: rgba(7,166,38,0.18);
+          border-color: rgba(7,166,38,0.55);
+          color: #05891e;
         }
-        [data-theme="light"] .login-btn { color: #7c3aed; }
-        [data-theme="light"] .login-btn:hover { color: #6d28d9; }
+        [data-theme="dark"] .login-btn {
+          color: #4ade80;
+          background: rgba(7,166,38,0.1);
+          border-color: rgba(7,166,38,0.3);
+        }
+        [data-theme="dark"] .login-btn:hover {
+          color: #86efac;
+          background: rgba(7,166,38,0.18);
+          border-color: rgba(7,166,38,0.5);
+        }
 
         /* Hamburger */
         .hamburger {
@@ -216,23 +234,23 @@ export default function Navbar() {
           margin-top: 10px;
           display: flex; align-items: center; justify-content: center; gap: 6px;
           padding: 10px 16px;
-          background: rgba(168,85,247,0.12);
-          border: 1px solid rgba(168,85,247,0.35);
+          background: rgba(7,166,38,0.1);
+          border: 1px solid rgba(7,166,38,0.35);
           border-radius: 9px;
-          color: #c084fc;
+          color: #07A626;
           font-size: 14px; font-weight: 600;
           cursor: pointer; text-decoration: none;
           transition: background 0.2s;
           font-family: 'Sora', sans-serif;
         }
-        .mobile-login:hover { background: rgba(168,85,247,0.22); }
-        [data-theme="light"] .mobile-login { color: #7c3aed; }
+        .mobile-login:hover { background: rgba(7,166,38,0.18); }
+        [data-theme="dark"] .mobile-login { color: #4ade80; }
 
         @media (max-width: 900px) {
-          .nav-links  { display: none; }
-          .login-btn  { display: none; }
-          .hamburger  { display: flex; }
-          .theme-toggle { display: none; }
+          .nav-links       { display: none; }
+          .login-btn       { display: none; }
+          .hamburger       { display: flex; }
+          .theme-toggle    { display: none; }
           .icon-btn.bookmark { display: none; }
         }
       `}</style>
@@ -240,10 +258,12 @@ export default function Navbar() {
       <nav className="navbar">
         <div className="navbar-inner">
 
-          {/* Logo */}
+          {/* Logo — switches between dark/light SVG */}
           <a href="#" className="navbar-logo">
-            <div className="logo-icon">C</div>
-            <span className="logo-text">CDR<span>LOGO</span>.com</span>
+            <img
+              src={dark ? "/cdrlogo-dark.svg" : "/cdrlogo-light.svg"}
+              alt="CDRLogo"
+            />
           </a>
 
           {/* Desktop nav links */}
@@ -263,9 +283,8 @@ export default function Navbar() {
               </svg>
             </button>
 
-            {/* Light / Dark toggle pill */}
+            {/* Light / Dark toggle */}
             <div className="theme-toggle">
-              {/* Sun — light mode */}
               <button
                 className={`theme-btn${!dark ? " active" : ""}`}
                 aria-label="Light mode"
@@ -284,7 +303,6 @@ export default function Navbar() {
                   <line x1="18.36" y1="5.64"  x2="19.78" y2="4.22"/>
                 </svg>
               </button>
-              {/* Moon — dark mode */}
               <button
                 className={`theme-btn${dark ? " active" : ""}`}
                 aria-label="Dark mode"
@@ -322,15 +340,15 @@ export default function Navbar() {
           {navLinks.map(link => (
             <a key={link.label} href={link.href}>{link.label}</a>
           ))}
-          {/* Mobile theme toggle row */}
+          {/* Mobile theme toggle */}
           <div style={{ display:"flex", gap:8, margin:"8px 0 4px", padding:"0 2px" }}>
             <button
               onClick={() => setDark(false)}
               style={{
                 flex:1, padding:"8px 0", borderRadius:8, border:"1px solid",
-                borderColor: !dark ? "rgba(168,85,247,0.5)" : "var(--nav-mobile-border)",
-                background: !dark ? "rgba(168,85,247,0.12)" : "transparent",
-                color: !dark ? "#c084fc" : "var(--link-color)",
+                borderColor: !dark ? "rgba(7,166,38,0.5)" : "var(--nav-mobile-border)",
+                background: !dark ? "rgba(7,166,38,0.1)" : "transparent",
+                color: !dark ? "#07A626" : "var(--link-color)",
                 fontFamily:"'Sora',sans-serif", fontSize:13, fontWeight:600,
                 cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6,
                 transition:"all 0.2s"
@@ -349,9 +367,9 @@ export default function Navbar() {
               onClick={() => setDark(true)}
               style={{
                 flex:1, padding:"8px 0", borderRadius:8, border:"1px solid",
-                borderColor: dark ? "rgba(168,85,247,0.5)" : "var(--nav-mobile-border)",
-                background: dark ? "rgba(168,85,247,0.12)" : "transparent",
-                color: dark ? "#c084fc" : "var(--link-color)",
+                borderColor: dark ? "rgba(7,166,38,0.5)" : "var(--nav-mobile-border)",
+                background: dark ? "rgba(7,166,38,0.1)" : "transparent",
+                color: dark ? "#4ade80" : "var(--link-color)",
                 fontFamily:"'Sora',sans-serif", fontSize:13, fontWeight:600,
                 cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6,
                 transition:"all 0.2s"

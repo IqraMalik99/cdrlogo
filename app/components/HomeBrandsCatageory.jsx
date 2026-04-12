@@ -3,11 +3,6 @@
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 
-// ── Static data ───────────────────────────────────────────────────────────────
-// 🔁 When backend is ready, replace BRAND_CATEGORIES with an API call:
-// const [categories, setCategories] = useState([]);
-// useEffect(() => { fetch('/api/brand-categories').then(r=>r.json()).then(setCategories); }, []);
-
 const BRAND_CATEGORIES = [
   { id: 1,  name: "Technology & Digital",         count: 2840, icon: "monitor"     },
   { id: 2,  name: "Automotive & Transport",        count: 1560, icon: "car"         },
@@ -21,7 +16,6 @@ const BRAND_CATEGORIES = [
   { id: 10, name: "Travel & Hospitality",          count: 870,  icon: "plane"       },
 ];
 
-// ── SVG Icons (matching the blue outlined style in the screenshot) ────────────
 const ICONS = {
   monitor: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -86,15 +80,12 @@ const ICONS = {
   ),
 };
 
-// ── Card ──────────────────────────────────────────────────────────────────────
 function BrandCard({ cat, index, dark }) {
   const [hovered, setHovered] = useState(false);
 
-  // Dark: keep the existing deep navy look + subtle blue tint on hover
-  // Light: white card, blue accent tint on hover
   const cardHoverStyle = dark
-    ? { background: "rgba(99,102,241,0.1)", borderColor: "rgba(99,102,241,0.35)" }
-    : { background: "rgba(99,102,241,0.06)", borderColor: "rgba(99,102,241,0.28)", boxShadow: "0 8px 28px rgba(99,102,241,0.1)" };
+    ? { background: "rgba(7,166,38,0.1)", borderColor: "rgba(7,166,38,0.35)" }
+    : { background: "rgba(7,166,38,0.06)", borderColor: "rgba(7,166,38,0.28)", boxShadow: "0 8px 28px rgba(7,166,38,0.1)" };
 
   return (
     <div
@@ -107,12 +98,10 @@ function BrandCard({ cat, index, dark }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Icon box */}
       <div className={`bc-icon${hovered ? " bc-icon--hovered" : ""}`}>
         {ICONS[cat.icon]}
       </div>
 
-      {/* Text */}
       <div className="bc-info">
         <span className={`bc-name${hovered ? " bc-name--hovered" : ""}`}>
           {cat.name}
@@ -123,7 +112,6 @@ function BrandCard({ cat, index, dark }) {
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function BrandCategories() {
   const { dark } = useTheme();
 
@@ -134,7 +122,6 @@ export default function BrandCategories() {
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── Theme tokens ── */
         [data-theme="dark"] {
           --bc-bg:           #09090f;
           --bc-surface:      #111118;
@@ -143,9 +130,9 @@ export default function BrandCategories() {
           --bc-subtitle:     rgba(255,255,255,0.38);
           --bc-name:         #e0e0f0;
           --bc-count:        rgba(255,255,255,0.35);
-          --bc-icon-bg:      rgba(99,102,241,0.15);
-          --bc-icon-border:  rgba(99,102,241,0.25);
-          --bc-icon-color:   #818cf8;
+          --bc-icon-bg:      rgba(7,166,38,0.12);
+          --bc-icon-border:  rgba(7,166,38,0.22);
+          --bc-icon-color:   #4ade80;
         }
         [data-theme="light"] {
           --bc-bg:           #f4f4f8;
@@ -155,12 +142,11 @@ export default function BrandCategories() {
           --bc-subtitle:     rgba(0,0,0,0.42);
           --bc-name:         #111120;
           --bc-count:        rgba(0,0,0,0.42);
-          --bc-icon-bg:      rgba(99,102,241,0.1);
-          --bc-icon-border:  rgba(99,102,241,0.18);
-          --bc-icon-color:   #6366f1;
+          --bc-icon-bg:      rgba(7,166,38,0.08);
+          --bc-icon-border:  rgba(7,166,38,0.18);
+          --bc-icon-color:   #07A626;
         }
 
-        /* ── Layout ── */
         .bc-section {
           background: var(--bc-bg);
           font-family: 'Sora', sans-serif;
@@ -169,26 +155,21 @@ export default function BrandCategories() {
         }
         .bc-container { max-width: 1260px; margin: 0 auto; padding: 0 28px; }
 
-        /* ── Header ── */
         .bc-header { margin-bottom: 28px; }
         .bc-title    { font-size: 24px; font-weight: 800; color: var(--bc-title); letter-spacing: -0.4px; line-height: 1; transition: color 0.3s; }
         .bc-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--bc-subtitle); margin-top: 6px; transition: color 0.3s; }
 
-        /* ── Grid ── */
         .bc-grid {
           display: grid;
           grid-template-columns: repeat(5, 1fr);
           gap: 14px;
         }
 
-        /* ── Card ── */
         .bc-card {
           position: relative;
           background: var(--bc-surface);
           border: 1px solid var(--bc-border);
-          border-radius: 14px;
-          padding: 20px 18px 18px;
-          cursor: pointer;
+          border-radius: 14px; padding: 20px 18px 18px; cursor: pointer;
           transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
           animation: bcFadeUp 0.4s ease both;
         }
@@ -197,46 +178,38 @@ export default function BrandCategories() {
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── Icon box ── */
         .bc-icon {
-          width: 46px; height: 46px;
-          border-radius: 10px;
-          background: var(--bc-icon-bg);
-          border: 1px solid var(--bc-icon-border);
+          width: 46px; height: 46px; border-radius: 10px;
+          background: var(--bc-icon-bg); border: 1px solid var(--bc-icon-border);
           color: var(--bc-icon-color);
           display: flex; align-items: center; justify-content: center;
           margin-bottom: 28px;
           transition: background 0.22s, border-color 0.22s, color 0.22s;
         }
         .bc-icon--hovered {
-          background: rgba(99,102,241,0.22);
-          border-color: rgba(99,102,241,0.45);
-          color: #a5b4fc;
+          background: rgba(7,166,38,0.2);
+          border-color: rgba(7,166,38,0.42);
+          color: #4ade80;
         }
         [data-theme="light"] .bc-icon--hovered {
-          background: rgba(99,102,241,0.14);
-          border-color: rgba(99,102,241,0.35);
-          color: #4f46e5;
+          background: rgba(7,166,38,0.12);
+          border-color: rgba(7,166,38,0.32);
+          color: #07A626;
         }
 
-        /* ── Text ── */
         .bc-info  { display: flex; flex-direction: column; gap: 4px; }
         .bc-name  {
-          font-size: 14px; font-weight: 700;
-          color: var(--bc-name);
-          letter-spacing: -0.2px; line-height: 1.3;
-          transition: color 0.22s;
+          font-size: 14px; font-weight: 700; color: var(--bc-name);
+          letter-spacing: -0.2px; line-height: 1.3; transition: color 0.22s;
         }
-        .bc-name--hovered { color: #818cf8; }
-        [data-theme="light"] .bc-name--hovered { color: #4f46e5; }
+        .bc-name--hovered { color: #4ade80; }
+        [data-theme="light"] .bc-name--hovered { color: #07A626; }
 
         .bc-count {
           font-family: 'DM Sans', sans-serif;
-          font-size: 12px; color: var(--bc-count);
-          transition: color 0.3s;
+          font-size: 12px; color: var(--bc-count); transition: color 0.3s;
         }
 
-        /* ── Responsive ── */
         @media (max-width: 1100px) { .bc-grid { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 820px)  {
           .bc-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -253,40 +226,17 @@ export default function BrandCategories() {
 
       <section className="bc-section">
         <div className="bc-container">
-
           <div className="bc-header">
             <h2 className="bc-title">Brand Categories</h2>
             <p className="bc-subtitle">Explore logos by brand industry</p>
           </div>
-
           <div className="bc-grid">
             {BRAND_CATEGORIES.map((cat, i) => (
               <BrandCard key={cat.id} cat={cat} index={i} dark={dark} />
             ))}
           </div>
-
         </div>
       </section>
     </>
   );
 }
-
-/* ── API swap-in (uncomment when backend ready) ──────────────────────────────
-import { useEffect } from "react";
-
-export default function BrandCategories() {
-  const { dark } = useTheme();
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/brand-categories")
-      .then(r => r.json())
-      .then(data => { setCategories(data); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
-
-  if (loading) return null; // or a skeleton
-  // replace BRAND_CATEGORIES with `categories` in the render
-}
-──────────────────────────────────────────────────────────────────────────── */

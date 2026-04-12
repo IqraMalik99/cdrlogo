@@ -4,22 +4,21 @@ import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 
 const CATEGORIES = [
-  { id: 1,  name: "Business & Corporate",      count: 3200, icon: "💼", accent: "#4f8ef7", rgb: "79,142,247"   },
-  { id: 2,  name: "Technology & Digital",       count: 2750, icon: "🖥️", accent: "#22d3ee", rgb: "34,211,238"   },
-  { id: 3,  name: "Food & Restaurant",          count: 1980, icon: "🍴", accent: "#f97316", rgb: "249,115,22"   },
-  { id: 4,  name: "E-commerce & Retail",        count: 1650, icon: "🛒", accent: "#34d399", rgb: "52,211,153"   },
-  { id: 5,  name: "Health & Wellness",          count: 1420, icon: "💗", accent: "#f472b6", rgb: "244,114,182"  },
-  { id: 6,  name: "Real Estate & Construction", count: 1890, icon: "🏗️", accent: "#fbbf24", rgb: "251,191,36"   },
-  { id: 7,  name: "Education & Learning",       count: 1100, icon: "🎓", accent: "#a78bfa", rgb: "167,139,250"  },
-  { id: 8,  name: "Sports & Fitness",           count: 950,  icon: "⚡", accent: "#fb7185", rgb: "251,113,133"  },
-  { id: 9,  name: "Luxury & Lifestyle",         count: 1340, icon: "💎", accent: "#e879f9", rgb: "232,121,249"  },
-  { id: 10, name: "Abstract & Geometric",       count: 2100, icon: "⬡", accent: "#67e8f9", rgb: "103,232,249"  },
+  { id: 1,  name: "Business & Corporate",      count: 3200, icon: "💼", accent: "#07A626", rgb: "7,166,38"     },
+  { id: 2,  name: "Technology & Digital",       count: 2750, icon: "🖥️", accent: "#22d3ee", rgb: "34,211,238"  },
+  { id: 3,  name: "Food & Restaurant",          count: 1980, icon: "🍴", accent: "#f97316", rgb: "249,115,22"  },
+  { id: 4,  name: "E-commerce & Retail",        count: 1650, icon: "🛒", accent: "#34d399", rgb: "52,211,153"  },
+  { id: 5,  name: "Health & Wellness",          count: 1420, icon: "💗", accent: "#f472b6", rgb: "244,114,182" },
+  { id: 6,  name: "Real Estate & Construction", count: 1890, icon: "🏗️", accent: "#fbbf24", rgb: "251,191,36"  },
+  { id: 7,  name: "Education & Learning",       count: 1100, icon: "🎓", accent: "#07A626", rgb: "7,166,38"    },
+  { id: 8,  name: "Sports & Fitness",           count: 950,  icon: "⚡", accent: "#fb7185", rgb: "251,113,133" },
+  { id: 9,  name: "Luxury & Lifestyle",         count: 1340, icon: "💎", accent: "#e879f9", rgb: "232,121,249" },
+  { id: 10, name: "Abstract & Geometric",       count: 2100, icon: "⬡", accent: "#67e8f9", rgb: "103,232,249" },
 ];
 
 function CategoryCard({ cat, index, dark }) {
   const [hovered, setHovered] = useState(false);
 
-  // Accent opacity differs per theme — dark: richer, light: softer tint
   const hoverBg     = dark ? `rgba(${cat.rgb},0.14)` : `rgba(${cat.rgb},0.08)`;
   const hoverBorder = dark ? `rgba(${cat.rgb},0.45)` : `rgba(${cat.rgb},0.32)`;
   const hoverShadow = dark
@@ -67,7 +66,6 @@ export default function TemplateCategories() {
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── Theme tokens ── */
         [data-theme="dark"] {
           --tc-bg:          #09090f;
           --tc-surface:     #111118;
@@ -163,7 +161,6 @@ export default function TemplateCategories() {
             <h2 className="tc-title">Template Categories</h2>
             <p className="tc-subtitle">Ready-made logo templates for your projects</p>
           </div>
-
           <div className="tc-grid">
             {CATEGORIES.map((cat, i) => (
               <CategoryCard key={cat.id} cat={cat} index={i} dark={dark} />

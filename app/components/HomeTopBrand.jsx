@@ -3,11 +3,6 @@
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 
-// ── Static mock data ──────────────────────────────────────────────────────────
-// 🔁 API swap-in: replace TOP_BRANDS with a fetch call when backend is ready.
-// const res = await fetch('/api/brands?sort=popular&limit=12');
-// const { brands } = await res.json();
-
 const TOP_BRANDS = [
   { id: 1,  name: "Google"    },
   { id: 2,  name: "Apple"     },
@@ -23,10 +18,8 @@ const TOP_BRANDS = [
   { id: 12, name: "Netflix"   },
 ];
 
-// ── Brand pill ────────────────────────────────────────────────────────────────
 function BrandPill({ brand }) {
   const [hovered, setHovered] = useState(false);
-
   return (
     <div
       className={`tb-pill${hovered ? " tb-pill--hovered" : ""}`}
@@ -38,7 +31,6 @@ function BrandPill({ brand }) {
   );
 }
 
-// ── Main section ──────────────────────────────────────────────────────────────
 export default function TopBrands() {
   const { dark } = useTheme();
 
@@ -49,7 +41,6 @@ export default function TopBrands() {
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── Theme tokens ── */
         [data-theme="dark"] {
           --tb-bg:            #09090f;
           --tb-title:         #ffffff;
@@ -58,9 +49,9 @@ export default function TopBrands() {
           --tb-pill-border:   rgba(255,255,255,0.08);
           --tb-pill-color:    rgba(255,255,255,0.7);
           --tb-pill-bg-h:     #17171f;
-          --tb-pill-border-h: rgba(255,255,255,0.18);
-          --tb-pill-color-h:  #ffffff;
-          --tb-pill-shadow-h: 0 6px 20px rgba(0,0,0,0.4);
+          --tb-pill-border-h: rgba(7,166,38,0.4);
+          --tb-pill-color-h:  #4ade80;
+          --tb-pill-shadow-h: 0 6px 20px rgba(7,166,38,0.15);
         }
         [data-theme="light"] {
           --tb-bg:            #f4f4f8;
@@ -70,12 +61,11 @@ export default function TopBrands() {
           --tb-pill-border:   rgba(0,0,0,0.08);
           --tb-pill-color:    rgba(0,0,0,0.65);
           --tb-pill-bg-h:     #ffffff;
-          --tb-pill-border-h: rgba(99,102,241,0.35);
-          --tb-pill-color-h:  #4f46e5;
-          --tb-pill-shadow-h: 0 6px 20px rgba(99,102,241,0.1);
+          --tb-pill-border-h: rgba(7,166,38,0.4);
+          --tb-pill-color-h:  #07A626;
+          --tb-pill-shadow-h: 0 6px 20px rgba(7,166,38,0.12);
         }
 
-        /* ── Section ── */
         .tb-section {
           background: var(--tb-bg);
           font-family: 'Sora', sans-serif;
@@ -88,7 +78,6 @@ export default function TopBrands() {
           padding: 0 28px;
         }
 
-        /* ── Header (centered) ── */
         .tb-header {
           text-align: center;
           margin-bottom: 32px;
@@ -109,14 +98,12 @@ export default function TopBrands() {
           transition: color 0.3s;
         }
 
-        /* ── Grid ── */
         .tb-grid {
           display: grid;
           grid-template-columns: repeat(6, 1fr);
           gap: 10px;
         }
 
-        /* ── Pill ── */
         .tb-pill {
           background: var(--tb-pill-bg);
           border: 1px solid var(--tb-pill-border);
@@ -146,7 +133,6 @@ export default function TopBrands() {
           box-shadow: var(--tb-pill-shadow-h);
         }
 
-        /* ── Responsive ── */
         @media (max-width: 1024px) { .tb-grid { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 640px)  {
           .tb-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -161,36 +147,17 @@ export default function TopBrands() {
 
       <section className="tb-section">
         <div className="tb-container">
-
           <div className="tb-header">
             <h2 className="tb-title">Top Brands</h2>
             <p className="tb-subtitle">Popular brand logos available for download</p>
           </div>
-
           <div className="tb-grid">
             {TOP_BRANDS.map(brand => (
               <BrandPill key={brand.id} brand={brand} />
             ))}
           </div>
-
         </div>
       </section>
     </>
   );
 }
-
-/* ── API swap-in (uncomment when backend ready) ────────────────────────────────
-import { useEffect } from "react";
-
-// Inside TopBrands component:
-const [brands, setBrands] = useState([]);
-
-useEffect(() => {
-  fetch("/api/brands?sort=popular&limit=12")
-    .then(r => r.json())
-    .then(data => setBrands(data.brands ?? []))
-    .catch(console.error);
-}, []);
-
-// Replace TOP_BRANDS with `brands` in the render
-─────────────────────────────────────────────────────────────────────────────── */

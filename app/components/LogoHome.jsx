@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-// ── Constants ────────────────────────────────────────────────────────────────
 const ALPHABET = ["All","A","B","C","D","E","F","G","H","I","J","K","L","M",
                   "N","O","P","Q","R","S","T","U","V","W","X","Y","Z","0-9"];
 
@@ -16,75 +15,58 @@ const SORT_OPTIONS = [
   { key: "az",      label: "A–Z",     icon: "↕" },
 ];
 
-// ── Static mock data ──────────────────────────────────────────────────────────
-// Shape mirrors what your real API will return: { logos: [...], totalPages: N }
-// When your backend is ready, delete `mockFetch` and restore the real fetch call.
-
 const ALL_LOGOS = [
   { id:1,  name:"Apple",       category:"Technology",    downloads:84200, trending:true,  colors:["#1d1d1f","#ffffff","#a3a3a3"], formats:["AI","SVG","PNG"],     imageUrl:"https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" },
-  { id:2,  name:"Google",      category:"Technology",    downloads:72100, trending:true,  colors:["#4285f4","#34a853","#fbbc05","#ea4335"], formats:["AI","CDR","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" },
-  { id:3,  name:"Nike",        category:"Sports",        downloads:61000, trending:false, colors:["#000000","#ffffff"],           formats:["AI","EPS","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg" },
+  { id:2,  name:"Google",      category:"Technology",    downloads:72100, trending:true,  colors:["#4285f4","#34a853","#fbbc05","#ea4335"], formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" },
+  { id:3,  name:"Nike",        category:"Sports",        downloads:61000, trending:false, colors:["#000000","#ffffff"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg" },
   { id:4,  name:"Meta",        category:"Social Media",  downloads:55300, trending:true,  colors:["#0866ff","#ffffff"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/7/7b/Meta_Platforms_Inc._logo.svg" },
-  { id:5,  name:"Tesla",       category:"Automotive",    downloads:48900, trending:false, colors:["#cc0000","#ffffff"],           formats:["AI","CDR","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/b/bd/Tesla_Motors.svg" },
-  { id:6,  name:"McDonald's",  category:"Food & Beverage",downloads:43100,trending:false, colors:["#FFC72C","#DA291C"],           formats:["AI","EPS","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/3/36/McDonald%27s_Golden_Arches.svg" },
+  { id:5,  name:"Tesla",       category:"Automotive",    downloads:48900, trending:false, colors:["#cc0000","#ffffff"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/b/bd/Tesla_Motors.svg" },
+  { id:6,  name:"McDonald's",  category:"Food & Beverage",downloads:43100,trending:false, colors:["#FFC72C","#DA291C"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/3/36/McDonald%27s_Golden_Arches.svg" },
   { id:7,  name:"Adidas",      category:"Sports",        downloads:39800, trending:false, colors:["#000000","#ffffff"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/2/20/Adidas_Logo.svg" },
-  { id:8,  name:"Amazon",      category:"E-commerce",    downloads:38500, trending:false, colors:["#FF9900","#232F3E"],           formats:["AI","CDR","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" },
+  { id:8,  name:"Amazon",      category:"E-commerce",    downloads:38500, trending:false, colors:["#FF9900","#232F3E"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" },
   { id:9,  name:"Netflix",     category:"Entertainment", downloads:36200, trending:true,  colors:["#e50914","#141414"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" },
-  { id:10, name:"Spotify",     category:"Entertainment", downloads:33700, trending:false, colors:["#1DB954","#191414"],           formats:["AI","EPS","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg" },
-  { id:11, name:"BMW",         category:"Automotive",    downloads:30100, trending:false, colors:["#0066B1","#ffffff","#000000"], formats:["AI","CDR","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/4/44/BMW.svg" },
+  { id:10, name:"Spotify",     category:"Entertainment", downloads:33700, trending:false, colors:["#1DB954","#191414"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg" },
+  { id:11, name:"BMW",         category:"Automotive",    downloads:30100, trending:false, colors:["#0066B1","#ffffff","#000000"], formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/4/44/BMW.svg" },
   { id:12, name:"Samsung",     category:"Technology",    downloads:29400, trending:false, colors:["#1428A0","#ffffff"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/2/24/Samsung_Logo.svg" },
-  { id:13, name:"Coca-Cola",   category:"Food & Beverage",downloads:27800,trending:false, colors:["#F40009","#ffffff"],           formats:["AI","EPS","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg" },
-  { id:14, name:"Visa",        category:"Finance",       downloads:26300, trending:false, colors:["#1A1F71","#F7A600"],           formats:["AI","CDR","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" },
+  { id:13, name:"Coca-Cola",   category:"Food & Beverage",downloads:27800,trending:false, colors:["#F40009","#ffffff"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/c/ce/Coca-Cola_logo.svg" },
+  { id:14, name:"Visa",        category:"Finance",       downloads:26300, trending:false, colors:["#1A1F71","#F7A600"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" },
   { id:15, name:"PlayStation", category:"Gaming",        downloads:25600, trending:true,  colors:["#003087","#ffffff"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/4/4e/Playstation_logo_colour.svg" },
   { id:16, name:"Twitter/X",   category:"Social Media",  downloads:24100, trending:false, colors:["#000000","#ffffff"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/5/5a/X_icon_2.svg" },
-  { id:17, name:"Emirates",    category:"Airline",       downloads:22700, trending:false, colors:["#D4153C","#ffffff","#C8A84B"], formats:["AI","CDR","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/d/d0/Emirates_logo.svg" },
-  { id:18, name:"Gucci",       category:"Fashion",       downloads:21500, trending:true,  colors:["#1e1e1e","#B69A54"],           formats:["AI","EPS","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/5/55/Gucci_logo.svg" },
+  { id:17, name:"Emirates",    category:"Airline",       downloads:22700, trending:false, colors:["#D4153C","#ffffff","#C8A84B"], formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/d/d0/Emirates_logo.svg" },
+  { id:18, name:"Gucci",       category:"Fashion",       downloads:21500, trending:true,  colors:["#1e1e1e","#B69A54"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/5/55/Gucci_logo.svg" },
   { id:19, name:"Xbox",        category:"Gaming",        downloads:20300, trending:false, colors:["#107C10","#ffffff"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/f/f9/Xbox_one_logo.svg" },
-  { id:20, name:"Mastercard",  category:"Finance",       downloads:19800, trending:false, colors:["#EB001B","#F79E1B"],           formats:["AI","CDR","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" },
+  { id:20, name:"Mastercard",  category:"Finance",       downloads:19800, trending:false, colors:["#EB001B","#F79E1B"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" },
   { id:21, name:"Airbnb",      category:"E-commerce",    downloads:18600, trending:false, colors:["#FF5A5F","#ffffff"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/6/69/Airbnb_Logo_Bélo.svg" },
-  { id:22, name:"Snapchat",    category:"Social Media",  downloads:17400, trending:false, colors:["#FFFC00","#000000"],           formats:["AI","EPS","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/en/a/ad/Snapchat_logo.svg" },
-  { id:23, name:"Ferrari",     category:"Automotive",    downloads:16200, trending:false, colors:["#CC0000","#FFD700"],           formats:["AI","CDR","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/en/d/d1/Ferrari-Logo.svg" },
+  { id:22, name:"Snapchat",    category:"Social Media",  downloads:17400, trending:false, colors:["#FFFC00","#000000"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/en/a/ad/Snapchat_logo.svg" },
+  { id:23, name:"Ferrari",     category:"Automotive",    downloads:16200, trending:false, colors:["#CC0000","#FFD700"],           formats:["AI","SVG","PNG"], imageUrl:"https://upload.wikimedia.org/wikipedia/en/d/d1/Ferrari-Logo.svg" },
   { id:24, name:"Puma",        category:"Sports",        downloads:15300, trending:false, colors:["#000000","#ffffff"],           formats:["AI","SVG","PNG"],       imageUrl:"https://upload.wikimedia.org/wikipedia/commons/4/4c/Puma_Logo.svg" },
 ];
 
 const PAGE_SIZE = 12;
 
-/**
- * Mock API — mirrors your real /api/logos endpoint shape exactly.
- * Replace the body of `fetchLogos` with a real fetch() when backend is ready.
- */
 function mockFetch({ page, sort, letter, category }) {
   return new Promise(resolve => {
     setTimeout(() => {
       let results = [...ALL_LOGOS];
-
-      // Filter by first letter
       if (letter && letter !== "All") {
         const isNumeric = letter === "0-9";
         results = results.filter(l =>
           isNumeric ? /^[0-9]/.test(l.name) : l.name.toUpperCase().startsWith(letter)
         );
       }
-
-      // Filter by category
       if (category && category !== "All") {
         results = results.filter(l => l.category === category);
       }
-
-      // Sort
       if (sort === "popular") results.sort((a, b) => b.downloads - a.downloads);
       else if (sort === "az")  results.sort((a, b) => a.name.localeCompare(b.name));
-      else                     results.sort((a, b) => b.id - a.id); // newest = highest id
-
+      else                     results.sort((a, b) => b.id - a.id);
       const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
       const logos = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
       resolve({ logos, totalPages });
-    }, 420); // small artificial delay to show the skeleton
+    }, 420);
   });
 }
 
-// ── Skeleton card ─────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div className="logo-card skeleton-card">
@@ -92,21 +74,17 @@ function SkeletonCard() {
       <div className="card-body">
         <div className="skeleton-line w60" />
         <div className="skeleton-line w40 mt4" />
-        <div className="card-footer">
-          <div className="skeleton-line w30" />
-          <div className="skeleton-dots" />
-        </div>
-        <div className="card-formats">
-          {[1,2,3,4].map(i => <div key={i} className="skeleton-badge" />)}
+        <div className="card-formats" style={{marginTop:8}}>
+          {[1,2,3].map(i => <div key={i} className="skeleton-badge" />)}
         </div>
       </div>
     </div>
   );
 }
 
-// ── Logo card ─────────────────────────────────────────────────────────────────
 function LogoCard({ logo }) {
   const [imgErr, setImgErr] = useState(false);
+  const fmts = (logo.formats || ["AI","SVG","PNG"]).slice(0, 3);
 
   return (
     <div className="logo-card">
@@ -131,31 +109,17 @@ function LogoCard({ logo }) {
       </div>
 
       <div className="card-body">
-        <div className="card-title-row">
-          <span className="card-name">{logo.name}</span>
-          <span className="card-downloads">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            {Number(logo.downloads || 0).toLocaleString()}
-          </span>
-        </div>
-
+        <div className="card-name">{logo.name}</div>
         <span className="card-category">{logo.category}</span>
 
-        <div className="card-footer">
-          <div className="card-colors">
-            {(logo.colors || []).slice(0, 3).map((c, i) => (
-              <span key={i} className="color-dot" style={{ background: c }} />
-            ))}
-          </div>
+        <div className="card-colors">
+          {(logo.colors || []).slice(0, 3).map((c, i) => (
+            <span key={i} className="color-dot" style={{ background: c }} />
+          ))}
         </div>
 
         <div className="card-formats">
-          {(logo.formats || ["AI","CDR","SVG","PNG"]).map(f => (
+          {fmts.map(f => (
             <span key={f} className={`fmt-tag fmt-${f.toLowerCase()}`}>{f}</span>
           ))}
         </div>
@@ -164,49 +128,29 @@ function LogoCard({ logo }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function LogosPage() {
-  // Read theme from html[data-theme] so this file stays self-contained
-  const [dark, setDark] = useState(
-    () => typeof document !== "undefined" &&
-          document.documentElement.getAttribute("data-theme") === "dark"
-  );
+  const [logos,          setLogos]       = useState([]);
+  const [loading,        setLoading]     = useState(true);
+  const [error,          setError]       = useState(null);
+  const [page,           setPage]        = useState(1);
+  const [totalPages,     setTotalPages]  = useState(1);
+  const [activeLetter,   setActiveLetter]= useState("All");
+  const [activeCategory, setActiveCat]  = useState("All");
+  const [sort,           setSort]        = useState("newest");
 
-  const [logos,        setLogos]       = useState([]);
-  const [loading,      setLoading]     = useState(true);
-  const [error,        setError]       = useState(null);
-  const [page,         setPage]        = useState(1);
-  const [totalPages,   setTotalPages]  = useState(1);
-  const [activeLetter, setActiveLetter]= useState("All");
-  const [activeCategory, setActiveCat]= useState("All");
-  const [sort,         setSort]        = useState("newest");
-
-  // ── Data fetcher ─────────────────────────────────────────────────────────
-  // 🔁 To switch to a real backend: replace `mockFetch(params)` with
-  //    `fetch(\`/api/logos?\${new URLSearchParams(params)}\`).then(r => r.json())`
   const fetchLogos = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const params = {
-        page,
-        sort,
+        page, sort,
         ...(activeLetter   !== "All" && { letter: activeLetter }),
         ...(activeCategory !== "All" && { category: activeCategory }),
       };
-
       const data = await mockFetch(params);
-      // ─── Real backend swap-in (uncomment when ready) ───────────────────
-      // const res = await fetch(`/api/logos?${new URLSearchParams(params)}`);
-      // if (!res.ok) throw new Error(`Server error ${res.status}`);
-      // const data = await res.json();
-      // ──────────────────────────────────────────────────────────────────
-
       setLogos(data.logos ?? []);
       setTotalPages(data.totalPages ?? 1);
     } catch (err) {
-      setError(err.message);
-      setLogos([]);
+      setError(err.message); setLogos([]);
     } finally {
       setLoading(false);
     }
@@ -215,7 +159,6 @@ export default function LogosPage() {
   useEffect(() => { fetchLogos(); }, [fetchLogos]);
   useEffect(() => { setPage(1); }, [activeLetter, activeCategory, sort]);
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
@@ -235,9 +178,9 @@ export default function LogosPage() {
           --pill-bg:        rgba(255,255,255,0.06);
           --pill-border:    rgba(255,255,255,0.1);
           --pill-color:     rgba(255,255,255,0.6);
-          --pill-active-bg:     rgba(168,85,247,0.2);
-          --pill-active-border: rgba(168,85,247,0.5);
-          --pill-active-color:  #d8b4fe;
+          --pill-active-bg:     rgba(7,166,38,0.18);
+          --pill-active-border: rgba(7,166,38,0.45);
+          --pill-active-color:  #4ade80;
           --sort-bg:        rgba(255,255,255,0.05);
           --sort-border:    rgba(255,255,255,0.08);
           --sort-color:     rgba(255,255,255,0.5);
@@ -245,13 +188,12 @@ export default function LogosPage() {
           --sort-active-color: #fff;
           --card-img-bg:    #1a1a24;
           --skeleton:       rgba(255,255,255,0.06);
-          --skeleton-shine: rgba(255,255,255,0.03);
           --page-btn-bg:    rgba(255,255,255,0.06);
           --page-btn-color: rgba(255,255,255,0.5);
           --page-btn-hover: rgba(255,255,255,0.1);
-          --page-active-bg: rgba(168,85,247,0.25);
-          --page-active-color: #d8b4fe;
-          --page-active-border: rgba(168,85,247,0.5);
+          --page-active-bg: rgba(7,166,38,0.2);
+          --page-active-color: #4ade80;
+          --page-active-border: rgba(7,166,38,0.45);
           --error-color:    #f87171;
         }
         [data-theme="light"] {
@@ -266,9 +208,9 @@ export default function LogosPage() {
           --pill-bg:        rgba(0,0,0,0.05);
           --pill-border:    rgba(0,0,0,0.09);
           --pill-color:     rgba(0,0,0,0.6);
-          --pill-active-bg:     rgba(124,58,237,0.1);
-          --pill-active-border: rgba(124,58,237,0.35);
-          --pill-active-color:  #6d28d9;
+          --pill-active-bg:     rgba(7,166,38,0.1);
+          --pill-active-border: rgba(7,166,38,0.35);
+          --pill-active-color:  #15803d;
           --sort-bg:        rgba(0,0,0,0.04);
           --sort-border:    rgba(0,0,0,0.08);
           --sort-color:     rgba(0,0,0,0.5);
@@ -276,13 +218,12 @@ export default function LogosPage() {
           --sort-active-color: #0a0a14;
           --card-img-bg:    #f0f0f5;
           --skeleton:       rgba(0,0,0,0.06);
-          --skeleton-shine: rgba(255,255,255,0.5);
           --page-btn-bg:    rgba(0,0,0,0.05);
           --page-btn-color: rgba(0,0,0,0.5);
           --page-btn-hover: rgba(0,0,0,0.09);
-          --page-active-bg: rgba(124,58,237,0.12);
-          --page-active-color: #6d28d9;
-          --page-active-border: rgba(124,58,237,0.35);
+          --page-active-bg: rgba(7,166,38,0.1);
+          --page-active-color: #15803d;
+          --page-active-border: rgba(7,166,38,0.35);
           --error-color:    #dc2626;
         }
 
@@ -290,18 +231,18 @@ export default function LogosPage() {
           min-height: 100vh;
           background: var(--page-bg);
           font-family: 'Sora', sans-serif;
-          padding: 80px 0 60px;
+          padding: 0px 0 60px;
           transition: background 0.35s;
         }
-        .logos-container { max-width: 1200px; margin: 0 auto; padding: 32px 24px 0; }
+        .logos-container { max-width: 1200px; margin: 0 auto; padding: 24px 24px 0; }
 
         .page-header {
           display: flex; align-items: flex-start;
           justify-content: space-between;
-          gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
+          gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
         }
-        .page-title { font-size: 26px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1; transition: color 0.3s; }
-        .page-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 5px; transition: color 0.3s; }
+        .page-title { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1; transition: color 0.3s; }
+        .page-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 4px; transition: color 0.3s; }
 
         .sort-group {
           display: flex; align-items: center; gap: 6px;
@@ -317,9 +258,8 @@ export default function LogosPage() {
           cursor: pointer; transition: background 0.2s, color 0.2s; white-space: nowrap;
         }
         .sort-btn.active { background: var(--sort-active-bg); color: var(--sort-active-color); }
-        .sort-btn:not(.active):hover { opacity: 0.8; }
 
-        .alpha-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+        .alpha-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
         .alpha-btn {
           min-width: 32px; height: 32px; padding: 0 8px;
           border-radius: 8px; border: 1px solid var(--pill-border);
@@ -331,7 +271,7 @@ export default function LogosPage() {
           background: var(--pill-active-bg); border-color: var(--pill-active-border); color: var(--pill-active-color);
         }
 
-        .cat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
+        .cat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
         .cat-btn {
           padding: 5px 14px; border-radius: 100px;
           border: 1px solid var(--pill-border); background: var(--pill-bg);
@@ -359,54 +299,44 @@ export default function LogosPage() {
         .trending-badge {
           position: absolute; top: 10px; left: 10px; z-index: 2;
           display: inline-flex; align-items: center; gap: 4px;
-          padding: 3px 8px; background: rgba(139,92,246,0.85);
+          padding: 3px 8px; background: rgba(7,166,38,0.85);
           border-radius: 6px; font-size: 9px; font-weight: 700;
           letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px);
         }
 
         .card-image {
-          width: 100%; height: 140px; background: var(--card-img-bg);
+          width: 100%; height: 130px; background: var(--card-img-bg);
           display: flex; align-items: center; justify-content: center;
           overflow: hidden; transition: background 0.3s;
         }
         .card-img { width: 100%; height: 100%; object-fit: contain; padding: 16px; }
-        .card-initials { font-size: 32px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; font-family: 'Sora', sans-serif; }
+        .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; font-family: 'Sora', sans-serif; }
 
         .card-body { padding: 10px 12px 12px; }
-        .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
-        .card-name { font-size: 13px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s; }
-        .card-downloads { display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; transition: color 0.3s; }
+        .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s; }
         .card-category { font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px; transition: color 0.3s; }
-        .card-footer { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-        .card-colors { display: flex; gap: 4px; }
+        .card-colors { display: flex; gap: 4px; margin-bottom: 8px; }
         .color-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); }
         [data-theme="light"] .color-dot { border-color: rgba(0,0,0,0.1); }
 
         .card-formats { display: flex; flex-wrap: wrap; gap: 4px; }
         .fmt-tag { padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid; }
         .fmt-ai  { background:rgba(234,179,8,.1);  border-color:rgba(234,179,8,.25);  color:#fde68a; }
-        .fmt-cdr { background:rgba(239,68,68,.1);  border-color:rgba(239,68,68,.25);  color:#fca5a5; }
-        .fmt-eps { background:rgba(249,115,22,.1); border-color:rgba(249,115,22,.25); color:#fdba74; }
         .fmt-svg { background:rgba(34,197,94,.1);  border-color:rgba(34,197,94,.25);  color:#86efac; }
         .fmt-png { background:rgba(59,130,246,.1); border-color:rgba(59,130,246,.25); color:#93c5fd; }
         [data-theme="light"] .fmt-ai  { color:#92400e; }
-        [data-theme="light"] .fmt-cdr { color:#991b1b; }
-        [data-theme="light"] .fmt-eps { color:#9a3412; }
         [data-theme="light"] .fmt-svg { color:#166534; }
         [data-theme="light"] .fmt-png { color:#1e40af; }
 
         .skeleton-card { pointer-events: none; }
-        .skeleton-img { width: 100%; height: 140px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
+        .skeleton-img { width: 100%; height: 130px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
         .skeleton-line { height: 10px; border-radius: 5px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
-        .w60{width:60%} .w40{width:40%} .w30{width:30%} .mt4{margin-top:4px}
-        .skeleton-dots { display: flex; gap: 4px; }
-        .skeleton-dots::before,.skeleton-dots::after { content:''; width:10px; height:10px; border-radius:50%; background:var(--skeleton); }
+        .w60{width:60%} .w40{width:40%} .mt4{margin-top:4px}
         .skeleton-badge { width:28px; height:16px; border-radius:4px; background:var(--skeleton); animation:shimmer 1.6s infinite linear; }
         @keyframes shimmer { 0%{opacity:1} 50%{opacity:0.4} 100%{opacity:1} }
 
         .error-state { text-align:center; padding:60px 24px; color:var(--error-color); font-size:14px; }
-        .error-state button { margin-top:12px; padding:8px 20px; border-radius:8px; border:1px solid var(--error-color); background:transparent; color:var(--error-color); font-family:'Sora',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.2s; }
-        .error-state button:hover { background:rgba(239,68,68,0.08); }
+        .error-state button { margin-top:12px; padding:8px 20px; border-radius:8px; border:1px solid var(--error-color); background:transparent; color:var(--error-color); font-family:'Sora',sans-serif; font-size:13px; font-weight:600; cursor:pointer; }
 
         .empty-state { grid-column:1/-1; text-align:center; padding:60px 24px; color:var(--text-secondary); font-size:14px; }
 
@@ -418,62 +348,24 @@ export default function LogosPage() {
         .page-ellipsis { color:var(--text-muted); font-size:13px; padding:0 4px; }
 
         @media (max-width:640px) {
-          .logos-page { padding: 60px 0 40px; }
-          .logos-container { padding: 16px 12px 0; }
-
-          /* Header */
-          .page-header { flex-direction: column; gap: 10px; margin-bottom: 16px; }
+          .logos-page { padding: 12px 0 40px; }
+          .logos-container { padding: 14px 12px 0; }
+          .page-header { flex-direction: column; gap: 10px; margin-bottom: 14px; }
           .page-title { font-size: 20px; }
-          .page-subtitle { font-size: 12px; }
           .sort-group { align-self: stretch; justify-content: stretch; }
           .sort-btn { flex: 1; justify-content: center; font-size: 11px; padding: 6px 8px; }
-
-          /* Alphabet — horizontally scrollable, no wrap */
-          .alpha-row {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            gap: 4px;
-            margin-bottom: 10px;
-            padding-bottom: 4px;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-          }
+          .alpha-row { flex-wrap: nowrap; overflow-x: auto; gap: 4px; margin-bottom: 8px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
           .alpha-row::-webkit-scrollbar { display: none; }
           .alpha-btn { min-width: 30px; height: 30px; flex-shrink: 0; font-size: 11px; }
-
-          /* Categories — horizontally scrollable */
-          .cat-row {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            gap: 6px;
-            margin-bottom: 16px;
-            padding-bottom: 4px;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-          }
+          .cat-row { flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-bottom: 14px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
           .cat-row::-webkit-scrollbar { display: none; }
           .cat-btn { flex-shrink: 0; font-size: 11.5px; padding: 4px 12px; }
-
-          /* Grid — 2 columns */
           .logos-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
-
-          /* Cards */
-          .card-image { height: 110px; }
-          .card-body { padding: 8px 10px 10px; }
-          .card-name { font-size: 12px; }
-          .card-downloads { font-size: 10px; }
-          .card-category { font-size: 10px; margin-bottom: 6px; }
-          .fmt-tag { font-size: 8.5px; padding: 1px 5px; }
-          .card-initials { font-size: 26px; }
-
-          /* Pagination — tighter */
-          .pagination { gap: 4px; flex-wrap: wrap; justify-content: center; }
+          .card-image { height: 105px; }
+          .card-name { font-size: 13px; }
+          .card-formats { gap: 3px; }
+          .pagination { gap: 4px; }
           .page-btn { min-width: 32px; height: 32px; font-size: 12px; }
-        }
-
-        @media (max-width: 360px) {
-          .logos-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-          .card-image { height: 95px; }
         }
       `}</style>
 
