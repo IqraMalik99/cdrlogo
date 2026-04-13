@@ -1,0 +1,7 @@
+model Download {
+  id        String   @id @default(cuid())
+  logoId    String
+  userId    String?
+  ip        String
+  createdAt DateTime @default(now())
+}
