@@ -1,228 +1,296 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  Upload, Database, Image, Tag, Download, Search, FileText,
-  Heart, Shield, BarChart2, Link2, Droplets, HardDrive,
-  Settings, RefreshCw, Globe, Layout, Menu as MenuIcon,
-  Users, Mail, Archive, Sliders, X, ChevronRight, Zap
+  Menu, X, ChevronRight,
+  LayoutDashboard, Upload, Droplets,
+  Tag, LayoutGrid, Users, FileText,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-const navItems = [
-  { icon: Upload, label: "Upload Logo", id: "upload" },
-//   { icon: Database, label: "Bulk Operations", id: "bulk" },
-//   { icon: Image, label: "Media Library", id: "media" },
-//   { icon: Tag, label: "Categories", id: "categories" },
-//   { icon: FileText, label: "Tags", id: "tags" },
-//   { icon: Download, label: "Download Tracking", id: "download" },
-//   { icon: Search, label: "Advanced Search", id: "search" },
-//   { icon: FileText, label: "Search Logs", id: "logs" },
-//   { icon: Heart, label: "Favorites / Collections", id: "favorites" },
-//   { icon: Shield, label: "License Management", id: "license" },
-//   { icon: BarChart2, label: "Analytics Dashboard", id: "analytics" },
-//   { icon: Link2, label: "API / Integration", id: "api" },
-//   { icon: Droplets, label: "Watermarking", id: "watermark" },
-//   { icon: HardDrive, label: "Cache Management", id: "cache" },
-//   { icon: Settings, label: "SEO Settings", id: "seo" },
-//   { icon: RefreshCw, label: "Redirects", id: "redirects" },
-//   { icon: Layout, label: "Pages / CMS", id: "pages" },
-//   { icon: MenuIcon, label: "Navigation / Menus", id: "nav" },
-//   { icon: Zap, label: "Ad Management", id: "ads" },
-//   { icon: Archive, label: "DMCA / Reports", id: "dmca" },
-//   { icon: Users, label: "Users", id: "users" },
-//   { icon: Mail, label: "Email Templates", id: "email" },
-//   { icon: Archive, label: "Backup & Export", id: "backup" },
-//   { icon: Sliders, label: "Site Settings", id: "site" },
+// ── NAV_ITEMS ─────────────────────────────────────────────────────────────
+// key MUST exactly match the case string used in AdminPage's renderContent switch
+const NAV_ITEMS = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "upload", label: "Upload Logo", icon: Upload },
+  { key: "watermark", label: "Watermark", icon: Droplets },
+  { key: "categories", label: "Categories", icon: Tag },
+  { key: "LogoManagement", label: "Logo Management", icon: LayoutGrid },
+  { key: "User", label: "Users", icon: Users },
+  { key: "Page/CMS", label: "CMS / Pages", icon: FileText },
+  { key: "Navigation/Menu", label: "Navigation/Menu", icon: Tag },
+  { key: "Media Library", label: "Media Library", icon: LayoutGrid },
+  { key: "SiteSettings", label: "Site Settings", icon: LayoutDashboard },
 ];
 
 export default function Sidebar({ active, setActive, dark }) {
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const router = useRouter();
 
-  const bg = dark ? "#0f1117" : "#ffffff";
-  const border = dark ? "#1e2535" : "#e8ecf4";
-  const text = dark ? "#94a3b8" : "#64748b";
-  const textHover = dark ? "#f1f5f9" : "#0f172a";
-  const activeBg = dark ? "rgba(34,197,94,0.12)" : "rgba(22,163,74,0.08)";
-  const activeText = "#22c55e";
-  const hoverBg = dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
-  const logoTextColor = dark ? "#f1f5f9" : "#0f172a";
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
-  const sidebarWidth = collapsed ? 64 : 230;
+  // close mobile drawer whenever active section changes
+  useEffect(() => { setMobileOpen(false); }, [active]);
 
-  return (
-    <>
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          onClick={() => setMobileOpen(false)}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
-            zIndex: 40, display: "none"
-          }}
-          className="mobile-overlay"
-        />
-      )}
+  // theme tokens
+  const bg = dark ? "#0b0f1a" : "#ffffff";
+  const border = dark ? "#1e2535" : "#e2e8f0";
+  const text = dark ? "#e2e8f0" : "#1e293b";
+  const muted = dark ? "#64748b" : "#94a3b8";
+  const green = "#22c55e";
+  const hoverBg = dark ? "#1a2236" : "#f1f5f9";
+  const activeBg = dark ? "#22c55e15" : "#dcfce7";
 
-      {/* Mobile toggle */}
+  const sidebarW = collapsed && !isMobile ? 64 : 220;
+
+  // ── Single nav button ────────────────────────────────────────────────────
+  const NavItem = ({ item }) => {
+    const Icon = item.icon;
+    const isActive = active === item.key;
+
+    return (
       <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="mobile-toggle"
-        style={{
-          position: "fixed", top: 14, left: 14, zIndex: 60,
-          background: dark ? "#1e2535" : "#f1f5f9",
-          border: `1px solid ${border}`,
-          borderRadius: 8, padding: "6px 8px",
-          color: text, cursor: "pointer", display: "none"
+        onClick={() => {
+          setActive(item.key);
+          if (isMobile) setMobileOpen(false);
         }}
-      >
-        <MenuIcon size={18} />
-      </button>
-
-      {/* Sidebar */}
-      <aside
-        className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}
+        title={collapsed && !isMobile ? item.label : undefined}
         style={{
-          width: sidebarWidth,
-          minWidth: sidebarWidth,
-          background: bg,
-          borderRight: `1px solid ${border}`,
-          height: "100vh",
-          position: "sticky",
-          top: 0,
-          display: "flex",
-          flexDirection: "column",
-          transition: "width 0.25s cubic-bezier(0.4,0,0.2,1)",
-          overflow: "hidden",
-          zIndex: 50,
-          flexShrink: 0,
-        }}
-      >
-        {/* Logo area */}
-        <div style={{
-          padding: collapsed ? "18px 0" : "18px 16px",
           display: "flex",
           alignItems: "center",
-          justifyContent: collapsed ? "center" : "space-between",
-          borderBottom: `1px solid ${border}`,
-          minHeight: 60,
-        }}>
-          {!collapsed && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: 8,
-                background: "linear-gradient(135deg,#22c55e,#16a34a)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0
-              }}>
-                <Zap size={14} color="#fff" />
-              </div>
-              <span style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontWeight: 700, fontSize: 14,
-                color: logoTextColor, letterSpacing: "-0.3px"
-              }}>
-                Admin Panel
-              </span>
-            </div>
-          )}
-          {collapsed && (
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg,#22c55e,#16a34a)",
-              display: "flex", alignItems: "center", justifyContent: "center"
-            }}>
-              <Zap size={14} color="#fff" />
-            </div>
-          )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
+          gap: collapsed && !isMobile ? 0 : 10,
+          justifyContent: collapsed && !isMobile ? "center" : "flex-start",
+          width: "100%",
+          padding: collapsed && !isMobile ? "10px 0" : "10px 12px",
+          borderRadius: 10,
+          border: "none",
+          cursor: "pointer",
+          background: isActive ? activeBg : "transparent",
+          color: isActive ? green : muted,
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: 13,
+          fontWeight: isActive ? 700 : 500,
+          transition: "all 0.15s",
+          position: "relative",
+          // left-border accent when active
+          boxShadow: isActive ? `inset 3px 0 0 ${green}` : "none",
+          textAlign: "left",
+        }}
+        onMouseEnter={e => {
+          if (!isActive) {
+            e.currentTarget.style.background = hoverBg;
+            e.currentTarget.style.color = text;
+          }
+        }}
+        onMouseLeave={e => {
+          if (!isActive) {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = muted;
+          }
+        }}
+      >
+        <Icon size={16} style={{ flexShrink: 0 }} />
+
+        {(!collapsed || isMobile) && (
+          <span style={{ whiteSpace: "nowrap", overflow: "hidden", flex: 1 }}>
+            {item.label}
+          </span>
+        )}
+
+        {isActive && (!collapsed || isMobile) && (
+          <ChevronRight size={13} style={{ marginLeft: "auto", opacity: 0.45 }} />
+        )}
+
+        {/* Tooltip shown only in collapsed desktop mode */}
+        {collapsed && !isMobile && (
+          <span
+            className="sidebar-tooltip"
             style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: text, padding: 4, borderRadius: 4,
-              display: "flex", alignItems: "center",
-              flexShrink: 0,
+              position: "absolute", left: "calc(100% + 10px)", top: "50%",
+              transform: "translateY(-50%)",
+              background: dark ? "#1e2535" : "#1e293b", color: "#fff",
+              fontSize: 11, fontWeight: 600, padding: "4px 10px",
+              borderRadius: 6, whiteSpace: "nowrap",
+              pointerEvents: "none", opacity: 0, transition: "opacity 0.15s",
+              zIndex: 999,
             }}
           >
-            <ChevronRight size={15} style={{
-              transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
-              transition: "transform 0.25s"
-            }} />
+            {item.label}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  // ── Sidebar inner content ─────────────────────────────────────────────────
+  const SidebarContent = () => (
+    <div style={{
+      width: isMobile ? 260 : sidebarW,
+      height: "100%",
+      background: bg,
+      borderRight: `1px solid ${border}`,
+      display: "flex",
+      flexDirection: "column",
+      transition: "width 0.2s ease",
+      flexShrink: 0,
+      overflow: "hidden",
+    }}>
+      {/* Brand / logo */}
+      <div
+        style={{
+          height: 56,
+          display: "flex", alignItems: "center",
+          padding: collapsed && !isMobile ? "0 12px" : "0 16px",
+          justifyContent: collapsed && !isMobile ? "center" : "space-between",
+          borderBottom: `1px solid ${border}`,
+          flexShrink: 0,
+          cursor: "pointer",
+        }}
+      >
+        {(!collapsed || isMobile) && (
+          <div
+            style={{ display: "flex", alignItems: "center", gap: 8 }}
+            onClick={() => router.push("/")}
+          >
+            <span style={{ fontSize: 14, fontWeight: 800, color: text, letterSpacing: "-0.3px" }}>
+              CDR<span style={{ color: green }}>LOGO</span>
+            </span>
+          </div>
+        )}
+
+        {/* Collapse toggle — desktop only */}
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            style={{
+              width: 26, height: 26, borderRadius: 7,
+              border: `1px solid ${border}`,
+              background: dark ? "#1a2236" : "#f1f5f9",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: muted, flexShrink: 0,
+            }}
+          >
+            <Menu size={13} />
+          </button>
+        )}
+
+        {/* Close — mobile only */}
+        {isMobile && (
+          <button
+            onClick={() => setMobileOpen(false)}
+            style={{
+              width: 28, height: 28, borderRadius: 7,
+              border: "none", background: "transparent",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: muted,
+            }}
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* Section label */}
+      {(!collapsed || isMobile) && (
+        <div style={{
+          padding: "14px 16px 6px",
+          fontSize: 10, fontWeight: 700, color: muted,
+          letterSpacing: "0.08em", textTransform: "uppercase",
+        }}>
+          Navigation
+        </div>
+      )}
+
+      {/* Nav items */}
+      <nav style={{
+        padding: "4px 8px",
+        display: "flex", flexDirection: "column", gap: 2,
+        flex: 1,
+      }}>
+        {NAV_ITEMS.map(item => <NavItem key={item.key} item={item} />)}
+      </nav>
+
+      {/* Footer */}
+      {(!collapsed || isMobile) && (
+        <div style={{
+          padding: "12px 14px",
+          borderTop: `1px solid ${border}`,
+          fontSize: 10, color: muted, textAlign: "center",
+        }}>
+          Admin Panel · v1.0
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Mobile: overlay drawer ───────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <>
+        <style>{`
+          button:hover .sidebar-tooltip { opacity: 1 !important; }
+          .mobile-backdrop {
+            position: fixed; inset: 0;
+            background: #00000080; z-index: 100;
+            backdrop-filter: blur(2px);
+          }
+          .mobile-drawer {
+            position: fixed; top: 0; left: 0; height: 100%;
+            z-index: 101;
+            transform: translateX(-100%);
+            transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+          }
+          .mobile-drawer.open { transform: translateX(0); }
+        `}</style>
+
+        {/* Hamburger button in top-left */}
+        <div style={{
+          position: "fixed", top: 11, left: 12, zIndex: 99,
+        }}>
+          <button
+            onClick={() => setMobileOpen(true)}
+            style={{
+              width: 34, height: 34, borderRadius: 9,
+              background: dark ? "#1e2535" : "#f1f5f9",
+              border: `1px solid ${border}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", color: muted,
+            }}
+          >
+            <Menu size={16} />
           </button>
         </div>
 
-        {/* Nav items */}
-        <nav style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "10px 8px" }}
-          className="sidebar-nav">
-          {navItems.map((item) => {
-            const isActive = active === item.id;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => { setActive(item.id); setMobileOpen(false); }}
-                title={collapsed ? item.label : ""}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center",
-                  gap: collapsed ? 0 : 10,
-                  padding: collapsed ? "9px 0" : "9px 10px",
-                  justifyContent: collapsed ? "center" : "flex-start",
-                  background: isActive ? activeBg : "transparent",
-                  border: "none", borderRadius: 8,
-                  color: isActive ? activeText : text,
-                  cursor: "pointer", marginBottom: 2,
-                  transition: "all 0.15s",
-                  whiteSpace: "nowrap",
-                  position: "relative",
-                  textAlign: "left",
-                }}
-                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = hoverBg; e.currentTarget.style.color = textHover; } }}
-                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = text; } }}
-              >
-                {isActive && (
-                  <span style={{
-                    position: "absolute", left: collapsed ? "50%" : 0,
-                    transform: collapsed ? "translateX(-50%)" : "none",
-                    top: "50%", marginTop: collapsed ? 0 : "-50%",
-                    width: collapsed ? "80%" : 3,
-                    height: collapsed ? 3 : "80%",
-                    background: "#22c55e",
-                    borderRadius: 99,
-                    bottom: collapsed ? "auto" : "10%",
-                  }} />
-                )}
-                <Icon size={16} style={{ flexShrink: 0 }} />
-                {!collapsed && (
-                  <span style={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 13, fontWeight: isActive ? 600 : 400,
-                    overflow: "hidden", textOverflow: "ellipsis"
-                  }}>
-                    {item.label}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </aside>
+        {/* Backdrop */}
+        {mobileOpen && (
+          <div className="mobile-backdrop" onClick={() => setMobileOpen(false)} />
+        )}
 
-      <style>{`
-        .sidebar-nav::-webkit-scrollbar { width: 3px; }
-        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-nav::-webkit-scrollbar-thumb { background: #22c55e44; border-radius: 99px; }
-        @media (max-width: 768px) {
-          .mobile-toggle { display: flex !important; }
-          .mobile-overlay { display: block !important; }
-          .sidebar {
-            position: fixed !important;
-            left: -250px !important;
-            transition: left 0.28s cubic-bezier(0.4,0,0.2,1) !important;
-            width: 230px !important;
-          }
-          .sidebar.mobile-open { left: 0 !important; }
-        }
-      `}</style>
+        {/* Drawer */}
+        <div className={`mobile-drawer ${mobileOpen ? "open" : ""}`}>
+          <SidebarContent />
+        </div>
+
+        {/* Zero-width spacer keeps flex layout intact */}
+        <div style={{ width: 0 }} />
+      </>
+    );
+  }
+
+  // ── Desktop: static sidebar ──────────────────────────────────────────────
+  return (
+    <>
+      <style>{`button:hover .sidebar-tooltip { opacity: 1 !important; }`}</style>
+      <SidebarContent />
     </>
   );
 }

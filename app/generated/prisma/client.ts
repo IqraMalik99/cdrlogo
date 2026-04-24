@@ -56,3 +56,23 @@ export type Website = Prisma.WebsiteModel
  * 
  */
 export type User = Prisma.UserModel
+/**
+ * Model Page
+ * 
+ */
+export type Page = Prisma.PageModel
+/**
+ * Model Log
+ * 
+ */
+export type Log = Prisma.LogModel
+/**
+ * Model LogoRequest
+ * 
+ */
+export type LogoRequest = Prisma.LogoRequestModel
+/**
+ * Model ContactMessage
+ * 
+ */
+export type ContactMessage = Prisma.ContactMessageModel

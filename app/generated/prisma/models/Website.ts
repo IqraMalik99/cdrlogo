@@ -20,18 +20,38 @@ export type WebsiteModel = runtime.Types.Result.DefaultSelection<Prisma.$Website
 
 export type AggregateWebsite = {
   _count: WebsiteCountAggregateOutputType | null
+  _avg: WebsiteAvgAggregateOutputType | null
+  _sum: WebsiteSumAggregateOutputType | null
   _min: WebsiteMinAggregateOutputType | null
   _max: WebsiteMaxAggregateOutputType | null
 }
 
+export type WebsiteAvgAggregateOutputType = {
+  limit: number | null
+}
+
+export type WebsiteSumAggregateOutputType = {
+  limit: number | null
+}
+
 export type WebsiteMinAggregateOutputType = {
   id: string | null
+  metaTitle: string | null
+  metaDescription: string | null
+  limit: number | null
+  MaintanceMessage: string | null
+  showmode: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
 
 export type WebsiteMaxAggregateOutputType = {
   id: string | null
+  metaTitle: string | null
+  metaDescription: string | null
+  limit: number | null
+  MaintanceMessage: string | null
+  showmode: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -40,20 +60,45 @@ export type WebsiteCountAggregateOutputType = {
   id: number
   categories: number
   navItems: number
+  watermark: number
+  Footer: number
+  metaTitle: number
+  metaDescription: number
+  limit: number
+  MaintanceMessage: number
+  showmode: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
 
+export type WebsiteAvgAggregateInputType = {
+  limit?: true
+}
+
+export type WebsiteSumAggregateInputType = {
+  limit?: true
+}
+
 export type WebsiteMinAggregateInputType = {
   id?: true
+  metaTitle?: true
+  metaDescription?: true
+  limit?: true
+  MaintanceMessage?: true
+  showmode?: true
   createdAt?: true
   updatedAt?: true
 }
 
 export type WebsiteMaxAggregateInputType = {
   id?: true
+  metaTitle?: true
+  metaDescription?: true
+  limit?: true
+  MaintanceMessage?: true
+  showmode?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -62,6 +107,13 @@ export type WebsiteCountAggregateInputType = {
   id?: true
   categories?: true
   navItems?: true
+  watermark?: true
+  Footer?: true
+  metaTitle?: true
+  metaDescription?: true
+  limit?: true
+  MaintanceMessage?: true
+  showmode?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -105,6 +157,18 @@ export type WebsiteAggregateArgs<ExtArgs extends runtime.Types.Extensions.Intern
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: WebsiteAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: WebsiteSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: WebsiteMinAggregateInputType
@@ -135,17 +199,28 @@ export type WebsiteGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
   take?: number
   skip?: number
   _count?: WebsiteCountAggregateInputType | true
+  _avg?: WebsiteAvgAggregateInputType
+  _sum?: WebsiteSumAggregateInputType
   _min?: WebsiteMinAggregateInputType
   _max?: WebsiteMaxAggregateInputType
 }
 
 export type WebsiteGroupByOutputType = {
   id: string
-  categories: string[]
-  navItems: runtime.JsonValue
+  categories: runtime.JsonValue | null
+  navItems: runtime.JsonValue | null
+  watermark: runtime.JsonValue | null
+  Footer: runtime.JsonValue | null
+  metaTitle: string | null
+  metaDescription: string | null
+  limit: number
+  MaintanceMessage: string | null
+  showmode: boolean
   createdAt: Date
   updatedAt: Date
   _count: WebsiteCountAggregateOutputType | null
+  _avg: WebsiteAvgAggregateOutputType | null
+  _sum: WebsiteSumAggregateOutputType | null
   _min: WebsiteMinAggregateOutputType | null
   _max: WebsiteMaxAggregateOutputType | null
 }
@@ -170,16 +245,30 @@ export type WebsiteWhereInput = {
   OR?: Prisma.WebsiteWhereInput[]
   NOT?: Prisma.WebsiteWhereInput | Prisma.WebsiteWhereInput[]
   id?: Prisma.StringFilter<"Website"> | string
-  categories?: Prisma.StringNullableListFilter<"Website">
-  navItems?: Prisma.JsonFilter<"Website">
+  categories?: Prisma.JsonNullableFilter<"Website">
+  navItems?: Prisma.JsonNullableFilter<"Website">
+  watermark?: Prisma.JsonNullableFilter<"Website">
+  Footer?: Prisma.JsonNullableFilter<"Website">
+  metaTitle?: Prisma.StringNullableFilter<"Website"> | string | null
+  metaDescription?: Prisma.StringNullableFilter<"Website"> | string | null
+  limit?: Prisma.IntFilter<"Website"> | number
+  MaintanceMessage?: Prisma.StringNullableFilter<"Website"> | string | null
+  showmode?: Prisma.BoolFilter<"Website"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Website"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Website"> | Date | string
 }
 
 export type WebsiteOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  categories?: Prisma.SortOrder
-  navItems?: Prisma.SortOrder
+  categories?: Prisma.SortOrderInput | Prisma.SortOrder
+  navItems?: Prisma.SortOrderInput | Prisma.SortOrder
+  watermark?: Prisma.SortOrderInput | Prisma.SortOrder
+  Footer?: Prisma.SortOrderInput | Prisma.SortOrder
+  metaTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
+  limit?: Prisma.SortOrder
+  MaintanceMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  showmode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -189,21 +278,37 @@ export type WebsiteWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.WebsiteWhereInput | Prisma.WebsiteWhereInput[]
   OR?: Prisma.WebsiteWhereInput[]
   NOT?: Prisma.WebsiteWhereInput | Prisma.WebsiteWhereInput[]
-  categories?: Prisma.StringNullableListFilter<"Website">
-  navItems?: Prisma.JsonFilter<"Website">
+  categories?: Prisma.JsonNullableFilter<"Website">
+  navItems?: Prisma.JsonNullableFilter<"Website">
+  watermark?: Prisma.JsonNullableFilter<"Website">
+  Footer?: Prisma.JsonNullableFilter<"Website">
+  metaTitle?: Prisma.StringNullableFilter<"Website"> | string | null
+  metaDescription?: Prisma.StringNullableFilter<"Website"> | string | null
+  limit?: Prisma.IntFilter<"Website"> | number
+  MaintanceMessage?: Prisma.StringNullableFilter<"Website"> | string | null
+  showmode?: Prisma.BoolFilter<"Website"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Website"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Website"> | Date | string
 }, "id">
 
 export type WebsiteOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  categories?: Prisma.SortOrder
-  navItems?: Prisma.SortOrder
+  categories?: Prisma.SortOrderInput | Prisma.SortOrder
+  navItems?: Prisma.SortOrderInput | Prisma.SortOrder
+  watermark?: Prisma.SortOrderInput | Prisma.SortOrder
+  Footer?: Prisma.SortOrderInput | Prisma.SortOrder
+  metaTitle?: Prisma.SortOrderInput | Prisma.SortOrder
+  metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
+  limit?: Prisma.SortOrder
+  MaintanceMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  showmode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.WebsiteCountOrderByAggregateInput
+  _avg?: Prisma.WebsiteAvgOrderByAggregateInput
   _max?: Prisma.WebsiteMaxOrderByAggregateInput
   _min?: Prisma.WebsiteMinOrderByAggregateInput
+  _sum?: Prisma.WebsiteSumOrderByAggregateInput
 }
 
 export type WebsiteScalarWhereWithAggregatesInput = {
@@ -211,103 +316,171 @@ export type WebsiteScalarWhereWithAggregatesInput = {
   OR?: Prisma.WebsiteScalarWhereWithAggregatesInput[]
   NOT?: Prisma.WebsiteScalarWhereWithAggregatesInput | Prisma.WebsiteScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Website"> | string
-  categories?: Prisma.StringNullableListFilter<"Website">
-  navItems?: Prisma.JsonWithAggregatesFilter<"Website">
+  categories?: Prisma.JsonNullableWithAggregatesFilter<"Website">
+  navItems?: Prisma.JsonNullableWithAggregatesFilter<"Website">
+  watermark?: Prisma.JsonNullableWithAggregatesFilter<"Website">
+  Footer?: Prisma.JsonNullableWithAggregatesFilter<"Website">
+  metaTitle?: Prisma.StringNullableWithAggregatesFilter<"Website"> | string | null
+  metaDescription?: Prisma.StringNullableWithAggregatesFilter<"Website"> | string | null
+  limit?: Prisma.IntWithAggregatesFilter<"Website"> | number
+  MaintanceMessage?: Prisma.StringNullableWithAggregatesFilter<"Website"> | string | null
+  showmode?: Prisma.BoolWithAggregatesFilter<"Website"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Website"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Website"> | Date | string
 }
 
 export type WebsiteCreateInput = {
   id?: string
-  categories?: Prisma.WebsiteCreatecategoriesInput | string[]
-  navItems: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  categories?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  navItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  watermark?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  Footer?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metaTitle?: string | null
+  metaDescription?: string | null
+  limit?: number
+  MaintanceMessage?: string | null
+  showmode?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
 
 export type WebsiteUncheckedCreateInput = {
   id?: string
-  categories?: Prisma.WebsiteCreatecategoriesInput | string[]
-  navItems: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  categories?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  navItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  watermark?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  Footer?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metaTitle?: string | null
+  metaDescription?: string | null
+  limit?: number
+  MaintanceMessage?: string | null
+  showmode?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
 
 export type WebsiteUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  categories?: Prisma.WebsiteUpdatecategoriesInput | string[]
-  navItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  categories?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  navItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  watermark?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  Footer?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  limit?: Prisma.IntFieldUpdateOperationsInput | number
+  MaintanceMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  showmode?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type WebsiteUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  categories?: Prisma.WebsiteUpdatecategoriesInput | string[]
-  navItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  categories?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  navItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  watermark?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  Footer?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  limit?: Prisma.IntFieldUpdateOperationsInput | number
+  MaintanceMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  showmode?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type WebsiteCreateManyInput = {
   id?: string
-  categories?: Prisma.WebsiteCreatecategoriesInput | string[]
-  navItems: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  categories?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  navItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  watermark?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  Footer?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metaTitle?: string | null
+  metaDescription?: string | null
+  limit?: number
+  MaintanceMessage?: string | null
+  showmode?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
 
 export type WebsiteUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  categories?: Prisma.WebsiteUpdatecategoriesInput | string[]
-  navItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  categories?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  navItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  watermark?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  Footer?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  limit?: Prisma.IntFieldUpdateOperationsInput | number
+  MaintanceMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  showmode?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type WebsiteUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  categories?: Prisma.WebsiteUpdatecategoriesInput | string[]
-  navItems?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  categories?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  navItems?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  watermark?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  Footer?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  limit?: Prisma.IntFieldUpdateOperationsInput | number
+  MaintanceMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  showmode?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-}
-
-export type StringNullableListFilter<$PrismaModel = never> = {
-  equals?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel> | null
-  has?: string | Prisma.StringFieldRefInput<$PrismaModel> | null
-  hasEvery?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
-  hasSome?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
-  isEmpty?: boolean
 }
 
 export type WebsiteCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   categories?: Prisma.SortOrder
   navItems?: Prisma.SortOrder
+  watermark?: Prisma.SortOrder
+  Footer?: Prisma.SortOrder
+  metaTitle?: Prisma.SortOrder
+  metaDescription?: Prisma.SortOrder
+  limit?: Prisma.SortOrder
+  MaintanceMessage?: Prisma.SortOrder
+  showmode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
+export type WebsiteAvgOrderByAggregateInput = {
+  limit?: Prisma.SortOrder
+}
+
 export type WebsiteMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  metaTitle?: Prisma.SortOrder
+  metaDescription?: Prisma.SortOrder
+  limit?: Prisma.SortOrder
+  MaintanceMessage?: Prisma.SortOrder
+  showmode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type WebsiteMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  metaTitle?: Prisma.SortOrder
+  metaDescription?: Prisma.SortOrder
+  limit?: Prisma.SortOrder
+  MaintanceMessage?: Prisma.SortOrder
+  showmode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
-export type WebsiteCreatecategoriesInput = {
-  set: string[]
+export type WebsiteSumOrderByAggregateInput = {
+  limit?: Prisma.SortOrder
 }
 
-export type WebsiteUpdatecategoriesInput = {
-  set?: string[]
-  push?: string | string[]
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
 }
 
 
@@ -316,6 +489,13 @@ export type WebsiteSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   id?: boolean
   categories?: boolean
   navItems?: boolean
+  watermark?: boolean
+  Footer?: boolean
+  metaTitle?: boolean
+  metaDescription?: boolean
+  limit?: boolean
+  MaintanceMessage?: boolean
+  showmode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["website"]>
@@ -324,6 +504,13 @@ export type WebsiteSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   id?: boolean
   categories?: boolean
   navItems?: boolean
+  watermark?: boolean
+  Footer?: boolean
+  metaTitle?: boolean
+  metaDescription?: boolean
+  limit?: boolean
+  MaintanceMessage?: boolean
+  showmode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["website"]>
@@ -332,6 +519,13 @@ export type WebsiteSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   id?: boolean
   categories?: boolean
   navItems?: boolean
+  watermark?: boolean
+  Footer?: boolean
+  metaTitle?: boolean
+  metaDescription?: boolean
+  limit?: boolean
+  MaintanceMessage?: boolean
+  showmode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["website"]>
@@ -340,19 +534,33 @@ export type WebsiteSelectScalar = {
   id?: boolean
   categories?: boolean
   navItems?: boolean
+  watermark?: boolean
+  Footer?: boolean
+  metaTitle?: boolean
+  metaDescription?: boolean
+  limit?: boolean
+  MaintanceMessage?: boolean
+  showmode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type WebsiteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "categories" | "navItems" | "createdAt" | "updatedAt", ExtArgs["result"]["website"]>
+export type WebsiteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "categories" | "navItems" | "watermark" | "Footer" | "metaTitle" | "metaDescription" | "limit" | "MaintanceMessage" | "showmode" | "createdAt" | "updatedAt", ExtArgs["result"]["website"]>
 
 export type $WebsitePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Website"
   objects: {}
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    categories: string[]
-    navItems: runtime.JsonValue
+    categories: runtime.JsonValue | null
+    navItems: runtime.JsonValue | null
+    watermark: runtime.JsonValue | null
+    Footer: runtime.JsonValue | null
+    metaTitle: string | null
+    metaDescription: string | null
+    limit: number
+    MaintanceMessage: string | null
+    showmode: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["website"]>
@@ -779,8 +987,15 @@ export interface Prisma__WebsiteClient<T, Null = never, ExtArgs extends runtime.
  */
 export interface WebsiteFieldRefs {
   readonly id: Prisma.FieldRef<"Website", 'String'>
-  readonly categories: Prisma.FieldRef<"Website", 'String[]'>
+  readonly categories: Prisma.FieldRef<"Website", 'Json'>
   readonly navItems: Prisma.FieldRef<"Website", 'Json'>
+  readonly watermark: Prisma.FieldRef<"Website", 'Json'>
+  readonly Footer: Prisma.FieldRef<"Website", 'Json'>
+  readonly metaTitle: Prisma.FieldRef<"Website", 'String'>
+  readonly metaDescription: Prisma.FieldRef<"Website", 'String'>
+  readonly limit: Prisma.FieldRef<"Website", 'Int'>
+  readonly MaintanceMessage: Prisma.FieldRef<"Website", 'String'>
+  readonly showmode: Prisma.FieldRef<"Website", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Website", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Website", 'DateTime'>
 }

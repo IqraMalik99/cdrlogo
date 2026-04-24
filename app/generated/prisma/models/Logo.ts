@@ -51,6 +51,10 @@ export type LogoMinAggregateOutputType = {
   pngUrl: string | null
   aiUrl: string | null
   cdrUrl: string | null
+  svgfilesize: string | null
+  pngfilesize: string | null
+  aifilesize: string | null
+  cdrfilesize: string | null
   svgContent: string | null
   metaTitle: string | null
   metaDescription: string | null
@@ -80,6 +84,10 @@ export type LogoMaxAggregateOutputType = {
   pngUrl: string | null
   aiUrl: string | null
   cdrUrl: string | null
+  svgfilesize: string | null
+  pngfilesize: string | null
+  aifilesize: string | null
+  cdrfilesize: string | null
   svgContent: string | null
   metaTitle: string | null
   metaDescription: string | null
@@ -111,6 +119,10 @@ export type LogoCountAggregateOutputType = {
   pngUrl: number
   aiUrl: number
   cdrUrl: number
+  svgfilesize: number
+  pngfilesize: number
+  aifilesize: number
+  cdrfilesize: number
   svgContent: number
   metaTitle: number
   metaDescription: number
@@ -150,6 +162,10 @@ export type LogoMinAggregateInputType = {
   pngUrl?: true
   aiUrl?: true
   cdrUrl?: true
+  svgfilesize?: true
+  pngfilesize?: true
+  aifilesize?: true
+  cdrfilesize?: true
   svgContent?: true
   metaTitle?: true
   metaDescription?: true
@@ -179,6 +195,10 @@ export type LogoMaxAggregateInputType = {
   pngUrl?: true
   aiUrl?: true
   cdrUrl?: true
+  svgfilesize?: true
+  pngfilesize?: true
+  aifilesize?: true
+  cdrfilesize?: true
   svgContent?: true
   metaTitle?: true
   metaDescription?: true
@@ -210,6 +230,10 @@ export type LogoCountAggregateInputType = {
   pngUrl?: true
   aiUrl?: true
   cdrUrl?: true
+  svgfilesize?: true
+  pngfilesize?: true
+  aifilesize?: true
+  cdrfilesize?: true
   svgContent?: true
   metaTitle?: true
   metaDescription?: true
@@ -328,6 +352,10 @@ export type LogoGroupByOutputType = {
   pngUrl: string | null
   aiUrl: string | null
   cdrUrl: string | null
+  svgfilesize: string | null
+  pngfilesize: string | null
+  aifilesize: string | null
+  cdrfilesize: string | null
   svgContent: string | null
   metaTitle: string | null
   metaDescription: string | null
@@ -382,6 +410,10 @@ export type LogoWhereInput = {
   pngUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
   aiUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
   cdrUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  svgfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  pngfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  aifilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  cdrfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
   svgContent?: Prisma.StringNullableFilter<"Logo"> | string | null
   metaTitle?: Prisma.StringNullableFilter<"Logo"> | string | null
   metaDescription?: Prisma.StringNullableFilter<"Logo"> | string | null
@@ -414,6 +446,10 @@ export type LogoOrderByWithRelationInput = {
   pngUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   aiUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   cdrUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  svgfilesize?: Prisma.SortOrderInput | Prisma.SortOrder
+  pngfilesize?: Prisma.SortOrderInput | Prisma.SortOrder
+  aifilesize?: Prisma.SortOrderInput | Prisma.SortOrder
+  cdrfilesize?: Prisma.SortOrderInput | Prisma.SortOrder
   svgContent?: Prisma.SortOrderInput | Prisma.SortOrder
   metaTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -449,6 +485,10 @@ export type LogoWhereUniqueInput = Prisma.AtLeast<{
   pngUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
   aiUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
   cdrUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  svgfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  pngfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  aifilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  cdrfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
   svgContent?: Prisma.StringNullableFilter<"Logo"> | string | null
   metaTitle?: Prisma.StringNullableFilter<"Logo"> | string | null
   metaDescription?: Prisma.StringNullableFilter<"Logo"> | string | null
@@ -481,6 +521,10 @@ export type LogoOrderByWithAggregationInput = {
   pngUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   aiUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   cdrUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  svgfilesize?: Prisma.SortOrderInput | Prisma.SortOrder
+  pngfilesize?: Prisma.SortOrderInput | Prisma.SortOrder
+  aifilesize?: Prisma.SortOrderInput | Prisma.SortOrder
+  cdrfilesize?: Prisma.SortOrderInput | Prisma.SortOrder
   svgContent?: Prisma.SortOrderInput | Prisma.SortOrder
   metaTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -520,6 +564,10 @@ export type LogoScalarWhereWithAggregatesInput = {
   pngUrl?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   aiUrl?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   cdrUrl?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  svgfilesize?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  pngfilesize?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  aifilesize?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  cdrfilesize?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   svgContent?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   metaTitle?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   metaDescription?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
@@ -551,6 +599,10 @@ export type LogoCreateInput = {
   pngUrl?: string | null
   aiUrl?: string | null
   cdrUrl?: string | null
+  svgfilesize?: string | null
+  pngfilesize?: string | null
+  aifilesize?: string | null
+  cdrfilesize?: string | null
   svgContent?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
@@ -583,6 +635,10 @@ export type LogoUncheckedCreateInput = {
   pngUrl?: string | null
   aiUrl?: string | null
   cdrUrl?: string | null
+  svgfilesize?: string | null
+  pngfilesize?: string | null
+  aifilesize?: string | null
+  cdrfilesize?: string | null
   svgContent?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
@@ -615,6 +671,10 @@ export type LogoUpdateInput = {
   pngUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aiUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cdrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  svgfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pngfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aifilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cdrfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   svgContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -647,6 +707,10 @@ export type LogoUncheckedUpdateInput = {
   pngUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aiUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cdrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  svgfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pngfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aifilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cdrfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   svgContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -679,6 +743,10 @@ export type LogoCreateManyInput = {
   pngUrl?: string | null
   aiUrl?: string | null
   cdrUrl?: string | null
+  svgfilesize?: string | null
+  pngfilesize?: string | null
+  aifilesize?: string | null
+  cdrfilesize?: string | null
   svgContent?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
@@ -710,6 +778,10 @@ export type LogoUpdateManyMutationInput = {
   pngUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aiUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cdrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  svgfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pngfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aifilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cdrfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   svgContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -741,6 +813,10 @@ export type LogoUncheckedUpdateManyInput = {
   pngUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aiUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cdrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  svgfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pngfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aifilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cdrfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   svgContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -772,6 +848,10 @@ export type LogoCountOrderByAggregateInput = {
   pngUrl?: Prisma.SortOrder
   aiUrl?: Prisma.SortOrder
   cdrUrl?: Prisma.SortOrder
+  svgfilesize?: Prisma.SortOrder
+  pngfilesize?: Prisma.SortOrder
+  aifilesize?: Prisma.SortOrder
+  cdrfilesize?: Prisma.SortOrder
   svgContent?: Prisma.SortOrder
   metaTitle?: Prisma.SortOrder
   metaDescription?: Prisma.SortOrder
@@ -805,6 +885,10 @@ export type LogoMaxOrderByAggregateInput = {
   pngUrl?: Prisma.SortOrder
   aiUrl?: Prisma.SortOrder
   cdrUrl?: Prisma.SortOrder
+  svgfilesize?: Prisma.SortOrder
+  pngfilesize?: Prisma.SortOrder
+  aifilesize?: Prisma.SortOrder
+  cdrfilesize?: Prisma.SortOrder
   svgContent?: Prisma.SortOrder
   metaTitle?: Prisma.SortOrder
   metaDescription?: Prisma.SortOrder
@@ -834,6 +918,10 @@ export type LogoMinOrderByAggregateInput = {
   pngUrl?: Prisma.SortOrder
   aiUrl?: Prisma.SortOrder
   cdrUrl?: Prisma.SortOrder
+  svgfilesize?: Prisma.SortOrder
+  pngfilesize?: Prisma.SortOrder
+  aifilesize?: Prisma.SortOrder
+  cdrfilesize?: Prisma.SortOrder
   svgContent?: Prisma.SortOrder
   metaTitle?: Prisma.SortOrder
   metaDescription?: Prisma.SortOrder
@@ -937,6 +1025,10 @@ export type LogoCreateWithoutFavoritedByInput = {
   pngUrl?: string | null
   aiUrl?: string | null
   cdrUrl?: string | null
+  svgfilesize?: string | null
+  pngfilesize?: string | null
+  aifilesize?: string | null
+  cdrfilesize?: string | null
   svgContent?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
@@ -968,6 +1060,10 @@ export type LogoUncheckedCreateWithoutFavoritedByInput = {
   pngUrl?: string | null
   aiUrl?: string | null
   cdrUrl?: string | null
+  svgfilesize?: string | null
+  pngfilesize?: string | null
+  aifilesize?: string | null
+  cdrfilesize?: string | null
   svgContent?: string | null
   metaTitle?: string | null
   metaDescription?: string | null
@@ -1023,6 +1119,10 @@ export type LogoScalarWhereInput = {
   pngUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
   aiUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
   cdrUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  svgfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  pngfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  aifilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
+  cdrfilesize?: Prisma.StringNullableFilter<"Logo"> | string | null
   svgContent?: Prisma.StringNullableFilter<"Logo"> | string | null
   metaTitle?: Prisma.StringNullableFilter<"Logo"> | string | null
   metaDescription?: Prisma.StringNullableFilter<"Logo"> | string | null
@@ -1054,6 +1154,10 @@ export type LogoUpdateWithoutFavoritedByInput = {
   pngUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aiUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cdrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  svgfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pngfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aifilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cdrfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   svgContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1085,6 +1189,10 @@ export type LogoUncheckedUpdateWithoutFavoritedByInput = {
   pngUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aiUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cdrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  svgfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pngfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aifilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cdrfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   svgContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1116,6 +1224,10 @@ export type LogoUncheckedUpdateManyWithoutFavoritedByInput = {
   pngUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   aiUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cdrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  svgfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pngfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aifilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cdrfilesize?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   svgContent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1178,6 +1290,10 @@ export type LogoSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   pngUrl?: boolean
   aiUrl?: boolean
   cdrUrl?: boolean
+  svgfilesize?: boolean
+  pngfilesize?: boolean
+  aifilesize?: boolean
+  cdrfilesize?: boolean
   svgContent?: boolean
   metaTitle?: boolean
   metaDescription?: boolean
@@ -1211,6 +1327,10 @@ export type LogoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   pngUrl?: boolean
   aiUrl?: boolean
   cdrUrl?: boolean
+  svgfilesize?: boolean
+  pngfilesize?: boolean
+  aifilesize?: boolean
+  cdrfilesize?: boolean
   svgContent?: boolean
   metaTitle?: boolean
   metaDescription?: boolean
@@ -1242,6 +1362,10 @@ export type LogoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   pngUrl?: boolean
   aiUrl?: boolean
   cdrUrl?: boolean
+  svgfilesize?: boolean
+  pngfilesize?: boolean
+  aifilesize?: boolean
+  cdrfilesize?: boolean
   svgContent?: boolean
   metaTitle?: boolean
   metaDescription?: boolean
@@ -1273,6 +1397,10 @@ export type LogoSelectScalar = {
   pngUrl?: boolean
   aiUrl?: boolean
   cdrUrl?: boolean
+  svgfilesize?: boolean
+  pngfilesize?: boolean
+  aifilesize?: boolean
+  cdrfilesize?: boolean
   svgContent?: boolean
   metaTitle?: boolean
   metaDescription?: boolean
@@ -1285,7 +1413,7 @@ export type LogoSelectScalar = {
   updatedAt?: boolean
 }
 
-export type LogoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logoName" | "slug" | "brand" | "website" | "category" | "industry" | "country" | "license" | "description" | "history" | "tags" | "brandColors" | "webpUrl" | "svgUrl" | "pngUrl" | "aiUrl" | "cdrUrl" | "svgContent" | "metaTitle" | "metaDescription" | "altText" | "focusKeywords" | "publishStatus" | "downloadCount" | "downloadedNumberByPeople" | "createdAt" | "updatedAt", ExtArgs["result"]["logo"]>
+export type LogoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logoName" | "slug" | "brand" | "website" | "category" | "industry" | "country" | "license" | "description" | "history" | "tags" | "brandColors" | "webpUrl" | "svgUrl" | "pngUrl" | "aiUrl" | "cdrUrl" | "svgfilesize" | "pngfilesize" | "aifilesize" | "cdrfilesize" | "svgContent" | "metaTitle" | "metaDescription" | "altText" | "focusKeywords" | "publishStatus" | "downloadCount" | "downloadedNumberByPeople" | "createdAt" | "updatedAt", ExtArgs["result"]["logo"]>
 export type LogoInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   favoritedBy?: boolean | Prisma.Logo$favoritedByArgs<ExtArgs>
   _count?: boolean | Prisma.LogoCountOutputTypeDefaultArgs<ExtArgs>
@@ -1317,6 +1445,10 @@ export type $LogoPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     pngUrl: string | null
     aiUrl: string | null
     cdrUrl: string | null
+    svgfilesize: string | null
+    pngfilesize: string | null
+    aifilesize: string | null
+    cdrfilesize: string | null
     svgContent: string | null
     metaTitle: string | null
     metaDescription: string | null
@@ -1769,6 +1901,10 @@ export interface LogoFieldRefs {
   readonly pngUrl: Prisma.FieldRef<"Logo", 'String'>
   readonly aiUrl: Prisma.FieldRef<"Logo", 'String'>
   readonly cdrUrl: Prisma.FieldRef<"Logo", 'String'>
+  readonly svgfilesize: Prisma.FieldRef<"Logo", 'String'>
+  readonly pngfilesize: Prisma.FieldRef<"Logo", 'String'>
+  readonly aifilesize: Prisma.FieldRef<"Logo", 'String'>
+  readonly cdrfilesize: Prisma.FieldRef<"Logo", 'String'>
   readonly svgContent: Prisma.FieldRef<"Logo", 'String'>
   readonly metaTitle: Prisma.FieldRef<"Logo", 'String'>
   readonly metaDescription: Prisma.FieldRef<"Logo", 'String'>

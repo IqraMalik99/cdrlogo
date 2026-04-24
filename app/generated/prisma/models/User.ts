@@ -41,6 +41,7 @@ export type UserMinAggregateOutputType = {
   name: string | null
   email: string | null
   password: string | null
+  role: string | null
   type: string | null
   downloadCountUsed: number | null
   downloadLimit: number | null
@@ -55,6 +56,7 @@ export type UserMaxAggregateOutputType = {
   name: string | null
   email: string | null
   password: string | null
+  role: string | null
   type: string | null
   downloadCountUsed: number | null
   downloadLimit: number | null
@@ -69,6 +71,7 @@ export type UserCountAggregateOutputType = {
   name: number
   email: number
   password: number
+  role: number
   type: number
   downloadCountUsed: number
   downloadLimit: number
@@ -95,6 +98,7 @@ export type UserMinAggregateInputType = {
   name?: true
   email?: true
   password?: true
+  role?: true
   type?: true
   downloadCountUsed?: true
   downloadLimit?: true
@@ -109,6 +113,7 @@ export type UserMaxAggregateInputType = {
   name?: true
   email?: true
   password?: true
+  role?: true
   type?: true
   downloadCountUsed?: true
   downloadLimit?: true
@@ -123,6 +128,7 @@ export type UserCountAggregateInputType = {
   name?: true
   email?: true
   password?: true
+  role?: true
   type?: true
   downloadCountUsed?: true
   downloadLimit?: true
@@ -224,6 +230,7 @@ export type UserGroupByOutputType = {
   name: string | null
   email: string | null
   password: string | null
+  role: string
   type: string
   downloadCountUsed: number
   downloadLimit: number
@@ -261,6 +268,7 @@ export type UserWhereInput = {
   name?: Prisma.StringNullableFilter<"User"> | string | null
   email?: Prisma.StringNullableFilter<"User"> | string | null
   password?: Prisma.StringNullableFilter<"User"> | string | null
+  role?: Prisma.StringFilter<"User"> | string
   type?: Prisma.StringFilter<"User"> | string
   downloadCountUsed?: Prisma.IntFilter<"User"> | number
   downloadLimit?: Prisma.IntFilter<"User"> | number
@@ -276,6 +284,7 @@ export type UserOrderByWithRelationInput = {
   name?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   password?: Prisma.SortOrderInput | Prisma.SortOrder
+  role?: Prisma.SortOrder
   type?: Prisma.SortOrder
   downloadCountUsed?: Prisma.SortOrder
   downloadLimit?: Prisma.SortOrder
@@ -294,6 +303,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   name?: Prisma.StringNullableFilter<"User"> | string | null
   password?: Prisma.StringNullableFilter<"User"> | string | null
+  role?: Prisma.StringFilter<"User"> | string
   type?: Prisma.StringFilter<"User"> | string
   downloadCountUsed?: Prisma.IntFilter<"User"> | number
   downloadLimit?: Prisma.IntFilter<"User"> | number
@@ -309,6 +319,7 @@ export type UserOrderByWithAggregationInput = {
   name?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   password?: Prisma.SortOrderInput | Prisma.SortOrder
+  role?: Prisma.SortOrder
   type?: Prisma.SortOrder
   downloadCountUsed?: Prisma.SortOrder
   downloadLimit?: Prisma.SortOrder
@@ -331,6 +342,7 @@ export type UserScalarWhereWithAggregatesInput = {
   name?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   email?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   password?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  role?: Prisma.StringWithAggregatesFilter<"User"> | string
   type?: Prisma.StringWithAggregatesFilter<"User"> | string
   downloadCountUsed?: Prisma.IntWithAggregatesFilter<"User"> | number
   downloadLimit?: Prisma.IntWithAggregatesFilter<"User"> | number
@@ -345,6 +357,7 @@ export type UserCreateInput = {
   name?: string | null
   email?: string | null
   password?: string | null
+  role?: string
   type?: string
   downloadCountUsed?: number
   downloadLimit?: number
@@ -360,6 +373,7 @@ export type UserUncheckedCreateInput = {
   name?: string | null
   email?: string | null
   password?: string | null
+  role?: string
   type?: string
   downloadCountUsed?: number
   downloadLimit?: number
@@ -375,6 +389,7 @@ export type UserUpdateInput = {
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCountUsed?: Prisma.IntFieldUpdateOperationsInput | number
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
@@ -390,6 +405,7 @@ export type UserUncheckedUpdateInput = {
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCountUsed?: Prisma.IntFieldUpdateOperationsInput | number
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
@@ -405,6 +421,7 @@ export type UserCreateManyInput = {
   name?: string | null
   email?: string | null
   password?: string | null
+  role?: string
   type?: string
   downloadCountUsed?: number
   downloadLimit?: number
@@ -419,6 +436,7 @@ export type UserUpdateManyMutationInput = {
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCountUsed?: Prisma.IntFieldUpdateOperationsInput | number
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
@@ -433,6 +451,7 @@ export type UserUncheckedUpdateManyInput = {
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCountUsed?: Prisma.IntFieldUpdateOperationsInput | number
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
@@ -457,6 +476,7 @@ export type UserCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
   password?: Prisma.SortOrder
+  role?: Prisma.SortOrder
   type?: Prisma.SortOrder
   downloadCountUsed?: Prisma.SortOrder
   downloadLimit?: Prisma.SortOrder
@@ -476,6 +496,7 @@ export type UserMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
   password?: Prisma.SortOrder
+  role?: Prisma.SortOrder
   type?: Prisma.SortOrder
   downloadCountUsed?: Prisma.SortOrder
   downloadLimit?: Prisma.SortOrder
@@ -490,6 +511,7 @@ export type UserMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
   password?: Prisma.SortOrder
+  role?: Prisma.SortOrder
   type?: Prisma.SortOrder
   downloadCountUsed?: Prisma.SortOrder
   downloadLimit?: Prisma.SortOrder
@@ -542,15 +564,12 @@ export type UserUncheckedUpdateManyWithoutFavoritesNestedInput = {
   deleteMany?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
 }
 
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
-}
-
 export type UserCreateWithoutFavoritesInput = {
   id?: string
   name?: string | null
   email?: string | null
   password?: string | null
+  role?: string
   type?: string
   downloadCountUsed?: number
   downloadLimit?: number
@@ -565,6 +584,7 @@ export type UserUncheckedCreateWithoutFavoritesInput = {
   name?: string | null
   email?: string | null
   password?: string | null
+  role?: string
   type?: string
   downloadCountUsed?: number
   downloadLimit?: number
@@ -603,6 +623,7 @@ export type UserScalarWhereInput = {
   name?: Prisma.StringNullableFilter<"User"> | string | null
   email?: Prisma.StringNullableFilter<"User"> | string | null
   password?: Prisma.StringNullableFilter<"User"> | string | null
+  role?: Prisma.StringFilter<"User"> | string
   type?: Prisma.StringFilter<"User"> | string
   downloadCountUsed?: Prisma.IntFilter<"User"> | number
   downloadLimit?: Prisma.IntFilter<"User"> | number
@@ -617,6 +638,7 @@ export type UserUpdateWithoutFavoritesInput = {
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCountUsed?: Prisma.IntFieldUpdateOperationsInput | number
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
@@ -631,6 +653,7 @@ export type UserUncheckedUpdateWithoutFavoritesInput = {
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCountUsed?: Prisma.IntFieldUpdateOperationsInput | number
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
@@ -645,6 +668,7 @@ export type UserUncheckedUpdateManyWithoutFavoritesInput = {
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCountUsed?: Prisma.IntFieldUpdateOperationsInput | number
   downloadLimit?: Prisma.IntFieldUpdateOperationsInput | number
@@ -690,6 +714,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   name?: boolean
   email?: boolean
   password?: boolean
+  role?: boolean
   type?: boolean
   downloadCountUsed?: boolean
   downloadLimit?: boolean
@@ -706,6 +731,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   name?: boolean
   email?: boolean
   password?: boolean
+  role?: boolean
   type?: boolean
   downloadCountUsed?: boolean
   downloadLimit?: boolean
@@ -720,6 +746,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   name?: boolean
   email?: boolean
   password?: boolean
+  role?: boolean
   type?: boolean
   downloadCountUsed?: boolean
   downloadLimit?: boolean
@@ -734,6 +761,7 @@ export type UserSelectScalar = {
   name?: boolean
   email?: boolean
   password?: boolean
+  role?: boolean
   type?: boolean
   downloadCountUsed?: boolean
   downloadLimit?: boolean
@@ -743,7 +771,7 @@ export type UserSelectScalar = {
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "password" | "type" | "downloadCountUsed" | "downloadLimit" | "isVerified" | "verificationToken" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "email" | "password" | "role" | "type" | "downloadCountUsed" | "downloadLimit" | "isVerified" | "verificationToken" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   favorites?: boolean | Prisma.User$favoritesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -761,6 +789,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     name: string | null
     email: string | null
     password: string | null
+    role: string
     type: string
     downloadCountUsed: number
     downloadLimit: number
@@ -1196,6 +1225,7 @@ export interface UserFieldRefs {
   readonly name: Prisma.FieldRef<"User", 'String'>
   readonly email: Prisma.FieldRef<"User", 'String'>
   readonly password: Prisma.FieldRef<"User", 'String'>
+  readonly role: Prisma.FieldRef<"User", 'String'>
   readonly type: Prisma.FieldRef<"User", 'String'>
   readonly downloadCountUsed: Prisma.FieldRef<"User", 'Int'>
   readonly downloadLimit: Prisma.FieldRef<"User", 'Int'>

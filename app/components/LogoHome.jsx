@@ -9,9 +9,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 const ALPHABET = ["All", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
   "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0-9"];
 
-const CATEGORIES = ["All", "Technology", "Social Media", "Sports", "Automotive",
-  "Food & Beverage", "Fashion", "Finance", "Entertainment",
-  "Gaming", "Airline", "E-commerce"];
+
 
 const SORT_OPTIONS = [
   { key: "newest", label: "Newest", icon: "🕐" },
@@ -158,7 +156,23 @@ export default function LogosPage() {
   // Reset to page 1 when sort changes (don't refetch — data already in memory)
   useEffect(() => { setPage(1); }, [sort]);
 
+const [categories, setCategories] = useState(["All"]);
+useEffect(() => {
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch("/api/catageory/home");
+      const data = await res.json();
 
+      if (data?.success) {
+        setCategories(["All", ...data.data]);
+      }
+    } catch (err) {
+      console.error("Failed to load categories", err);
+    }
+  };
+
+  fetchCategories();
+}, []);
 
   return (<>
     <style>{`
@@ -397,7 +411,7 @@ export default function LogosPage() {
         </div>
 
         <div className="cat-row">
-          {CATEGORIES.map(c => (
+          {categories.map(c => (
             <button key={c}
               className={`cat-btn${activeCategory === c ? " active" : ""}`}
               onClick={() => setActiveCat(c)}>{c}</button>

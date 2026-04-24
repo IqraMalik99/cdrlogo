@@ -9,6 +9,13 @@ export async function GET(req) {
     console.log("VERIFY TOKEN:", token);
 
     if (!token) {
+      await prisma.log.create({
+        data: {
+          who: `api:verify-email`,
+          content: `Invalid token received`,
+        },
+      });
+
       return NextResponse.json(
         { status: false, message: "Invalid token" },
         { status: 400 }
@@ -21,6 +28,13 @@ export async function GET(req) {
     });
 
     if (!user) {
+      await prisma.log.create({
+        data: {
+          who: `api:verify-email`,
+          content: `Token not found or expired`,
+        },
+      });
+
       return NextResponse.json(
         { status: false, message: "Invalid or expired token" },
         { status: 400 }
@@ -28,6 +42,13 @@ export async function GET(req) {
     }
 
     if (user.isVerified) {
+      await prisma.log.create({
+        data: {
+          who: `user:${user.email}`,
+          content: `Email verification attempted but already verified`,
+        },
+      });
+
       return NextResponse.json({
         status: false,
         message: "Email already verified",
@@ -44,6 +65,13 @@ export async function GET(req) {
       },
     });
 
+    await prisma.log.create({
+      data: {
+        who: `user:${user.email}`,
+        content: `Email verified successfully for ${user.email}`,
+      },
+    });
+
     return NextResponse.json({
       status: true,
       message: "Email verified successfully",
@@ -51,6 +79,14 @@ export async function GET(req) {
 
   } catch (error) {
     console.error("VERIFY ERROR:", error);
+
+    // ❌ FIXED LOG (removed wrong user usage)
+    await prisma.log.create({
+      data: {
+        who: `api:verify-email`,
+        content: `Server error during email verification: ${error?.message}`,
+      },
+    });
 
     return NextResponse.json(
       { status: false, message: "Server error" },

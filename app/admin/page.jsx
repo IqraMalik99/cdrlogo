@@ -1,38 +1,109 @@
 "use client";
 
-import { useState } from "react";
-import {  Sun, Moon, User } from "lucide-react";
+import { useState ,useEffect } from "react";
+import { Sun, Moon, User } from "lucide-react";
 import Sidebar from "../adminComponents/Sidebar";
+import { useSession } from "next-auth/react";
+import Dashboard from "../adminComponents/Dashboard";
 import UploadLogo from "../adminComponents/UploadLogo";
-import BulkOperations from "../adminComponents/Bulkoperations";
+import WatermarkSettings from "../adminComponents/WaterMark";
+import AdminCategories from "../adminComponents/adminCatageory";
+import LogoManagement from "../adminComponents/LogoManagement";
+import UserManagement from "../adminComponents/UserManagement";
+import PagesCMS from "../adminComponents/CMS";
+import NavigationMenu from "../adminComponents/NavigationMenu";
+import MediaLibrary from "../adminComponents/Media";
+import SiteSettings from "../adminComponents/SiteSetting";
+import { useRouter } from "next/navigation";
+
+// ── Page title map — keys MUST match the case used in setActive() calls ──
+const PAGE_TITLES = {
+  dashboard:      "Dashboard",
+  upload:         "Upload Logo",
+  watermark:      "Watermark Settings",
+  categories:     "Categories",
+  LogoManagement: "Logo Management",
+  User:           "User Management",
+  "Page/CMS":     "CMS / Pages",
+  "Navigation/Menu": "Navigation/Menu",
+  "Media Library": "Media Library",
+  "SiteSettings": "Site Settings",
+};
 
 export default function AdminPage() {
-  const [dark, setDark] = useState(true);
-  const [active, setActive] = useState("upload");
+  const [dark,   setDark]   = useState(true);
+   const { data: session, status } = useSession();
+  const router = useRouter();
+  // default to dashboard so users land on it first
+  const [active, setActive] = useState("dashboard");
 
-  const bg = dark ? "#0f1117" : "#f8fafc";
+    useEffect(() => {
+    if (status === "loading") return;
+
+    // not logged in OR not admin
+    if (!session || session.user.role !== "admin" ) {
+      router.push("/login"); // or "/"
+    }
+  }, [session, status]);
+
+  // ⏳ loading state
+  if (status === "loading") {
+    return <div style={{ padding: 40 }}>Checking access...</div>;
+  }
+
+
+
+  const bg       = dark ? "#0f1117" : "#f8fafc";
   const headerBg = dark ? "#0f1117" : "#ffffff";
-  const border = dark ? "#1e2535" : "#e2e8f0";
-  const text = dark ? "#e2e8f0" : "#1e293b";
-  const muted = dark ? "#64748b" : "#94a3b8";
-  const green = "#22c55e";
+  const border   = dark ? "#1e2535" : "#e2e8f0";
+  const text     = dark ? "#e2e8f0" : "#1e293b";
+  const muted    = dark ? "#64748b" : "#94a3b8";
 
   const renderContent = () => {
     switch (active) {
-      case "upload": return <UploadLogo dark={dark} />;
-      case "bulk": return <BulkOperations dark={dark} />;
+      case "dashboard":
+        // ↓ pass setActive so quick-action buttons inside Dashboard
+        //   can navigate to other sections directly
+        return <Dashboard dark={dark} setActive={setActive} />;
+
+      case "upload":
+        return <UploadLogo dark={dark} />;
+
+      case "watermark":
+        return <WatermarkSettings dark={dark} />;
+
+      case "categories":
+        return <AdminCategories dark={dark} />;
+
+      case "LogoManagement":
+        return <LogoManagement dark={dark} />;
+
+      case "User":
+        return <UserManagement dark={dark} />;
+
+      case "Page/CMS":
+        return <PagesCMS dark={dark} />;
+      case "Navigation/Menu":
+        return <NavigationMenu dark={dark} />;
+      case "Media Library":
+        return <MediaLibrary dark={dark} />;
+        case "SiteSettings":
+  return <SiteSettings dark={dark} />;
       default:
         return (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             height: "100%", flexDirection: "column", gap: 12,
-            color: muted, fontFamily: "'DM Sans', sans-serif"
+            color: muted, fontFamily: "'DM Sans', sans-serif",
           }}>
             <div style={{
               width: 56, height: 56, borderRadius: 14,
               background: dark ? "#1e2535" : "#e2e8f0",
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24
-            }}>🚧</div>
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 24,
+            }}>
+              🚧
+            </div>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: text }}>Coming Soon</p>
             <p style={{ margin: 0, fontSize: 13 }}>This section is under construction.</p>
           </div>
@@ -57,13 +128,17 @@ export default function AdminPage() {
 
       <div style={{
         display: "flex", height: "100vh", background: bg,
-        fontFamily: "'DM Sans', sans-serif", overflow: "hidden"
+        fontFamily: "'DM Sans', sans-serif", overflow: "hidden",
       }}>
-        {/* Sidebar */}
+
+        {/* Sidebar — receives setActive so nav items work */}
         <Sidebar active={active} setActive={setActive} dark={dark} />
 
-        {/* Main */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+        {/* Main content area */}
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column",
+          overflow: "hidden", minWidth: 0,
+        }}>
 
           {/* Top bar */}
           <header style={{
@@ -71,52 +146,51 @@ export default function AdminPage() {
             borderBottom: `1px solid ${border}`,
             display: "flex", alignItems: "center",
             justifyContent: "space-between",
-            padding: "0 20px", flexShrink: 0,
-            position: "sticky", top: 0, zIndex: 20
+            // 56px left pad gives room for the mobile hamburger button
+            padding: "0 20px 0 56px",
+            flexShrink: 0,
+            position: "sticky", top: 0, zIndex: 20,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{
-                fontSize: 13, fontWeight: 600, color: muted,
-                fontFamily: "'DM Sans', sans-serif"
-              }}>
-                {active === "upload" ? "Upload Logo" : active === "bulk" ? "Bulk Operations" : active.charAt(0).toUpperCase() + active.slice(1)}
-              </span>
-            </div>
+            <span style={{
+              fontSize: 13, fontWeight: 600, color: muted,
+              fontFamily: "'DM Sans', sans-serif",
+            }}>
+              {PAGE_TITLES[active] ?? active.charAt(0).toUpperCase() + active.slice(1)}
+            </span>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {/* Theme toggle */}
+              {/* Light / dark toggle */}
               <button
-                onClick={() => setDark(!dark)}
+                onClick={() => setDark(d => !d)}
                 style={{
                   width: 34, height: 34, borderRadius: 8,
                   background: dark ? "#1e2535" : "#f1f5f9",
                   border: `1px solid ${border}`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", color: muted, transition: "all 0.2s"
+                  cursor: "pointer", color: muted, transition: "all 0.2s",
                 }}
                 title={dark ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {dark ? <Sun size={15} /> : <Moon size={15} />}
               </button>
 
-             
-
               {/* Avatar */}
               <div style={{
                 width: 32, height: 32, borderRadius: "50%",
                 background: "linear-gradient(135deg,#22c55e,#16a34a)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer"
+                cursor: "pointer",
               }}>
                 <User size={15} color="#fff" />
               </div>
             </div>
           </header>
 
-          {/* Content */}
+          {/* Page content */}
           <main style={{ flex: 1, overflowY: "auto" }}>
             {renderContent()}
           </main>
+
         </div>
       </div>
     </>

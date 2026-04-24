@@ -45,9 +45,7 @@ function levenshtein(a, b) {
 
 export async function POST(req) {
   try {
-    console.log('====================================');
-    console.log("Enter Searches");
-    console.log('====================================');
+
     const { query } = await req.json();
 
     if (!query) {

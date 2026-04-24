@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
@@ -20,6 +20,11 @@ export default function Categories() {
     const router = useRouter();
     const letterRefs = useRef({});
 
+    // Derive which letters have categories from the full "All" cache
+    const lettersWithData = useMemo(() => {
+        return new Set(Object.keys(allCategories));
+    }, [allCategories]);
+
     useEffect(() => {
         const t = setTimeout(() => setReady(true), 60);
         return () => clearTimeout(t);
@@ -27,7 +32,7 @@ export default function Categories() {
 
     useEffect(() => {
         async function fetchCategories() {
-            const letter = activeLetter === "All" ? "all" : activeLetter;
+            const letter = activeLetter === "All" ? "all" : activeLetter.toLowerCase();
             setLoading(true);
             try {
                 const res = await fetch("/api/website/catageory-letter", {
@@ -37,11 +42,21 @@ export default function Categories() {
                 });
                 const data = await res.json();
                 console.log("Fetched categories for letter", letter, data);
-                const fetched = data || {};
-                setCategories(fetched);
-                // cache full dataset so local search always has all letters available
+
+                // API returns { SectionKey: [ { name, slug }, ... ] }
+                // Values are already objects — no JSON.parse needed
+                const parsed = {};
+                Object.entries(data || {}).forEach(([key, cats]) => {
+                    parsed[key] = cats.map(c =>
+                        typeof c === "object" && c !== null
+                            ? c
+                            : { name: String(c), slug: String(c).toLowerCase().replace(/\s+/g, "-") }
+                    );
+                });
+
+                setCategories(parsed);
                 if (activeLetter === "All") {
-                    setAllCategories(fetched);
+                    setAllCategories(parsed);
                 }
             } catch (err) {
                 console.error("Failed to fetch categories", err);
@@ -59,9 +74,9 @@ export default function Categories() {
 
         if (query) {
             const result = {};
-            Object.entries(source).forEach(([letter, cats]) => {
-                const matched = cats.filter(c => c.toLowerCase().includes(query));
-                if (matched.length) result[letter] = matched;
+            Object.entries(source).forEach(([key, cats]) => {
+                const matched = cats.filter(c => c.name.toLowerCase().includes(query));
+                if (matched.length) result[key] = matched;
             });
             return result;
         }
@@ -70,14 +85,8 @@ export default function Categories() {
     };
 
     const handleCategoryClick = (cat) => {
-        // strip special chars like & / etc., then spaces → hyphens
-        const slug = cat
-            .trim()
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, "")  // remove &, /, etc.
-            .replace(/\s+/g, "-")           // spaces → hyphens
-            .replace(/-+/g, "-");           // collapse double hyphens
-        router.push(`/search/${encodeURIComponent(slug)}`);
+        // cat is { name, slug } — use slug directly from API
+        router.push(`/search/${encodeURIComponent(cat.slug)}`);
     };
 
     const handleLetterClick = (l) => {
@@ -90,15 +99,12 @@ export default function Categories() {
     const handleSearch = () => {
         const q = searchValue.trim().toLowerCase();
         if (!q) return;
-
-        const slug = q.replace(/\s+/g, "-"); // 👈 space → hyphen
-
+        const slug = q.replace(/\s+/g, "-");
         router.push(`/search/${encodeURIComponent(slug)}`);
     };
+
     const handleKeyDown = (e) => {
-        if (e.key === "Enter") {
-            handleSearch();
-        }
+        if (e.key === "Enter") handleSearch();
     };
 
     return (
@@ -233,6 +239,7 @@ export default function Categories() {
           justify-content: center;
         }
         .letter-btn {
+          position: relative;
           width: 32px; height: 32px;
           display: flex; align-items: center; justify-content: center;
           background: var(--letter-bg);
@@ -258,6 +265,31 @@ export default function Categories() {
         }
         [data-theme="light"] .letter-btn.active { color: #059c1f; }
         .letter-btn.all-btn { width: auto; padding: 0 12px; }
+
+        /* Letters that have categories */
+        .letter-btn.has-data {
+          color: var(--heading);
+          border-color: rgba(7,166,38,.22);
+        }
+        [data-theme="light"] .letter-btn.has-data {
+          color: var(--heading);
+          border-color: rgba(7,166,38,.28);
+        }
+
+        /* Small green dot below the letter */
+        .letter-dot {
+          position: absolute;
+          bottom: 3px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 3px;
+          height: 3px;
+          border-radius: 50%;
+          background: #07A626;
+          opacity: 0.75;
+          pointer-events: none;
+        }
+
         .sections { display: flex; flex-direction: column; gap: 24px; }
         .section-letter {
           font-size: 13px; font-weight: 800;
@@ -338,6 +370,7 @@ export default function Categories() {
 
                     <div className={`cat-inner${ready ? " ready" : ""}`}>
                         <div className="h-10" />
+
                         {/* Header */}
                         <div className="anim d0" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "8px" }}>
                             <h1 className="cat-heading">Browse Categories</h1>
@@ -386,16 +419,29 @@ export default function Categories() {
                         {!searchValue && (
                             <div className="anim d2">
                                 <div className="letter-nav">
-                                    {LETTERS.map(l => (
-                                        <button
-                                            key={l}
-                                            ref={el => letterRefs.current[l] = el}
-                                            className={`letter-btn${l === "All" ? " all-btn" : ""}${activeLetter === l ? " active" : ""}`}
-                                            onClick={() => handleLetterClick(l)}
-                                        >
-                                            {l}
-                                        </button>
-                                    ))}
+                                    {LETTERS.map(l => {
+                                        const hasData = l === "All"
+                                            ? Object.keys(allCategories).length > 0
+                                            : lettersWithData.has(l);
+                                        return (
+                                            <button
+                                                key={l}
+                                                ref={el => letterRefs.current[l] = el}
+                                                className={[
+                                                    "letter-btn",
+                                                    l === "All" ? "all-btn" : "",
+                                                    activeLetter === l ? "active" : "",
+                                                    hasData ? "has-data" : "",
+                                                ].filter(Boolean).join(" ")}
+                                                onClick={() => handleLetterClick(l)}
+                                            >
+                                                {l}
+                                                {hasData && l !== "All" && (
+                                                    <span className="letter-dot" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -422,17 +468,17 @@ export default function Categories() {
                                 </div>
                             ) : (
                                 <div className="sections">
-                                    {visible.map(([letter, cats]) => (
-                                        <div key={letter}>
-                                            <div className="section-letter">{letter}</div>
+                                    {visible.map(([sectionKey, cats]) => (
+                                        <div key={sectionKey}>
+                                            <div className="section-letter">{sectionKey}</div>
                                             <div className="cat-grid">
                                                 {cats.map(cat => (
                                                     <button
-                                                        key={cat}
+                                                        key={cat.slug}
                                                         className="cat-card"
                                                         onClick={() => handleCategoryClick(cat)}
                                                     >
-                                                        {cat}
+                                                        {cat.name}
                                                         <svg className="cat-card-arrow" width="12" height="12" viewBox="0 0 24 24"
                                                             fill="none" stroke="currentColor" strokeWidth="2.5"
                                                             strokeLinecap="round" strokeLinejoin="round">

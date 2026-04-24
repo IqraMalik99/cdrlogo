@@ -41,9 +41,9 @@ export const authOptions = {
         }
 
         // 🚨 Check verification
-        // if (!user.isVerified) {
-        //   throw new Error("Please verify your email first");
-        // }
+        if (!user.isVerified) {
+          throw new Error("Please verify your email first");
+        }
 
         // ✅ Return user
         return {
@@ -51,6 +51,7 @@ export const authOptions = {
           name: user.name,
           email: user.email,
           type: user.type,
+          role:user.role
         };
       },
     }),
@@ -68,6 +69,7 @@ export const authOptions = {
         token.name = user.name;
         token.email = user.email;
         token.type = user.type;
+        token.role=user.role;
       }
       return token;
     },
@@ -79,6 +81,7 @@ export const authOptions = {
         session.user.name = token.name;
         session.user.email = token.email;
         session.user.type = token.type;
+        session.user.role=token.role;
       }
       return session;
     },

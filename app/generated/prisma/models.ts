@@ -11,4 +11,8 @@
 export type * from './models/Logo'
 export type * from './models/Website'
 export type * from './models/User'
+export type * from './models/Page'
+export type * from './models/Log'
+export type * from './models/LogoRequest'
+export type * from './models/ContactMessage'
 export type * from './commonInputTypes'

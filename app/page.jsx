@@ -6,6 +6,7 @@ import HomeCatageory from './components/HomeTemplateCategories'
 import BrandCategories from './components/HomeBrandsCatageory'
 import TrendingLogos from './components/HomeTrendingLogo'
 import TopBrands from './components/HomeTopBrand'
+import Footer from './components/Footer'
 
 function page() {
     return (
@@ -17,6 +18,7 @@ function page() {
             <HomeCatageory/>
             <TrendingLogos/>
             <TopBrands/>
+            <Footer/>
         </>
     )
 }

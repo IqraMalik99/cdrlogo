@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
+import { useRouter } from "next/navigation";
 
 const TOP_BRANDS = [
   { id: 1,  name: "Google"    },
@@ -20,9 +21,11 @@ const TOP_BRANDS = [
 
 function BrandPill({ brand }) {
   const [hovered, setHovered] = useState(false);
+  let router = useRouter();
   return (
     <div
       className={`tb-pill${hovered ? " tb-pill--hovered" : ""}`}
+      onClick={()=> router.push(`/search/${brand.name.toLowerCase()}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

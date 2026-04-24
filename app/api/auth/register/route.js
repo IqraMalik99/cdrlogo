@@ -10,6 +10,14 @@ export async function POST(req) {
 
     // 1️⃣ Validation
     if (!name || !email || !password) {
+
+      await prisma.log.create({
+        data: {
+          who: `api:register`,
+          content: `Validation failed - missing fields. Email: ${email || "unknown"}`,
+        },
+      });
+
       return NextResponse.json(
         { status: false, message: "All fields are required" },
         { status: 400 }
@@ -17,6 +25,14 @@ export async function POST(req) {
     }
 
     if (password.length < 6) {
+
+      await prisma.log.create({
+        data: {
+          who: `api:register`,
+          content: `Weak password attempt. Email: ${email}`,
+        },
+      });
+
       return NextResponse.json(
         { status: false, message: "Password must be at least 6 characters" },
         { status: 400 }
@@ -29,6 +45,14 @@ export async function POST(req) {
     });
 
     if (existingUser) {
+
+      await prisma.log.create({
+        data: {
+          who: `user:${email}`,
+          content: `Registration blocked - email already exists`,
+        },
+      });
+
       return NextResponse.json(
         { status: false, message: "Email already registered" },
         { status: 409 }
@@ -55,8 +79,24 @@ export async function POST(req) {
       },
     });
 
+    // 🔥 LOG USER CREATED
+    await prisma.log.create({
+      data: {
+        who: `user:${email}`,
+        content: `User registered successfully. Name: ${name}, Email: ${email}`,
+      },
+    });
+
     // 6️⃣ Send verification email
     await sendVerificationEmail(email, verificationToken);
+
+    // 📧 LOG EMAIL SENT
+    await prisma.log.create({
+      data: {
+        who: `service:mailer`,
+        content: `Verification email sent to ${email}`,
+      },
+    });
 
     return NextResponse.json(
       {
@@ -68,6 +108,14 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("REGISTER ERROR:", error);
+
+    // ❌ LOG ERROR
+    await prisma.log.create({
+      data: {
+        who: `api:register`,
+        content: `Server error: ${error?.message}`,
+      },
+    });
 
     return NextResponse.json(
       { status: false, message: "Internal server error" },

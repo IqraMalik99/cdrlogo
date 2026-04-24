@@ -8,12 +8,12 @@ export async function POST(req) {
     let letter   = body.letter?.toLowerCase()?.trim();
     let category = body.category?.toLowerCase()?.trim();
 
-    const where = {};
+    const where = { publishStatus: "Published" };
 
     if (letter && letter !== "all" && letter !== "0-9") {
       where.logoName = {
         startsWith: letter,
-        mode: "insensitive",
+        mode: "insensitive"
       };
     }
 

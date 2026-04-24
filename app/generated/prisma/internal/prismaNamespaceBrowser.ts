@@ -53,7 +53,11 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   Logo: 'Logo',
   Website: 'Website',
-  User: 'User'
+  User: 'User',
+  Page: 'Page',
+  Log: 'Log',
+  LogoRequest: 'LogoRequest',
+  ContactMessage: 'ContactMessage'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -91,6 +95,10 @@ export const LogoScalarFieldEnum = {
   pngUrl: 'pngUrl',
   aiUrl: 'aiUrl',
   cdrUrl: 'cdrUrl',
+  svgfilesize: 'svgfilesize',
+  pngfilesize: 'pngfilesize',
+  aifilesize: 'aifilesize',
+  cdrfilesize: 'cdrfilesize',
   svgContent: 'svgContent',
   metaTitle: 'metaTitle',
   metaDescription: 'metaDescription',
@@ -110,6 +118,13 @@ export const WebsiteScalarFieldEnum = {
   id: 'id',
   categories: 'categories',
   navItems: 'navItems',
+  watermark: 'watermark',
+  Footer: 'Footer',
+  metaTitle: 'metaTitle',
+  metaDescription: 'metaDescription',
+  limit: 'limit',
+  MaintanceMessage: 'MaintanceMessage',
+  showmode: 'showmode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -122,6 +137,7 @@ export const UserScalarFieldEnum = {
   name: 'name',
   email: 'email',
   password: 'password',
+  role: 'role',
   type: 'type',
   downloadCountUsed: 'downloadCountUsed',
   downloadLimit: 'downloadLimit',
@@ -132,6 +148,64 @@ export const UserScalarFieldEnum = {
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const PageScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  slug: 'slug',
+  content: 'content',
+  publishStatus: 'publishStatus',
+  InFooter: 'InFooter',
+  InLegal: 'InLegal',
+  InHome: 'InHome',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PageScalarFieldEnum = (typeof PageScalarFieldEnum)[keyof typeof PageScalarFieldEnum]
+
+
+export const LogScalarFieldEnum = {
+  id: 'id',
+  who: 'who',
+  content: 'content',
+  createdAt: 'createdAt'
+} as const
+
+export type LogScalarFieldEnum = (typeof LogScalarFieldEnum)[keyof typeof LogScalarFieldEnum]
+
+
+export const LogoRequestScalarFieldEnum = {
+  id: 'id',
+  brandName: 'brandName',
+  websiteUrl: 'websiteUrl',
+  category: 'category',
+  formats: 'formats',
+  notes: 'notes',
+  requesterEmail: 'requesterEmail',
+  status: 'status',
+  adminNotes: 'adminNotes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LogoRequestScalarFieldEnum = (typeof LogoRequestScalarFieldEnum)[keyof typeof LogoRequestScalarFieldEnum]
+
+
+export const ContactMessageScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  subject: 'subject',
+  message: 'message',
+  status: 'status',
+  adminReply: 'adminReply',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ContactMessageScalarFieldEnum = (typeof ContactMessageScalarFieldEnum)[keyof typeof ContactMessageScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -147,6 +221,14 @@ export const JsonNullValueInput = {
 } as const
 
 export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const QueryMode = {

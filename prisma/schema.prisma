@@ -1,5 +1,3 @@
-
-
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
@@ -9,44 +7,48 @@ datasource db {
   provider = "postgresql"
 }
 
-
 model Logo {
-  id              String   @id @default(uuid())
-  favoritedBy User[] @relation("UserFavorites")
+  id          String  @id @default(uuid())
+  favoritedBy User[]  @relation("UserFavorites")
   // ── Core identity ──────────────────────────────────────────────────────────
-  logoName        String
-  slug            String   @unique
-  brand           String?
-  website         String?
+  logoName    String
+  slug        String  @unique
+  brand       String?
+  website     String?
 
   // ── Classification ─────────────────────────────────────────────────────────
-  category        String
-  industry        String?
-  country         String?
-  license         String?
+  category String
+  industry String?
+  country  String?
+  license  String?
 
   // ── Content ────────────────────────────────────────────────────────────────
-  description     String
-  history         String?
+  description String
+  history     String?
 
   // ── Taxonomy ───────────────────────────────────────────────────────────────
-  tags            Json     @default("[]")
-  brandColors     Json     @default("[]")
+  tags        Json @default("[]")
+  brandColors Json @default("[]")
 
   // ── File URLs ──────────────────────────────────────────────────────────────
   // Public (CDN-accessible)
-  webpUrl         String?          // public/{slug}/*.webp  ← only public file
+  webpUrl String? // public/{slug}/*.webp  ← only public file
 
   // Private (gated / signed-URL download)
-  svgUrl          String?          // separate/{slug}/*.svg
-  pngUrl          String?          // separate/{slug}/*.png
-  aiUrl           String?          // separate/{slug}/*.ai
-  cdrUrl          String?          // separate/{slug}/*.cdr
+  svgUrl String? // separate/{slug}/*.svg
+  pngUrl String? // separate/{slug}/*.png
+  aiUrl  String? // separate/{slug}/*.ai
+  cdrUrl String? // separate/{slug}/*.cdr
+
+svgfilesize String? @default("0 kb")
+pngfilesize String? @default("0 kb")
+aifilesize  String? @default("0 kb")
+cdrfilesize String? @default("0 kb")
 
   // ── SVG source code ────────────────────────────────────────────────────────
   // Raw <svg>…</svg> markup extracted from the ZIP.
   // Stored as Text so it can be served inline or used for server-side rendering.
-  svgContent      String?  @db.Text
+  svgContent String? @db.Text
 
   // ── SEO ────────────────────────────────────────────────────────────────────
   metaTitle       String?
@@ -55,15 +57,15 @@ model Logo {
   focusKeywords   String?
 
   // ── Publishing ─────────────────────────────────────────────────────────────
-  publishStatus   String   @default("Draft")
+  publishStatus String @default("Draft")
 
   // "unlimited" or a numeric string e.g. "5", "100"
-  downloadCount   String   @default("unlimited")
-  downloadedNumberByPeople  Int      @default(0)
+  downloadCount            String @default("unlimited")
+  downloadedNumberByPeople Int    @default(0)
 
   // ── Timestamps ─────────────────────────────────────────────────────────────
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // ── Indexes ────────────────────────────────────────────────────────────────
   @@index([slug])
@@ -73,36 +75,122 @@ model Logo {
 
 model Website {
   id         String   @id @default(uuid())
-  categories String[]
-  navItems   Json
+  categories Json?
+  navItems   Json?
+  watermark  Json?
+  Footer     Json?
+  metaTitle       String?
+  metaDescription String?
+  limit           Int @default(20)
+  MaintanceMessage String?
+  showmode    Boolean @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // ── Basic Info ─────────────────────────────
-  name      String?
-  email     String?  @unique
-  password  String?
+  name     String?
+  email    String? @unique
+  password String?
+
+  // role
+  role String @default("user") // "user" or "admin"
 
   // ── Auth Type ─────────────────────────────
   // guest OR logged
-  type      String   @default("guest")
+  type String @default("guest")
 
   // ── Download Tracking ─────────────────────
-  downloadCountUsed   Int     @default(0)
-  downloadLimit       Int     @default(5) // guest = 5, logged = unlimited (or high)
+  downloadCountUsed Int @default(0)
+  downloadLimit     Int @default(5) // guest = 5, logged = unlimited (or high)
 
   // ── Favorites Relation ────────────────────
   favorites Logo[] @relation("UserFavorites")
 
   // ── Optional: Email Verification ──────────
-  isVerified        Boolean  @default(false)
+  isVerified        Boolean @default(false)
   verificationToken String?
 
   // ── Timestamps ────────────────────────────
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Page {
+  id            String   @id @default(uuid())
+  title         String
+  slug          String   @unique
+  content       String?  // HTML from Tiptap
+  publishStatus String   @default("draft") // "published" | "draft"
+  InFooter       Boolean @default(false)
+  InLegal        Boolean @default(false)
+  InHome         Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Log {
+  id        String   @id @default(uuid())
+
+  // who performed the action (userId, system, api, etc.)
+  who       String
+
+  // log message / description
+  content   String   @db.Text
+
+  // timestamp
+  createdAt DateTime @default(now())
+}
+
+model LogoRequest {
+  id             String   @id @default(uuid())
+
+  // ── Submitted by user ────────────────────────────────────────────────────
+  brandName      String
+  websiteUrl     String?
+  category       String?
+
+  // Preferred file formats e.g. ["AI","SVG","PNG"]
+  formats        Json     @default("[]")
+
+  notes          String?  
+  requesterEmail String?
+
+  // ── Admin workflow ────────────────────────────────────────────────────────
+  // "pending" | "in_progress" | "completed" | "rejected"
+  status         String   @default("pending")
+  adminNotes     String? 
+
+  // ── Timestamps ────────────────────────────────────────────────────────────
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([brandName])
+}
+
+
+model ContactMessage {
+  id      String  @id @default(uuid())
+
+  // ── From visitor ─────────────────────────────────────────────────────────
+  name    String
+  email   String
+  subject String?
+  message String  
+
+  // ── Admin workflow ────────────────────────────────────────────────────────
+  // "unread" | "read" | "replied" | "archived"
+  status      String  @default("unread")
+  adminReply  String? 
+
+  // ── Timestamps ────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([email])
 }

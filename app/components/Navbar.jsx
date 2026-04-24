@@ -5,21 +5,15 @@ import { useTheme } from "../context/ThemeContext";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 
-const navLinks = [
-  { label: "Home", href: "/" },
-  { label: "Categories", href: "category" },
-  { label: "Brands", href: "#" },
-  { label: "Logo Templates", href: "#" },
-  { label: "Blog", href: "#" },
-  { label: "Contact Us", href: "#" },
-  { label: "Request Logo", href: "#" },
-];
+
+
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropOpen, setDropOpen] = useState(false);
   const { dark, setDark } = useTheme();
-
+const [navLinks, setNavLinks] = useState([]);
+const [loadingNav, setLoadingNav] = useState(true);
 
   const dropRef = useRef(null);
   const { data: session, status } = useSession();
@@ -30,9 +24,11 @@ export default function Navbar() {
   const username = session?.user?.name ?? "";
   const email = session?.user?.email ?? "";
   const initial = username?.charAt(0)?.toUpperCase() ?? "";
+  const [showThemeToggle, setShowThemeToggle] = useState(false);
 
   // Close dropdown on outside click
   useEffect(() => {
+
     function handleClick(e) {
       if (dropRef.current && !dropRef.current.contains(e.target)) {
         setDropOpen(false);
@@ -41,6 +37,38 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  useEffect(() => {
+  async function loadNav() {
+    try {
+      const res = await fetch("/api/website/header", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (Array.isArray(data?.navItems)) {
+        setNavLinks(
+          data.navItems
+            .filter((item) => item.add)
+            .map((item) => ({
+              label: item.label,
+              href: item.link,
+            }))
+        );
+      }
+      if (typeof data?.showmode === "boolean") {
+  setShowThemeToggle(data.showmode);
+}
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingNav(false);
+    }
+  }
+
+  loadNav();
+}, []);
 
   return (
     <>
@@ -339,17 +367,21 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav links */}
-          <ul className="nav-links">
-            {navLinks.map(link => (
-              <li key={link.label}><a href={link.href}>{link.label}</a></li>
-            ))}
-          </ul>
-
+       {!loadingNav && (
+  <ul className="nav-links">
+    {navLinks.map((link) => (
+      <li key={link.label}>
+        <a href={link.href}>{link.label}</a>
+      </li>
+    ))}
+  </ul>
+)}
           {/* Actions */}
           <div className="navbar-actions">
 
             {/* Theme toggle */}
-            <div className="theme-toggle">
+          {showThemeToggle&&(
+              <div className="theme-toggle">
               <button
                 className={`theme-btn${!dark ? " active" : ""}`}
                 aria-label="Light mode" onClick={() => setDark(false)} title="Light mode"
@@ -371,6 +403,7 @@ export default function Navbar() {
                 </svg>
               </button>
             </div>
+          )}
 
             {/* ── Logged in: Avatar + Dropdown ── */}
       {!isLoading && isLogged ? (
@@ -410,7 +443,7 @@ export default function Navbar() {
                       <circle cx="12" cy="7" r="4" />
                     </svg>
                     My Profile
-                  </Link>
+                  </Link>*/}
 
                   <div className="drop-divider" />
 
@@ -424,7 +457,7 @@ export default function Navbar() {
                       <line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
                     Sign Out
-                  </button> */}
+                  </button> 
                 </div>
               </div>
             ) : (
