@@ -12,7 +12,7 @@ export default function LogoDetail() {
     const { slug } = useParams();
     const router = useRouter();
     const { dark } = useTheme();
-    const   {data:session,status} = useSession();
+    const { data: session, status } = useSession();
 
     const [logo, setLogo] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -57,55 +57,55 @@ export default function LogoDetail() {
 
     // Static display-only format badges — derived from logo data
     // Always show all 4 format boxes regardless of URL availability
-    const formatBadges = [
-        { key: "ai", label: "AI", cls: "fmt-ai", icon: "AI" },
-        { key: "cdr", label: "CDR", cls: "fmt-cdr", icon: "CDR" },
-        { key: "svg", label: "SVG", cls: "fmt-svg", icon: "SVG" },
-        { key: "png", label: "PNG", cls: "fmt-png", icon: "PNG" },
-    ];
-const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+const formatBadges = [
+    { key: "ai",  label: "AI",  cls: "fmt-ai",  icon: "AI",  sizeKey: "aifilesize"  },
+    { key: "cdr", label: "CDR", cls: "fmt-cdr", icon: "CDR", sizeKey: "cdrfilesize" },
+    { key: "svg", label: "SVG", cls: "fmt-svg", icon: "SVG", sizeKey: "svgfilesize" },
+    { key: "png", label: "PNG", cls: "fmt-png", icon: "PNG", sizeKey: "pngfilesize" },
+];
+    const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
-const handleDownload = async () => {
-    if (!agreed || !logo?.id || !selectedFormat) return;
-    if (status === "loading") return;
+    const handleDownload = async () => {
+        if (!agreed || !logo?.id || !selectedFormat) return;
+        if (status === "loading") return;
 
-    setDownloading(true);
-    setDownloadUrl(null);
+        setDownloading(true);
+        setDownloadUrl(null);
 
-    try {
-        ///request for if use signed url
-        const res = await fetch("/api/logo/download/default", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ logoId: logo.id, format: selectedFormat ,user:session?.user?.id || ""}),
-        });
-
-
-        const blob = await res.blob();
-const url = URL.createObjectURL(blob);
-const a = document.createElement("a");
-a.href = url;
-a.download = `${logo.slug}.${selectedFormat}`;
-a.click();
-URL.revokeObjectURL(url);
+        try {
+            ///request for if use signed url
+            const res = await fetch("/api/logo/download/default", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ logoId: logo.id, format: selectedFormat, user: session?.user?.id || "" }),
+            });
 
 
-// if signe url  
-        // const data = await res.json();
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${logo.slug}.${selectedFormat}`;
+            a.click();
+            URL.revokeObjectURL(url);
 
-        // // ⏱️ 2 second delay before showing result boot
-        // // await sleep(2000);
 
-        // if (data.downloadUrl) {
-        //     setDownloadUrl(data.downloadUrl);
-        // }
+            // if signe url  
+            // const data = await res.json();
 
-    } catch (e) {
-        console.error("Download failed", e);
-    } finally {
-        setDownloading(false);
-    }
-};
+            // // ⏱️ 2 second delay before showing result boot
+            // // await sleep(2000);
+
+            // if (data.downloadUrl) {
+            //     setDownloadUrl(data.downloadUrl);
+            // }
+
+        } catch (e) {
+            console.error("Download failed", e);
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     const handleStartDownload = () => {
         if (!downloadUrl) return;
@@ -154,7 +154,7 @@ URL.revokeObjectURL(url);
 
     return (
         <>
-         <style>{`
+            <style>{`
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -197,6 +197,13 @@ URL.revokeObjectURL(url);
     transition: background 0.35s;
     padding-bottom: 80px;
   }
+    .fmt-select-size {
+    font-size: 8px;
+    font-weight: 600;
+    color: var(--muted);
+    opacity: 0.75;
+    letter-spacing: .3px;
+}
   .dot-grid {
     position: fixed; inset: 0;
     background-image: radial-gradient(var(--dot) 1px, transparent 1px);
@@ -549,8 +556,6 @@ URL.revokeObjectURL(url);
   .color-copy-btn.copied { color: #22c55e; border-color: rgba(34,197,94,.4); }
 
   .ad-card {
-    background: var(--surface); border: 1px dashed var(--border2);
-    border-radius: 14px;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 6px; color: var(--muted); font-size: 11px;
@@ -717,24 +722,17 @@ URL.revokeObjectURL(url);
 
                             {/* Ad space — left column */}
                             <div className="ad-card anim d3">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
-                                </svg>
-                                <div className="ad-label">Advertisement Space</div>
-                                <div style={{ fontSize: 10 }}>728 × 90</div>
+                                
+                               
                             </div>
                         </div>
 
                         {/* ── MIDDLE: Ad column ── */}
-<div className="mid">
-  <div className="ad-card" style={{ minHeight: 400 }}>
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-    </svg>
-    <div className="ad-label">Advertisement</div>
-    <div style={{ fontSize: 10 }}>160 × 400</div>
-  </div>
-</div>
+                        <div className="mid">
+                            <div className="ad-card" style={{ minHeight: 400 }}>
+                               
+                            </div>
+                        </div>
 
                         {/* ── RIGHT ── */}
                         <div className="right">
@@ -756,26 +754,21 @@ URL.revokeObjectURL(url);
 
                                 {/* ── Format selector ── */}
 
-                                <div className="fmt-select-grid">
-                                    {formatBadges.map(fmt => (
-                                        <button
-                                            key={fmt.key}
-                                            className={`fmt-select-btn ${fmt.cls}${selectedFormat === fmt.key ? " fmt-selected" : ""}`}
-                                            onClick={() => setSelectedFormat(fmt.key)}
-                                        >
-                                            <div className="fmt-select-icon">{fmt.icon}</div>
-                                            <div className="fmt-select-ext">.{fmt.key}</div>
-                                        </button>
-                                    ))}
-                                    {/* All formats option */}
-                                    {/* <button
-                                        className={`fmt-select-btn fmt-all${selectedFormat === "all" ? " fmt-selected" : ""}`}
-                                        onClick={() => setSelectedFormat("all")}
-                                    >
-                                        <div className="fmt-select-icon">ALL</div>
-                                        <div className="fmt-select-ext">.zip</div>
-                                    </button> */}
-                                </div>
+                             <div className="fmt-select-grid">
+    {formatBadges.map(fmt => (
+        <button
+            key={fmt.key}
+            className={`fmt-select-btn ${fmt.cls}${selectedFormat === fmt.key ? " fmt-selected" : ""}`}
+            onClick={() => setSelectedFormat(fmt.key)}
+        >
+            <div className="fmt-select-icon">{fmt.icon}</div>
+            <div className="fmt-select-ext">.{fmt.key}</div>
+            <div className="fmt-select-size">
+                {logo?.[fmt.sizeKey] && logo[fmt.sizeKey] !== "0 KB" ? logo[fmt.sizeKey] : "—"}
+            </div>
+        </button>
+    ))}
+</div>
 
                                 <div className="dl-divider" />
 
@@ -927,18 +920,14 @@ URL.revokeObjectURL(url);
 
                             {/* Ad space — right column */}
                             <div className="ad-card anim d3" style={{ minHeight: 160 }}>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
-                                </svg>
-                                <div className="ad-label">Advertisement Space</div>
-                                <div style={{ fontSize: 10 }}>300 × 250</div>
+                             
                             </div>
                         </div>
                     </div>
 
                     <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
                 </div>
-                <Footer/>
+                <Footer />
             </div>
         </>
     );

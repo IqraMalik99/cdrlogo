@@ -153,6 +153,7 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 export const PageScalarFieldEnum = {
   id: 'id',
   title: 'title',
+  mode: 'mode',
   slug: 'slug',
   content: 'content',
   publishStatus: 'publishStatus',

@@ -42,6 +42,11 @@ export async function POST(req) {
         publishStatus: true,
         downloadedNumberByPeople: true,
 
+        svgfilesize: true,
+        pngfilesize: true,
+        aifilesize: true,
+        cdrfilesize: true,
+
         createdAt: true,
         updatedAt: true,
       },

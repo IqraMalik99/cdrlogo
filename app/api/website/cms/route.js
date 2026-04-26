@@ -79,11 +79,10 @@ export async function PATCH(req) {
     const { id, ...incoming } = body;
     if (!id) return Response.json({ error: "ID required" }, { status: 400 });
 
-    const data = Object.fromEntries(
-      Object.entries(incoming).filter(([_, v]) => v !== undefined && v !== null)
-    );
-
-    const page = await prisma.page.update({ where: { id }, data });
+const data = Object.fromEntries(
+  Object.entries(incoming).filter(([_, v]) => v !== undefined && v !== null)
+);
+const page = await prisma.page.update({ where: { id }, data });
     await prisma.log.create({
   data: {
     who: "api:pages",

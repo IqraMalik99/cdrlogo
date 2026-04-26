@@ -41,9 +41,9 @@ export const authOptions = {
         }
 
         // 🚨 Check verification
-        // if (!user.isVerified) {
-        //   throw new Error("Please verify your email first");
-        // }
+        if (!user.isVerified) {
+          throw new Error("Please verify your email first");
+        }
 
         // ✅ Return user
         return {

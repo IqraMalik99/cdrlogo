@@ -27,6 +27,7 @@ export type AggregatePage = {
 export type PageMinAggregateOutputType = {
   id: string | null
   title: string | null
+  mode: string | null
   slug: string | null
   content: string | null
   publishStatus: string | null
@@ -40,6 +41,7 @@ export type PageMinAggregateOutputType = {
 export type PageMaxAggregateOutputType = {
   id: string | null
   title: string | null
+  mode: string | null
   slug: string | null
   content: string | null
   publishStatus: string | null
@@ -53,6 +55,7 @@ export type PageMaxAggregateOutputType = {
 export type PageCountAggregateOutputType = {
   id: number
   title: number
+  mode: number
   slug: number
   content: number
   publishStatus: number
@@ -68,6 +71,7 @@ export type PageCountAggregateOutputType = {
 export type PageMinAggregateInputType = {
   id?: true
   title?: true
+  mode?: true
   slug?: true
   content?: true
   publishStatus?: true
@@ -81,6 +85,7 @@ export type PageMinAggregateInputType = {
 export type PageMaxAggregateInputType = {
   id?: true
   title?: true
+  mode?: true
   slug?: true
   content?: true
   publishStatus?: true
@@ -94,6 +99,7 @@ export type PageMaxAggregateInputType = {
 export type PageCountAggregateInputType = {
   id?: true
   title?: true
+  mode?: true
   slug?: true
   content?: true
   publishStatus?: true
@@ -180,6 +186,7 @@ export type PageGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 export type PageGroupByOutputType = {
   id: string
   title: string
+  mode: string
   slug: string
   content: string | null
   publishStatus: string
@@ -214,6 +221,7 @@ export type PageWhereInput = {
   NOT?: Prisma.PageWhereInput | Prisma.PageWhereInput[]
   id?: Prisma.StringFilter<"Page"> | string
   title?: Prisma.StringFilter<"Page"> | string
+  mode?: Prisma.StringFilter<"Page"> | string
   slug?: Prisma.StringFilter<"Page"> | string
   content?: Prisma.StringNullableFilter<"Page"> | string | null
   publishStatus?: Prisma.StringFilter<"Page"> | string
@@ -227,6 +235,7 @@ export type PageWhereInput = {
 export type PageOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
@@ -244,6 +253,7 @@ export type PageWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.PageWhereInput[]
   NOT?: Prisma.PageWhereInput | Prisma.PageWhereInput[]
   title?: Prisma.StringFilter<"Page"> | string
+  mode?: Prisma.StringFilter<"Page"> | string
   content?: Prisma.StringNullableFilter<"Page"> | string | null
   publishStatus?: Prisma.StringFilter<"Page"> | string
   InFooter?: Prisma.BoolFilter<"Page"> | boolean
@@ -256,6 +266,7 @@ export type PageWhereUniqueInput = Prisma.AtLeast<{
 export type PageOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   content?: Prisma.SortOrderInput | Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
@@ -275,6 +286,7 @@ export type PageScalarWhereWithAggregatesInput = {
   NOT?: Prisma.PageScalarWhereWithAggregatesInput | Prisma.PageScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Page"> | string
   title?: Prisma.StringWithAggregatesFilter<"Page"> | string
+  mode?: Prisma.StringWithAggregatesFilter<"Page"> | string
   slug?: Prisma.StringWithAggregatesFilter<"Page"> | string
   content?: Prisma.StringNullableWithAggregatesFilter<"Page"> | string | null
   publishStatus?: Prisma.StringWithAggregatesFilter<"Page"> | string
@@ -288,6 +300,7 @@ export type PageScalarWhereWithAggregatesInput = {
 export type PageCreateInput = {
   id?: string
   title: string
+  mode?: string
   slug: string
   content?: string | null
   publishStatus?: string
@@ -301,6 +314,7 @@ export type PageCreateInput = {
 export type PageUncheckedCreateInput = {
   id?: string
   title: string
+  mode?: string
   slug: string
   content?: string | null
   publishStatus?: string
@@ -314,6 +328,7 @@ export type PageUncheckedCreateInput = {
 export type PageUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
@@ -327,6 +342,7 @@ export type PageUpdateInput = {
 export type PageUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
@@ -340,6 +356,7 @@ export type PageUncheckedUpdateInput = {
 export type PageCreateManyInput = {
   id?: string
   title: string
+  mode?: string
   slug: string
   content?: string | null
   publishStatus?: string
@@ -353,6 +370,7 @@ export type PageCreateManyInput = {
 export type PageUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
@@ -366,6 +384,7 @@ export type PageUpdateManyMutationInput = {
 export type PageUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
@@ -379,6 +398,7 @@ export type PageUncheckedUpdateManyInput = {
 export type PageCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   content?: Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
@@ -392,6 +412,7 @@ export type PageCountOrderByAggregateInput = {
 export type PageMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   content?: Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
@@ -405,6 +426,7 @@ export type PageMaxOrderByAggregateInput = {
 export type PageMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   content?: Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
@@ -420,6 +442,7 @@ export type PageMinOrderByAggregateInput = {
 export type PageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   title?: boolean
+  mode?: boolean
   slug?: boolean
   content?: boolean
   publishStatus?: boolean
@@ -433,6 +456,7 @@ export type PageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 export type PageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   title?: boolean
+  mode?: boolean
   slug?: boolean
   content?: boolean
   publishStatus?: boolean
@@ -446,6 +470,7 @@ export type PageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 export type PageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   title?: boolean
+  mode?: boolean
   slug?: boolean
   content?: boolean
   publishStatus?: boolean
@@ -459,6 +484,7 @@ export type PageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 export type PageSelectScalar = {
   id?: boolean
   title?: boolean
+  mode?: boolean
   slug?: boolean
   content?: boolean
   publishStatus?: boolean
@@ -469,7 +495,7 @@ export type PageSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "slug" | "content" | "publishStatus" | "InFooter" | "InLegal" | "InHome" | "createdAt" | "updatedAt", ExtArgs["result"]["page"]>
+export type PageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "mode" | "slug" | "content" | "publishStatus" | "InFooter" | "InLegal" | "InHome" | "createdAt" | "updatedAt", ExtArgs["result"]["page"]>
 
 export type $PagePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Page"
@@ -477,6 +503,7 @@ export type $PagePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     title: string
+    mode: string
     slug: string
     content: string | null
     publishStatus: string
@@ -910,6 +937,7 @@ export interface Prisma__PageClient<T, Null = never, ExtArgs extends runtime.Typ
 export interface PageFieldRefs {
   readonly id: Prisma.FieldRef<"Page", 'String'>
   readonly title: Prisma.FieldRef<"Page", 'String'>
+  readonly mode: Prisma.FieldRef<"Page", 'String'>
   readonly slug: Prisma.FieldRef<"Page", 'String'>
   readonly content: Prisma.FieldRef<"Page", 'String'>
   readonly publishStatus: Prisma.FieldRef<"Page", 'String'>

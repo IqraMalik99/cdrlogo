@@ -2,25 +2,27 @@
 
 import { useState, useEffect } from "react";
 import {
-  Menu, X, ChevronRight,
-  LayoutDashboard, Upload, Droplets,
-  Tag, LayoutGrid, Users, FileText,
+  LayoutDashboard, Upload, LayoutGrid, Droplets,
+  Tag, Users, FileText, Navigation, Image,
+  Mail, Bookmark, Settings,Menu, X, ChevronRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 // ── NAV_ITEMS ─────────────────────────────────────────────────────────────
 // key MUST exactly match the case string used in AdminPage's renderContent switch
 const NAV_ITEMS = [
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { key: "upload", label: "Upload Logo", icon: Upload },
-  { key: "watermark", label: "Watermark", icon: Droplets },
-  { key: "categories", label: "Categories", icon: Tag },
-  { key: "LogoManagement", label: "Logo Management", icon: LayoutGrid },
-  { key: "User", label: "Users", icon: Users },
-  { key: "Page/CMS", label: "CMS / Pages", icon: FileText },
-  { key: "Navigation/Menu", label: "Navigation/Menu", icon: Tag },
-  { key: "Media Library", label: "Media Library", icon: LayoutGrid },
-  { key: "SiteSettings", label: "Site Settings", icon: LayoutDashboard },
+  { key: "dashboard",        label: "Dashboard",        icon: LayoutDashboard },
+  { key: "upload",           label: "Upload Logo",       icon: Upload },
+  { key: "LogoManagement",   label: "Logo Management",   icon: LayoutGrid },
+  { key: "categories",       label: "Categories",        icon: Tag },
+  { key: "watermark",        label: "Watermark",         icon: Droplets },
+  { key: "User",             label: "Users",             icon: Users },
+  { key: "ContactMessages",  label: "Contact Messages",  icon: Mail },
+  { key: "LogoRequests",     label: "Logo Requests",     icon: Bookmark },
+  { key: "Page/CMS",         label: "CMS / Pages",       icon: FileText },
+  { key: "Navigation/Menu",  label: "Navigation/Menu",   icon: Navigation },
+  { key: "Media Library",    label: "Media Library",     icon: Image },
+  { key: "SiteSettings",     label: "Site Settings",     icon: Settings },
 ];
 
 export default function Sidebar({ active, setActive, dark }) {

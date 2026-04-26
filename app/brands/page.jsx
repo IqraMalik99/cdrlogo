@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTheme } from "../context/ThemeContext";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import { useRouter } from "next/navigation";
 
 const PER_PAGE = 12;
 
@@ -541,6 +543,7 @@ export default function BrandsPage() {
           )}
         </div>
       </div>
+            <Footer/>
     </>
   );
 }
@@ -550,9 +553,10 @@ function LogoCard({ logo, index }) {
   const [imgError, setImgError] = useState(false);
   const colors = (logo.brandColors ?? []).slice(0, 3);
   const isTrending = logo.downloads > 8000;
+  const router =useRouter();
 
   return (
-    <div className="logo-card" style={{ animationDelay: `${index * 35}ms` }}>
+    <div className="logo-card" style={{ animationDelay: `${index * 35}ms` }} onClick={()=>{router.push(`/logo/${logo.slug?.toLowerCase()}`)}}>
       <div className="card-img-wrap">
         {logo.webpUrl && !imgError ? (
           <img className="card-img" src={logo.webpUrl} alt={logo.logoName} onError={() => setImgError(true)} />
@@ -575,6 +579,7 @@ function LogoCard({ logo, index }) {
           </div>
         </div>
       </div>
+
     </div>
   );
 }

@@ -26,14 +26,14 @@ function levenshtein(a, b) {
  * Threshold scales with query length so short words are stricter.
  */
 function isFuzzyMatch(query, target) {
-  query  = query.toLowerCase().trim();
+  query = query.toLowerCase().trim();
   target = target.toLowerCase();
 
   if (target.includes(query)) return true;          // exact substring wins immediately
 
   const maxDist = query.length <= 4 ? 1             // "cat"  → 1 typo allowed
-                : query.length <= 7 ? 2             // "fason" → 2 typos allowed
-                : 3;                                // longer → 3 typos allowed
+    : query.length <= 7 ? 2             // "fason" → 2 typos allowed
+      : 3;                                // longer → 3 typos allowed
 
   // Check against every word in the target so "Nike Air" matches "Aor"
   return target.split(/\s+/).some(
@@ -64,10 +64,10 @@ export async function POST(req) {
 
     const {
       type,
-      page     = 1,
-      limit    = 12,
+      page = 1,
+      limit = 12,
       category = "All",
-      search   = "",
+      search = "",
     } = body;
 
     if (!type) {
@@ -80,9 +80,9 @@ export async function POST(req) {
       return Response.json({ message: "Website not found" }, { status: 404 });
     }
 
-    const categories         = Array.isArray(website.categories) ? website.categories : [];
+    const categories = Array.isArray(website.categories) ? website.categories : [];
     const filteredCategories = categories.filter((cat) => cat.type === type);
-    const allSlugs           = filteredCategories.map((cat) => cat.name);
+    const allSlugs = filteredCategories.map((cat) => cat.name);
 
     console.log("🏷️ Category Slugs:", allSlugs);
 
@@ -104,12 +104,13 @@ export async function POST(req) {
       const candidates = await prisma.logo.findMany({
         where,
         select: {
-          id:          true,
-          logoName:    true,
-          category:    true,
+          id: true,
+          slug: true,
+          logoName: true,
+          category: true,
           brandColors: true,
-          webpUrl:     true,
-          createdAt:   true,
+          webpUrl: true,
+          createdAt: true,
         },
         orderBy: { createdAt: "desc" },
       });
@@ -131,12 +132,13 @@ export async function POST(req) {
         prisma.logo.findMany({
           where,
           select: {
-            id:          true,
-            logoName:    true,
-            category:    true,
+            id: true,
+            logoName: true,
+            slug: true,
+            category: true,
             brandColors: true,
-            webpUrl:     true,
-            createdAt:   true,
+            webpUrl: true,
+            createdAt: true,
           },
           orderBy: { createdAt: "desc" },
           skip,
@@ -164,8 +166,8 @@ export async function POST(req) {
     return Response.json({
       logos,
       total,
-      page:       Number(page),
-      limit:      Number(limit),
+      page: Number(page),
+      limit: Number(limit),
       totalPages: Math.ceil(total / Number(limit)),
       categories: categoryList,
     });

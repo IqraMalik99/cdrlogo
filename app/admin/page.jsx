@@ -1,6 +1,6 @@
 "use client";
 
-import { useState ,useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Sun, Moon, User } from "lucide-react";
 import Sidebar from "../adminComponents/Sidebar";
 import { useSession } from "next-auth/react";
@@ -14,34 +14,39 @@ import PagesCMS from "../adminComponents/CMS";
 import NavigationMenu from "../adminComponents/NavigationMenu";
 import MediaLibrary from "../adminComponents/Media";
 import SiteSettings from "../adminComponents/SiteSetting";
+import ContactMessages from "../adminComponents/ContactMessages";
+import LogoRequests    from "../adminComponents/LogoRequest";
 import { useRouter } from "next/navigation";
 
 // ── Page title map — keys MUST match the case used in setActive() calls ──
 const PAGE_TITLES = {
-  dashboard:      "Dashboard",
-  upload:         "Upload Logo",
-  watermark:      "Watermark Settings",
-  categories:     "Categories",
+  dashboard: "Dashboard",
+  upload: "Upload Logo",
   LogoManagement: "Logo Management",
-  User:           "User Management",
-  "Page/CMS":     "CMS / Pages",
+  watermark: "Watermark Settings",
+  categories: "Categories",
+  User: "User Management",
+  "Page/CMS": "CMS / Pages",
   "Navigation/Menu": "Navigation/Menu",
   "Media Library": "Media Library",
   "SiteSettings": "Site Settings",
+  "ContactMessages": "Contact Messages",
+"LogoRequests":    "Logo Requests",
+
 };
 
 export default function AdminPage() {
-  const [dark,   setDark]   = useState(true);
-   const { data: session, status } = useSession();
+  const [dark, setDark] = useState(true);
+  const { data: session, status } = useSession();
   const router = useRouter();
   // default to dashboard so users land on it first
   const [active, setActive] = useState("dashboard");
 
-    useEffect(() => {
+  useEffect(() => {
     if (status === "loading") return;
 
     // not logged in OR not admin
-    if (!session || session.user.role !== "admin" ) {
+    if (!session || session.user.role !== "admin") {
       router.push("/login"); // or "/"
     }
   }, [session, status]);
@@ -53,11 +58,11 @@ export default function AdminPage() {
 
 
 
-  const bg       = dark ? "#0f1117" : "#f8fafc";
+  const bg = dark ? "#0f1117" : "#f8fafc";
   const headerBg = dark ? "#0f1117" : "#ffffff";
-  const border   = dark ? "#1e2535" : "#e2e8f0";
-  const text     = dark ? "#e2e8f0" : "#1e293b";
-  const muted    = dark ? "#64748b" : "#94a3b8";
+  const border = dark ? "#1e2535" : "#e2e8f0";
+  const text = dark ? "#e2e8f0" : "#1e293b";
+  const muted = dark ? "#64748b" : "#94a3b8";
 
   const renderContent = () => {
     switch (active) {
@@ -87,8 +92,11 @@ export default function AdminPage() {
         return <NavigationMenu dark={dark} />;
       case "Media Library":
         return <MediaLibrary dark={dark} />;
-        case "SiteSettings":
-  return <SiteSettings dark={dark} />;
+      case "SiteSettings":
+        return <SiteSettings dark={dark} />;
+        case "ContactMessages": return <ContactMessages dark={dark} />;
+case "LogoRequests":    return <LogoRequests dark={dark} />;
+
       default:
         return (
           <div style={{

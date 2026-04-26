@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../context/ThemeContext";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 const categories = [
   "Technology", "Automotive", "Finance", "Gaming", "Food & Beverage",
@@ -313,6 +314,7 @@ export default function RequestLogoPage() {
           </div>
         </div>
       </main>
+      <Footer/>
     </>
   );
 }

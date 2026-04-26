@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { useParams, useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 export default function CmsPage() {
   const { slug } = useParams();
@@ -431,7 +432,9 @@ export default function CmsPage() {
           )}
 
         </div>
+        
       </div>
+      <Footer/>
     </>
   );
 }

@@ -533,6 +533,7 @@ function ImageModal({ onInsert, onClose, T }) {
 }
 
 // ─── Page Editor Panel ────────────────────────────────────────────────────────
+// ─── Page Editor Panel ────────────────────────────────────────────────────────
 function PageEditor({ page, onClose, onSaved, T }) {
   const isNew = !page?.id;
   const [title, setTitle]     = useState(page?.title ?? "");
@@ -545,6 +546,10 @@ function PageEditor({ page, onClose, onSaved, T }) {
   const [showImg, setShowImg] = useState(false);
   const [slashMenu, setSlashMenu] = useState(null);
   const [fullscreen, setFullscreen] = useState(false);
+  // ── NEW: mode toggle ──────────────────────────────────────────────────────
+  const [mode, setMode]       = useState("editor"); // "editor" | "html"
+  const [htmlContent, setHtmlContent] = useState("");
+  // ─────────────────────────────────────────────────────────────────────────
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -587,7 +592,15 @@ function PageEditor({ page, onClose, onSaved, T }) {
             body: JSON.stringify({ action: "get", id: page.id }),
           });
           const json = await res.json();
-          if (json.data?.content) editor.commands.setContent(json.data.content);
+          // ── NEW: restore mode and content ──────────────────────────────
+          const savedMode = json.data?.mode ?? "editor";
+          setMode(savedMode);
+          if (savedMode === "html") {
+            setHtmlContent(json.data?.content ?? "");
+          } else {
+            if (json.data?.content) editor.commands.setContent(json.data.content);
+          }
+          // ───────────────────────────────────────────────────────────────
           setTitle(json.data.title ?? "");
           setSlug(json.data.slug ?? "");
           setStatus(json.data.publishStatus ?? "draft");
@@ -628,15 +641,17 @@ function PageEditor({ page, onClose, onSaved, T }) {
 
   const handleSave = async () => {
     setSaving(true); setErr(null); setSaved(false);
-    const content = editor?.getHTML() ?? "";
+    // ── NEW: pick content based on mode ──────────────────────────────────
+    const content = mode === "html" ? htmlContent : (editor?.getHTML() ?? "");
+    // ─────────────────────────────────────────────────────────────────────
     try {
       const res = await fetch("/api/website/cms", {
         method: isNew ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           isNew
-            ? { action: "create", title, slug, content, publishStatus: status }
-            : { id: page.id, title, slug, content, publishStatus: status }
+            ? { action: "create", title, slug, content, mode, publishStatus: status }
+            : { id: page.id, title, slug, content, mode, publishStatus: status }
         ),
       });
       const json = await res.json();
@@ -654,7 +669,7 @@ function PageEditor({ page, onClose, onSaved, T }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [title, slug, status, editor]);
+  }, [title, slug, status, editor, mode, htmlContent]);
 
   const wordCount = editor?.storage?.characterCount?.words?.() ?? 0;
   const charCount = editor?.storage?.characterCount?.characters?.() ?? 0;
@@ -667,7 +682,6 @@ function PageEditor({ page, onClose, onSaved, T }) {
     transition: "border-color .15s",
   };
 
-  // Editor content styles adapt to theme
   const editorStyles = `
     .tiptap-wrap .ProseMirror {
       outline: none; min-height: 400px;
@@ -723,13 +737,23 @@ function PageEditor({ page, onClose, onSaved, T }) {
     .cms-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .cms-scrollbar::-webkit-scrollbar-thumb { background: ${T.border2}; border-radius: 4px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── HTML editor ── */
+    .html-editor-wrap textarea {
+      width: 100%; height: 100%; min-height: 400px;
+      background: ${T.inputBg}; color: ${T.cyan};
+      border: none; outline: none; resize: none;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-size: 13px; line-height: 1.75;
+      padding: 24px 28px;
+      tab-size: 2;
+    }
+    .html-editor-wrap textarea::placeholder { color: ${T.muted2}; }
   `;
 
   return (
     <>
       <style>{editorStyles}</style>
 
-      {/* Backdrop */}
       {!fullscreen && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 999,
@@ -737,7 +761,6 @@ function PageEditor({ page, onClose, onSaved, T }) {
         }} onClick={onClose} />
       )}
 
-      {/* Panel */}
       <div style={{
         position: "fixed",
         ...(fullscreen ? { inset: 0 } : {
@@ -758,7 +781,6 @@ function PageEditor({ page, onClose, onSaved, T }) {
           display: "flex", alignItems: "center", justifyContent: "space-between",
           background: T.headBg, flexShrink: 0, gap: 8, flexWrap: "wrap",
         }}>
-          {/* Title info */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
             <div style={{
               width: 30, height: 30, borderRadius: 8, flexShrink: 0,
@@ -780,8 +802,29 @@ function PageEditor({ page, onClose, onSaved, T }) {
             </div>
           </div>
 
-          {/* Actions */}
           <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0, flexWrap: "wrap" }}>
+
+            {/* ── NEW: Mode Toggle ───────────────────────────────────────────── */}
+            <div style={{
+              display: "flex", background: T.inputBg,
+              border: `1px solid ${T.border}`, borderRadius: 8, padding: 3, gap: 2,
+            }}>
+              {[
+                { key: "editor", label: "✏️ Editor" },
+                { key: "html",   label: "</> HTML" },
+              ].map(({ key, label }) => (
+                <button key={key} onClick={() => setMode(key)} style={{
+                  padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer",
+                  background: mode === key ? T.blueBg : "transparent",
+                  color: mode === key ? T.blue : T.muted,
+                  fontSize: 11, fontWeight: 700, fontFamily: "inherit",
+                  border: mode === key ? `1px solid ${T.blueBd}` : "1px solid transparent",
+                  transition: "all .15s",
+                }}>{label}</button>
+              ))}
+            </div>
+            {/* ──────────────────────────────────────────────────────────────── */}
+
             {saved && (
               <span style={{ fontSize: 11, color: T.green, display: "flex", alignItems: "center", gap: 4 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -801,7 +844,6 @@ function PageEditor({ page, onClose, onSaved, T }) {
               <option value="published">● Published</option>
             </select>
 
-            {/* Fullscreen */}
             <button onClick={() => setFullscreen(f => !f)} title={fullscreen ? "Exit fullscreen" : "Fullscreen"} style={{
               width: 30, height: 30, borderRadius: 7,
               border: `1px solid ${T.border}`, background: "none",
@@ -821,7 +863,6 @@ function PageEditor({ page, onClose, onSaved, T }) {
               )}
             </button>
 
-            {/* Preview */}
             {!isNew && (
               <button onClick={() => window.open(`/${slug}`, "_blank")} title="Preview" style={{
                 width: 30, height: 30, borderRadius: 7,
@@ -836,7 +877,6 @@ function PageEditor({ page, onClose, onSaved, T }) {
               </button>
             )}
 
-            {/* Save */}
             <button onClick={handleSave} disabled={saving} style={{
               padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700,
               background: T.greenBg,
@@ -869,7 +909,7 @@ function PageEditor({ page, onClose, onSaved, T }) {
           </div>
         </div>
 
-        {/* Meta fields */}
+        {/* Meta fields — unchanged */}
         <div style={{
           padding: "10px 14px", borderBottom: `1px solid ${T.border}`,
           display: "flex", gap: 10, flexShrink: 0, flexWrap: "wrap",
@@ -893,7 +933,7 @@ function PageEditor({ page, onClose, onSaved, T }) {
           </div>
         </div>
 
-        {/* Toolbar + Editor area */}
+        {/* ── Toolbar + Editor/HTML area ── */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {loading ? (
             <div style={{ padding: 48, textAlign: "center", color: T.muted, fontSize: 13 }}>
@@ -901,12 +941,37 @@ function PageEditor({ page, onClose, onSaved, T }) {
                 borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 12px" }} />
               Loading content…
             </div>
-          ) : (
+          ) : mode === "editor" ? (
+            // ── Rich text editor (unchanged) ──────────────────────────────
             <div className="tiptap-wrap" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               <EditorToolbar editor={editor} onImageInsert={() => setShowImg(true)} T={T} />
               <div className="cms-scrollbar" style={{ flex: 1, overflowY: "auto", background: T.surface }}>
                 <EditorContent editor={editor} />
               </div>
+            </div>
+          ) : (
+            // ── NEW: HTML / CSS editor ─────────────────────────────────────
+            <div className="html-editor-wrap cms-scrollbar" style={{
+              flex: 1, overflow: "hidden", display: "flex", flexDirection: "column",
+              background: T.inputBg,
+            }}>
+              {/* hint bar */}
+              <div style={{
+                padding: "6px 14px", borderBottom: `1px solid ${T.border}`,
+                background: T.headBg, flexShrink: 0,
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <span style={{ fontSize: 10, color: T.muted }}>
+                  Write the full <code style={{ color: T.cyan, fontSize: 10 }}>&lt;body&gt;</code> content with inline CSS.
+                  The saved HTML is served as-is inside the page wrapper.
+                </span>
+              </div>
+              <textarea
+                value={htmlContent}
+                onChange={e => setHtmlContent(e.target.value)}
+                spellCheck={false}
+                placeholder={`<section style="padding:40px;font-family:sans-serif;">\n  <h1 style="color:#1e293b;">Hello World</h1>\n  <p style="color:#64748b;">Your content here…</p>\n</section>`}
+              />
             </div>
           )}
         </div>
@@ -925,12 +990,17 @@ function PageEditor({ page, onClose, onSaved, T }) {
                 </svg>
                 {err}
               </div>
-            ) : (
+            ) : mode === "editor" ? (
               <>
                 <span style={{ fontSize: 11, color: T.muted2 }}>{wordCount} words</span>
                 <span style={{ fontSize: 11, color: T.muted2 }}>{charCount} chars</span>
                 <span style={{ fontSize: 11, color: T.muted2 }}>{readingTime} min read</span>
               </>
+            ) : (
+              // ── NEW: HTML mode footer stats ──────────────────────────────
+              <span style={{ fontSize: 11, color: T.muted2 }}>
+                {htmlContent.length} chars · HTML/CSS mode
+              </span>
             )}
           </div>
           <div style={{ fontSize: 10, color: T.muted2, display: "flex", alignItems: "center", gap: 4 }}>
@@ -938,17 +1008,21 @@ function PageEditor({ page, onClose, onSaved, T }) {
               background: T.border, border: `1px solid ${T.border2}`,
               borderRadius: 4, padding: "1px 5px", fontSize: 9, color: T.muted,
             }}>⌘S</kbd>
-            save ·
-            <kbd style={{
-              background: T.border, border: `1px solid ${T.border2}`,
-              borderRadius: 4, padding: "1px 5px", fontSize: 9, color: T.muted,
-            }}>/</kbd>
-            commands
+            save
+            {mode === "editor" && (
+              <> ·
+                <kbd style={{
+                  background: T.border, border: `1px solid ${T.border2}`,
+                  borderRadius: 4, padding: "1px 5px", fontSize: 9, color: T.muted,
+                }}>/</kbd>
+                commands
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {slashMenu && (
+      {slashMenu && mode === "editor" && (
         <SlashMenu position={slashMenu} onSelect={execSlash} onClose={() => setSlashMenu(null)} T={T} />
       )}
       {showImg && (

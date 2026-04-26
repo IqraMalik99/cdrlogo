@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 
 const PAGE_SIZE = 12;
 
@@ -473,6 +474,7 @@ export default function SearchPage() {
                     </div>
                 </div>
             </div>
+            <Footer/>
         </>
     );
 }

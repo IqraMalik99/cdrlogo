@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../context/ThemeContext";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 export default function ContactPage() {
   const [ready, setReady] = useState(false);
@@ -248,6 +249,7 @@ export default function ContactPage() {
           </div>
         </div>
       </main>
+        <Footer/>
     </>
   );
 }

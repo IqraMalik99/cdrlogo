@@ -30,7 +30,7 @@ export type ContactMessageMinAggregateOutputType = {
   email: string | null
   subject: string | null
   message: string | null
-  status: string | null
+  status: $Enums.ContactStatus | null
   adminReply: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -42,7 +42,7 @@ export type ContactMessageMaxAggregateOutputType = {
   email: string | null
   subject: string | null
   message: string | null
-  status: string | null
+  status: $Enums.ContactStatus | null
   adminReply: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -177,7 +177,7 @@ export type ContactMessageGroupByOutputType = {
   email: string
   subject: string | null
   message: string
-  status: string
+  status: $Enums.ContactStatus
   adminReply: string | null
   createdAt: Date
   updatedAt: Date
@@ -210,7 +210,7 @@ export type ContactMessageWhereInput = {
   email?: Prisma.StringFilter<"ContactMessage"> | string
   subject?: Prisma.StringNullableFilter<"ContactMessage"> | string | null
   message?: Prisma.StringFilter<"ContactMessage"> | string
-  status?: Prisma.StringFilter<"ContactMessage"> | string
+  status?: Prisma.EnumContactStatusFilter<"ContactMessage"> | $Enums.ContactStatus
   adminReply?: Prisma.StringNullableFilter<"ContactMessage"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ContactMessage"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ContactMessage"> | Date | string
@@ -237,7 +237,7 @@ export type ContactMessageWhereUniqueInput = Prisma.AtLeast<{
   email?: Prisma.StringFilter<"ContactMessage"> | string
   subject?: Prisma.StringNullableFilter<"ContactMessage"> | string | null
   message?: Prisma.StringFilter<"ContactMessage"> | string
-  status?: Prisma.StringFilter<"ContactMessage"> | string
+  status?: Prisma.EnumContactStatusFilter<"ContactMessage"> | $Enums.ContactStatus
   adminReply?: Prisma.StringNullableFilter<"ContactMessage"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ContactMessage"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ContactMessage"> | Date | string
@@ -267,7 +267,7 @@ export type ContactMessageScalarWhereWithAggregatesInput = {
   email?: Prisma.StringWithAggregatesFilter<"ContactMessage"> | string
   subject?: Prisma.StringNullableWithAggregatesFilter<"ContactMessage"> | string | null
   message?: Prisma.StringWithAggregatesFilter<"ContactMessage"> | string
-  status?: Prisma.StringWithAggregatesFilter<"ContactMessage"> | string
+  status?: Prisma.EnumContactStatusWithAggregatesFilter<"ContactMessage"> | $Enums.ContactStatus
   adminReply?: Prisma.StringNullableWithAggregatesFilter<"ContactMessage"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ContactMessage"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"ContactMessage"> | Date | string
@@ -279,7 +279,7 @@ export type ContactMessageCreateInput = {
   email: string
   subject?: string | null
   message: string
-  status?: string
+  status?: $Enums.ContactStatus
   adminReply?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -291,7 +291,7 @@ export type ContactMessageUncheckedCreateInput = {
   email: string
   subject?: string | null
   message: string
-  status?: string
+  status?: $Enums.ContactStatus
   adminReply?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -303,7 +303,7 @@ export type ContactMessageUpdateInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   subject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   message?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumContactStatusFieldUpdateOperationsInput | $Enums.ContactStatus
   adminReply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -315,7 +315,7 @@ export type ContactMessageUncheckedUpdateInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   subject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   message?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumContactStatusFieldUpdateOperationsInput | $Enums.ContactStatus
   adminReply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -327,7 +327,7 @@ export type ContactMessageCreateManyInput = {
   email: string
   subject?: string | null
   message: string
-  status?: string
+  status?: $Enums.ContactStatus
   adminReply?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -339,7 +339,7 @@ export type ContactMessageUpdateManyMutationInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   subject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   message?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumContactStatusFieldUpdateOperationsInput | $Enums.ContactStatus
   adminReply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -351,7 +351,7 @@ export type ContactMessageUncheckedUpdateManyInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string
   subject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   message?: Prisma.StringFieldUpdateOperationsInput | string
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumContactStatusFieldUpdateOperationsInput | $Enums.ContactStatus
   adminReply?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -454,7 +454,7 @@ export type $ContactMessagePayload<ExtArgs extends runtime.Types.Extensions.Inte
     email: string
     subject: string | null
     message: string
-    status: string
+    status: $Enums.ContactStatus
     adminReply: string | null
     createdAt: Date
     updatedAt: Date
@@ -886,7 +886,7 @@ export interface ContactMessageFieldRefs {
   readonly email: Prisma.FieldRef<"ContactMessage", 'String'>
   readonly subject: Prisma.FieldRef<"ContactMessage", 'String'>
   readonly message: Prisma.FieldRef<"ContactMessage", 'String'>
-  readonly status: Prisma.FieldRef<"ContactMessage", 'String'>
+  readonly status: Prisma.FieldRef<"ContactMessage", 'ContactStatus'>
   readonly adminReply: Prisma.FieldRef<"ContactMessage", 'String'>
   readonly createdAt: Prisma.FieldRef<"ContactMessage", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"ContactMessage", 'DateTime'>

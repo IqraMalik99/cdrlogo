@@ -31,7 +31,7 @@ export type LogoRequestMinAggregateOutputType = {
   category: string | null
   notes: string | null
   requesterEmail: string | null
-  status: string | null
+  status: $Enums.ContactStatus | null
   adminNotes: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -44,7 +44,7 @@ export type LogoRequestMaxAggregateOutputType = {
   category: string | null
   notes: string | null
   requesterEmail: string | null
-  status: string | null
+  status: $Enums.ContactStatus | null
   adminNotes: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -187,7 +187,7 @@ export type LogoRequestGroupByOutputType = {
   formats: runtime.JsonValue
   notes: string | null
   requesterEmail: string | null
-  status: string
+  status: $Enums.ContactStatus
   adminNotes: string | null
   createdAt: Date
   updatedAt: Date
@@ -222,7 +222,7 @@ export type LogoRequestWhereInput = {
   formats?: Prisma.JsonFilter<"LogoRequest">
   notes?: Prisma.StringNullableFilter<"LogoRequest"> | string | null
   requesterEmail?: Prisma.StringNullableFilter<"LogoRequest"> | string | null
-  status?: Prisma.StringFilter<"LogoRequest"> | string
+  status?: Prisma.EnumContactStatusFilter<"LogoRequest"> | $Enums.ContactStatus
   adminNotes?: Prisma.StringNullableFilter<"LogoRequest"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LogoRequest"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"LogoRequest"> | Date | string
@@ -253,7 +253,7 @@ export type LogoRequestWhereUniqueInput = Prisma.AtLeast<{
   formats?: Prisma.JsonFilter<"LogoRequest">
   notes?: Prisma.StringNullableFilter<"LogoRequest"> | string | null
   requesterEmail?: Prisma.StringNullableFilter<"LogoRequest"> | string | null
-  status?: Prisma.StringFilter<"LogoRequest"> | string
+  status?: Prisma.EnumContactStatusFilter<"LogoRequest"> | $Enums.ContactStatus
   adminNotes?: Prisma.StringNullableFilter<"LogoRequest"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LogoRequest"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"LogoRequest"> | Date | string
@@ -287,7 +287,7 @@ export type LogoRequestScalarWhereWithAggregatesInput = {
   formats?: Prisma.JsonWithAggregatesFilter<"LogoRequest">
   notes?: Prisma.StringNullableWithAggregatesFilter<"LogoRequest"> | string | null
   requesterEmail?: Prisma.StringNullableWithAggregatesFilter<"LogoRequest"> | string | null
-  status?: Prisma.StringWithAggregatesFilter<"LogoRequest"> | string
+  status?: Prisma.EnumContactStatusWithAggregatesFilter<"LogoRequest"> | $Enums.ContactStatus
   adminNotes?: Prisma.StringNullableWithAggregatesFilter<"LogoRequest"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"LogoRequest"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"LogoRequest"> | Date | string
@@ -301,7 +301,7 @@ export type LogoRequestCreateInput = {
   formats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   notes?: string | null
   requesterEmail?: string | null
-  status?: string
+  status?: $Enums.ContactStatus
   adminNotes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -315,7 +315,7 @@ export type LogoRequestUncheckedCreateInput = {
   formats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   notes?: string | null
   requesterEmail?: string | null
-  status?: string
+  status?: $Enums.ContactStatus
   adminNotes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -329,7 +329,7 @@ export type LogoRequestUpdateInput = {
   formats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requesterEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumContactStatusFieldUpdateOperationsInput | $Enums.ContactStatus
   adminNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -343,7 +343,7 @@ export type LogoRequestUncheckedUpdateInput = {
   formats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requesterEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumContactStatusFieldUpdateOperationsInput | $Enums.ContactStatus
   adminNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -357,7 +357,7 @@ export type LogoRequestCreateManyInput = {
   formats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   notes?: string | null
   requesterEmail?: string | null
-  status?: string
+  status?: $Enums.ContactStatus
   adminNotes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -371,7 +371,7 @@ export type LogoRequestUpdateManyMutationInput = {
   formats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requesterEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumContactStatusFieldUpdateOperationsInput | $Enums.ContactStatus
   adminNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -385,7 +385,7 @@ export type LogoRequestUncheckedUpdateManyInput = {
   formats?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   requesterEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  status?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumContactStatusFieldUpdateOperationsInput | $Enums.ContactStatus
   adminNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -429,6 +429,10 @@ export type LogoRequestMinOrderByAggregateInput = {
   adminNotes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type EnumContactStatusFieldUpdateOperationsInput = {
+  set?: $Enums.ContactStatus
 }
 
 
@@ -502,7 +506,7 @@ export type $LogoRequestPayload<ExtArgs extends runtime.Types.Extensions.Interna
     formats: runtime.JsonValue
     notes: string | null
     requesterEmail: string | null
-    status: string
+    status: $Enums.ContactStatus
     adminNotes: string | null
     createdAt: Date
     updatedAt: Date
@@ -936,7 +940,7 @@ export interface LogoRequestFieldRefs {
   readonly formats: Prisma.FieldRef<"LogoRequest", 'Json'>
   readonly notes: Prisma.FieldRef<"LogoRequest", 'String'>
   readonly requesterEmail: Prisma.FieldRef<"LogoRequest", 'String'>
-  readonly status: Prisma.FieldRef<"LogoRequest", 'String'>
+  readonly status: Prisma.FieldRef<"LogoRequest", 'ContactStatus'>
   readonly adminNotes: Prisma.FieldRef<"LogoRequest", 'String'>
   readonly createdAt: Prisma.FieldRef<"LogoRequest", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"LogoRequest", 'DateTime'>

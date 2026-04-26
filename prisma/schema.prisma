@@ -40,10 +40,10 @@ model Logo {
   aiUrl  String? // separate/{slug}/*.ai
   cdrUrl String? // separate/{slug}/*.cdr
 
-svgfilesize String? @default("0 kb")
-pngfilesize String? @default("0 kb")
-aifilesize  String? @default("0 kb")
-cdrfilesize String? @default("0 kb")
+  svgfilesize String? @default("0 kb")
+  pngfilesize String? @default("0 kb")
+  aifilesize  String? @default("0 kb")
+  cdrfilesize String? @default("0 kb")
 
   // ── SVG source code ────────────────────────────────────────────────────────
   // Raw <svg>…</svg> markup extracted from the ZIP.
@@ -122,6 +122,7 @@ model User {
 model Page {
   id            String   @id @default(uuid())
   title         String
+   mode          String   @default("editor") 
   slug          String   @unique
   content       String?  // HTML from Tiptap
   publishStatus String   @default("draft") // "published" | "draft"
@@ -145,6 +146,11 @@ model Log {
   createdAt DateTime @default(now())
 }
 
+enum ContactStatus {
+  pending
+  replied
+}
+
 model LogoRequest {
   id             String   @id @default(uuid())
 
@@ -161,7 +167,7 @@ model LogoRequest {
 
   // ── Admin workflow ────────────────────────────────────────────────────────
   // "pending" | "in_progress" | "completed" | "rejected"
-  status         String   @default("pending")
+   status     ContactStatus @default(pending)
   adminNotes     String? 
 
   // ── Timestamps ────────────────────────────────────────────────────────────
@@ -184,7 +190,7 @@ model ContactMessage {
 
   // ── Admin workflow ────────────────────────────────────────────────────────
   // "unread" | "read" | "replied" | "archived"
-  status      String  @default("unread")
+   status     ContactStatus @default(pending)
   adminReply  String? 
 
   // ── Timestamps ────────────────────────────────────────────────────────────
