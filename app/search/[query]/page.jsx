@@ -213,7 +213,7 @@ export default function SearchPage() {
           padding: 0 0 60px;
           transition: background 0.35s;
         }
-        .search-container { max-width: 1200px; margin: 0 auto; padding: 32px 24px 0; }
+        .search-container { max-width: 1200px; margin: 0 auto; padding: 90px 24px 0; }
 
         /* ── Search bar ── */
         .search-hero { margin-bottom: 32px; }
@@ -366,7 +366,6 @@ export default function SearchPage() {
                 <Navbar />
                 <div className="search-page">
                     <div className="search-container">
-
                         {/* ── Search hero ── */}
                         <div className="search-hero">
                             <span className="search-label">
@@ -421,7 +420,7 @@ export default function SearchPage() {
                         {/* ── Grid ── */}
                         {error ? (
                             <div className="error-state">
-                                <p>Search failed: {error}</p>
+                                <span> Not found</span>
                                 <button onClick={() => doSearch(lastQuery)}>Try again</button>
                             </div>
                         ) : !lastQuery && !loading ? (
@@ -474,7 +473,7 @@ export default function SearchPage() {
                     </div>
                 </div>
             </div>
-            <Footer/>
+            <Footer />
         </>
     );
 }
