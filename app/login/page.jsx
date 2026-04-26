@@ -34,21 +34,39 @@ export default function Login() {
     return () => clearTimeout(t);
   }, []);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoginError("");
-    if (!loginEmail || !loginPassword) { setLoginError("Please fill in all fields."); return; }
-    setLoginLoading(true);
-    try {
-      const res = await signIn("credentials", { email: loginEmail, password: loginPassword });
-      if (res.status !== 200) throw new Error("Login failed");
-      console.log("Login successful, session:", res);
-    } catch (err) {
-      setLoginError(err.message);
-    } finally {
-      setLoginLoading(false);
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoginError("");
+  if (!loginEmail || !loginPassword) {
+    setLoginError("Please fill in all fields.");
+    return;
+  }
+  setLoginLoading(true);
+  try {
+    const res = await signIn("credentials", {
+      email: loginEmail,
+      password: loginPassword,
+      redirect: false,        // ✅ CRITICAL — prevents the page flash/redirect
+    });
+
+    if (res?.error) {
+      // Map next-auth error codes to friendly messages
+      const messages = {
+        "Please verify your email first": "Please verify your email before signing in.",
+        "User not found":    "No account found with that email.",
+        "Invalid password":  "Incorrect password. Please try again.",
+      };
+      setLoginError(messages[res.error] || "Login failed. Please try again.");
+      return;
     }
-  };
+
+    // ✅ Success — session useEffect will handle redirect
+  } catch (err) {
+    setLoginError("Something went wrong. Please try again.");
+  } finally {
+    setLoginLoading(false);
+  }
+};
 
 useEffect(() => {
   if (status === "loading") return; // wait for session
