@@ -16,37 +16,26 @@ export async function POST(req) {
         slug: true,
         brand: true,
         website: true,
-
         category: true,
         industry: true,
         country: true,
         license: true,
-
         description: true,
         history: true,
-
         tags: true,
         brandColors: true,
-
-        // ONLY PUBLIC
         webpUrl: true,
-
-        // optional safe preview
         svgContent: true,
-
         metaTitle: true,
         metaDescription: true,
         altText: true,
         focusKeywords: true,
-
         publishStatus: true,
         downloadedNumberByPeople: true,
-
         svgfilesize: true,
         pngfilesize: true,
         aifilesize: true,
         cdrfilesize: true,
-
         createdAt: true,
         updatedAt: true,
       },
@@ -56,9 +45,28 @@ export async function POST(req) {
       return new Response("Logo not found", { status: 404 });
     }
 
+    // ── Fetch related logos from same category ────────────────────────────
+    const related = await prisma.logo.findMany({
+      where: {
+        category: logo.category,
+        slug: { not: slug },                               // ✅ exclude current
+        publishStatus: { in: ["published", "Published"] }, // ✅ both casings
+      },
+      select: {
+        slug: true,
+        logoName: true,
+        brand: true,
+        webpUrl: true,
+        brandColors: true,
+      },
+      take: 5,
+      orderBy: { downloadedNumberByPeople: "desc" },
+    });
+
     return Response.json({
       success: true,
       data: logo,
+      related,
     });
 
   } catch (err) {
