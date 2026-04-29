@@ -143,14 +143,14 @@ export default function UserManagement({ dark = true }) {
   const debounceRef = useRef(null);
 
   // Theme tokens — mirrors the CMS pattern
-  const bg         = dark ? "#0f1117" : "#f8fafc";
+  const bg         = dark ? "#0f1117" : "#FFFFFF";
   const surface    = dark ? "#141924" : "#ffffff";
   const border     = dark ? "#1e2535" : "#e2e8f0";
   const text       = dark ? "#e2e8f0" : "#1e293b";
   const muted      = dark ? "#64748b" : "#94a3b8";
   const inputBg    = dark ? "#0f1117" : "#ffffff";
   const headClr    = dark ? "#475569" : "#94a3b8";
-  const rowHoverBg = dark ? "#141924" : "#f8fafc";
+  const rowHoverBg = dark ? "#141924" : "#FFFFFF";
   const skeletonBg = dark ? "#1e2535" : "#e2e8f0";
 
   const handleSearchChange = (v) => {

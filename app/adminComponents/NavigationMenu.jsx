@@ -616,7 +616,7 @@ export default function FooterSettings({ dark = true }) {
   };
 
   // ── theme ──────────────────────────────────────────────────────────────────
-  const bg     = dark ? "#0b0f17" : "#f0f4f8";
+  const bg     = dark ? "#0b0f17" : "#FFFFFF";
   const border = dark ? "#1f2d3d" : "#e2e8f0";
   const text   = dark ? "#f1f5f9" : "#0f172a";
   const muted  = dark ? "#475569" : "#94a3b8";

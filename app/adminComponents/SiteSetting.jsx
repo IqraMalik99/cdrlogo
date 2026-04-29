@@ -12,7 +12,7 @@ const field = (dark) => ({
   padding: "10px 14px",
   borderRadius: 10,
   border: `1px solid ${dark ? "#1e2535" : "#e2e8f0"}`,
-  background: dark ? "#0f1117" : "#f8fafc",
+  background: dark ? "#0f1117" : "#FFFFFF",
   color: dark ? "#e2e8f0" : "#1e293b",
   fontSize: 14,
   fontFamily: "'DM Sans', sans-serif",
@@ -122,7 +122,7 @@ function Section({ icon: Icon, title, subtitle, dark, children }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function SiteSettings({ dark = true }) {
-  const bg   = dark ? "#0f1117" : "#f8fafc";
+  const bg   = dark ? "#0f1117" : "#FFFFFF";
   const text  = dark ? "#e2e8f0" : "#1e293b";
   const muted = dark ? "#64748b" : "#94a3b8";
   const border = dark ? "#1e2535" : "#e2e8f0";
@@ -309,7 +309,7 @@ export default function SiteSettings({ dark = true }) {
           <div style={{
             display: "flex", alignItems: "center",
             justifyContent: "space-between",
-            background: dark ? "#0f1117" : "#f8fafc",
+            background: dark ? "#0f1117" : "#FFFFFF",
             borderRadius: 10,
             border: `1px solid ${border}`,
             padding: "14px 16px",
@@ -347,7 +347,7 @@ export default function SiteSettings({ dark = true }) {
                   border: `1px solid ${form.limit === n ? "#22c55e" : border}`,
                   background: form.limit === n
                     ? "rgba(34,197,94,0.12)"
-                    : dark ? "#0f1117" : "#f8fafc",
+                    : dark ? "#0f1117" : "#FFFFFF",
                   color: form.limit === n ? "#22c55e" : muted,
                   fontWeight: form.limit === n ? 700 : 500,
                   fontSize: 14,
@@ -391,7 +391,7 @@ export default function SiteSettings({ dark = true }) {
             <div style={{
               display: "flex", alignItems: "center",
               justifyContent: "space-between",
-              background: dark ? "#0f1117" : "#f8fafc",
+              background: dark ? "#0f1117" : "#FFFFFF",
               borderRadius: 10,
               border: `1px solid ${form.MaintanceMessage.trim() ? "#f59e0b55" : border}`,
               padding: "14px 16px",

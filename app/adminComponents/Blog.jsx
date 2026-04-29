@@ -57,12 +57,12 @@ function MiniPreview({ content, dark }) {
 }
 
 export default function BlogManager({ dark }) {
-  const bg       = dark ? "#0f1117"               : "#f8fafc";
+  const bg       = dark ? "#0f1117"               : "#FFFFFF";
   const card     = dark ? "#131720"               : "#ffffff";
   const border   = dark ? "#1e2535"               : "#e2e8f0";
   const text     = dark ? "#e2e8f0"               : "#1e293b";
   const muted    = dark ? "#64748b"               : "#94a3b8";
-  const inputBg  = dark ? "rgba(255,255,255,.04)" : "#f8fafc";
+  const inputBg  = dark ? "rgba(255,255,255,.04)" : "#FFFFFF";
   const inputBdr = dark ? "rgba(255,255,255,.1)"  : "#e2e8f0";
   const labelClr = dark ? "rgba(255,255,255,.55)" : "#64748b";
   const green    = "#22c55e";
@@ -467,7 +467,7 @@ export default function BlogManager({ dark }) {
             <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
               {EMOJI_OPTIONS.map(e=>(
                 <button key={e} onClick={()=>set("coverEmoji",e)}
-                  style={{ width:36, height:36, borderRadius:8, background:form.coverEmoji===e?greenDim:(dark?"rgba(255,255,255,.04)":"#f8fafc"), border:`1px solid ${form.coverEmoji===e?greenBdr:border}`, fontSize:18, cursor:"pointer", transition:"all .15s" }}>
+                  style={{ width:36, height:36, borderRadius:8, background:form.coverEmoji===e?greenDim:(dark?"rgba(255,255,255,.04)":"#FFFFFF"), border:`1px solid ${form.coverEmoji===e?greenBdr:border}`, fontSize:18, cursor:"pointer", transition:"all .15s" }}>
                   {e}
                 </button>
               ))}

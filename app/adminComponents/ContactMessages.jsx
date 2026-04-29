@@ -24,7 +24,7 @@ export default function ContactMessages({ dark }) {
   const text     = dark ? "#e2e8f0" : "#1e293b";
   const muted    = dark ? "#64748b" : "#94a3b8";
   const muted2   = dark ? "#94a3b8" : "#64748b";
-  const bg       = dark ? "#0f1117" : "#f8fafc";
+  const bg       = dark ? "#0f1117" : "#FFFFFF";
 
   const [messages, setMessages]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -298,7 +298,7 @@ export default function ContactMessages({ dark }) {
                 placeholder={`Write your reply to ${selected.name}…`}
                 style={{
                   width: "100%", padding: "10px 12px", borderRadius: 8, fontSize: 12,
-                  background: dark ? "rgba(255,255,255,.04)" : "#f8fafc",
+                  background: dark ? "rgba(255,255,255,.04)" : "#FFFFFF",
                   border: `1px solid ${border}`, color: text, outline: "none",
                   resize: "vertical", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.6,
                 }}

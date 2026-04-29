@@ -21,9 +21,11 @@ const NAV_ITEMS = [
   { key: "ContactMessages", label: "Contact Messages", icon: Mail },
   { key: "LogoRequests", label: "Logo Requests", icon: Bookmark },
   { key: "Page/CMS", label: "CMS / Pages", icon: FileText },
+    { key: "DCMA/Report", label: "DCMA / Report", icon: Menu },
   { key: "Navigation/Menu", label: "Navigation/Menu", icon: Navigation },
   { key: "Media Library", label: "Media Library", icon: Image },
   { key: "SiteSettings", label: "Site Settings", icon: Settings },
+
 
 ];
 

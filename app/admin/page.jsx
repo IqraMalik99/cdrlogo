@@ -17,6 +17,7 @@ import SiteSettings from "../adminComponents/SiteSetting";
 import ContactMessages from "../adminComponents/ContactMessages";
 import LogoRequests    from "../adminComponents/LogoRequest";
 import BlogManager from "../adminComponents/Blog";
+import Report from "../adminComponents/Report";
 
 import { useRouter } from "next/navigation";
 
@@ -35,6 +36,7 @@ const PAGE_TITLES = {
   "ContactMessages": "Contact Messages",
 "LogoRequests":    "Logo Requests",
 "BlogManager": "Blog Manager",
+"DCMA/Report": "DCMA / Report",
 
 };
 
@@ -100,6 +102,7 @@ export default function AdminPage() {
         case "ContactMessages": return <ContactMessages dark={dark} />;
 case "LogoRequests":    return <LogoRequests dark={dark} />;
 case "Blog": return <BlogManager dark={dark} />;
+case "DCMA/Report": return <Report dark={dark} />;
 
       default:
         return (

@@ -58,7 +58,8 @@ export const ModelName = {
   Log: 'Log',
   LogoRequest: 'LogoRequest',
   ContactMessage: 'ContactMessage',
-  Blog: 'Blog'
+  Blog: 'Blog',
+  Report: 'Report'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -225,6 +226,20 @@ export const BlogScalarFieldEnum = {
 } as const
 
 export type BlogScalarFieldEnum = (typeof BlogScalarFieldEnum)[keyof typeof BlogScalarFieldEnum]
+
+
+export const ReportScalarFieldEnum = {
+  id: 'id',
+  logoId: 'logoId',
+  logoName: 'logoName',
+  reason: 'reason',
+  reporterEmail: 'reporterEmail',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReportScalarFieldEnum = (typeof ReportScalarFieldEnum)[keyof typeof ReportScalarFieldEnum]
 
 
 export const SortOrder = {

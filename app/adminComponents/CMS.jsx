@@ -28,7 +28,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 function buildTheme(dark) {
   return {
     // Layout
-    bg:      dark ? "#080b12"  : "#f8fafc",
+    bg:      dark ? "#080b12"  : "#FFFFFF",
     surface: dark ? "#0e1420"  : "#ffffff",
     card:    dark ? "#111827"  : "#f1f5f9",
     // Borders
@@ -56,7 +56,7 @@ function buildTheme(dark) {
     // Skeleton
     skeleton: dark ? "#1e2535" : "#e2e8f0",
     // Row hover
-    rowHover: dark ? "rgba(255,255,255,0.02)" : "#f8fafc",
+    rowHover: dark ? "rgba(255,255,255,0.02)" : "#FFFFFF",
     // Head bg
     headBg:  dark ? "#0a0d14"  : "#f1f5f9",
   };

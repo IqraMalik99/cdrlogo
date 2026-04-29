@@ -19,6 +19,12 @@ export default function LogoDetail() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const [reportOpen, setReportOpen] = useState(false);
+    const [reportReason, setReportReason] = useState("");
+    const [reportEmail, setReportEmail] = useState("");
+    const [reportSubmitting, setReportSubmitting] = useState(false);
+    const [reportDone, setReportDone] = useState(false);
+
     const [agreed, setAgreed] = useState(false);
     const [selectedFormat, setSelectedFormat] = useState(null);
     const [downloading, setDownloading] = useState(false);
@@ -44,7 +50,7 @@ export default function LogoDetail() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ slug }),
                 });
-             
+
                 const data = await res.json();
                 setLogo(data.data || data);
                 console.log("Fetched logo data:", data);
@@ -60,7 +66,7 @@ export default function LogoDetail() {
 
     // ── Static format badges — always show all 4 ─────────────────────────
     const formatBadges = [
-        { key: "ai",  label: "AI",  cls: "fmt-ai",  icon: "AI",  sizeKey: "aifilesize"  },
+        { key: "ai", label: "AI", cls: "fmt-ai", icon: "AI", sizeKey: "aifilesize" },
         { key: "cdr", label: "CDR", cls: "fmt-cdr", icon: "CDR", sizeKey: "cdrfilesize" },
         { key: "svg", label: "SVG", cls: "fmt-svg", icon: "SVG", sizeKey: "svgfilesize" },
         { key: "png", label: "PNG", cls: "fmt-png", icon: "PNG", sizeKey: "pngfilesize" },
@@ -125,6 +131,33 @@ export default function LogoDetail() {
         return `${r}, ${g}, ${b}`;
     };
 
+    const handleReport = async () => {
+        if (!reportReason.trim() || !reportEmail.trim()) return;
+        setReportSubmitting(true);
+        try {
+            await fetch("/api/report/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    logoId: logo.id,
+                    logoName: logo.logoName,
+                    reason: reportReason,
+                    reporterEmail: reportEmail,
+                }),
+            });
+            setReportDone(true);
+            setTimeout(() => {
+                setReportOpen(false);
+                setReportDone(false);
+                setReportReason("");
+                setReportEmail("");
+            }, 2000);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setReportSubmitting(false);
+        }
+    };
     if (loading) return <LoadingSkeleton dark={dark} />;
     if (error) return <ErrorState dark={dark} message={error} onBack={() => router.back()} />;
     if (!logo) return null;
@@ -170,6 +203,107 @@ export default function LogoDetail() {
 
   .fmt-select-size { font-size: 8px; font-weight: 600; color: var(--muted); opacity: 0.75; letter-spacing: .3px; }
 
+  /* ── Report flag button ── */
+.preview-card { position: relative; }
+.report-flag-btn {
+  position: absolute; top: 10px; right: 10px;
+  width: 30px; height: 30px; border-radius: 8px;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px;
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity .2s, transform .2s;
+  z-index: 5;
+}
+[data-theme="light"] .report-flag-btn {
+  background: rgba(255,255,255,0.75);
+  border-color: rgba(0,0,0,0.1);
+}
+.preview-card:hover .report-flag-btn {
+  opacity: 1; transform: translateY(0);
+}
+
+/* ── Report modal overlay ── */
+.report-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.report-modal {
+  width: 100%; max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px; padding: 22px;
+  font-family: 'Sora', sans-serif;
+  animation: report-in .18s cubic-bezier(.22,1,.36,1);
+}
+@keyframes report-in {
+  from { opacity:0; transform: scale(.96) translateY(8px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+.report-modal-header {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 16px;
+}
+.report-modal-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 800; color: var(--heading);
+}
+.report-modal-close {
+  width: 26px; height: 26px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--input-bg);
+  cursor: pointer; color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s;
+}
+.report-modal-close:hover { background: var(--surface2); color: var(--heading); }
+.report-logo-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 100px;
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2);
+  font-size: 11px; font-weight: 600; color: #ef4444;
+  margin-bottom: 16px;
+}
+.report-label {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  margin-bottom: 6px; margin-top: 12px;
+}
+.report-label:first-of-type { margin-top: 0; }
+.report-textarea {
+  width: 100%; padding: 10px 12px;
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--heading);
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  line-height: 1.6; resize: none; outline: none;
+  transition: border-color .2s;
+}
+.report-textarea:focus { border-color: rgba(239,68,68,.4); }
+.report-input {
+  width: 100%; padding: 9px 12px;
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--heading);
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  outline: none; transition: border-color .2s;
+}
+.report-input:focus { border-color: rgba(239,68,68,.4); }
+.report-submit-btn {
+  width: 100%; margin-top: 16px; padding: 11px;
+  border-radius: 10px; border: none; cursor: pointer;
+  font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff; transition: opacity .2s, transform .15s;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.report-submit-btn:hover { opacity: .9; transform: translateY(-1px); }
+.report-submit-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.report-success {
+  text-align: center; padding: 16px 0 4px;
+  font-size: 13px; color: #22c55e; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+} 
   .dot-grid {
     position: fixed; inset: 0;
     background-image: radial-gradient(var(--dot) 1px, transparent 1px);
@@ -434,6 +568,16 @@ export default function LogoDetail() {
                         {/* ── LEFT ── */}
                         <div className="left">
                             <div className="preview-card anim d0">
+
+                                <button
+                                    className="report-flag-btn"
+                                    onClick={() => setReportOpen(true)}
+                                    title="Report this logo"
+                                >
+                                    🚩
+                                </button>
+
+
                                 <div className="preview-img-wrap">
                                     {logo.webpUrl ? (
                                         <img src={logo.webpUrl} alt={logo.altText || logo.logoName} draggable={false} onDragStart={(e) => e.preventDefault()} />
@@ -490,9 +634,9 @@ export default function LogoDetail() {
                             <div className="card anim d2">
                                 <div className="info-grid">
                                     {[
-                                        { icon: "🏷️", label: "Brand",    value: logo.brand    || "—" },
+                                        { icon: "🏷️", label: "Brand", value: logo.brand || "—" },
                                         { icon: "⚙️", label: "Industry", value: logo.industry || "—" },
-                                        { icon: "🌍", label: "Country",  value: logo.country  || "—" },
+                                        { icon: "🌍", label: "Country", value: logo.country || "—" },
                                         { icon: "📁", label: "Category", value: logo.category || "—" },
                                     ].map(item => (
                                         <div key={item.label} className="info-cell">
@@ -691,6 +835,80 @@ export default function LogoDetail() {
                 </div>
                 <Footer />
             </div>
+            {reportOpen && (
+  <div className="report-overlay" onClick={() => setReportOpen(false)}>
+    <div
+      data-theme={dark ? "dark" : "light"}
+      className="report-modal"
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="report-modal-header">
+        <div className="report-modal-title">
+          🚩 Report Logo
+        </div>
+        <button className="report-modal-close" onClick={() => setReportOpen(false)}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div className="report-logo-pill">
+        📁 {logo.logoName}
+      </div>
+
+      {reportDone ? (
+        <div className="report-success">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="9 12 11 14 15 10"/>
+          </svg>
+          Report submitted successfully
+        </div>
+      ) : (
+        <>
+          <div className="report-label">Reason for reporting</div>
+          <textarea
+            className="report-textarea"
+            rows={4}
+            placeholder="e.g. Trademark infringement, copyright violation, unauthorized use…"
+            value={reportReason}
+            onChange={e => setReportReason(e.target.value)}
+          />
+
+          <div className="report-label">Your contact email</div>
+          <input
+            type="email"
+            className="report-input"
+            placeholder="legal@yourcompany.com"
+            value={reportEmail}
+            onChange={e => setReportEmail(e.target.value)}
+          />
+
+          <button
+            className="report-submit-btn"
+            onClick={handleReport}
+            disabled={!reportReason.trim() || !reportEmail.trim() || reportSubmitting}
+          >
+            {reportSubmitting ? (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                  style={{ animation: "spin 1s linear infinite" }}>
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                Submitting…
+              </>
+            ) : "Submit Report"}
+          </button>
+        </>
+      )}
+    </div>
+  </div>
+)}
         </>
     );
 }

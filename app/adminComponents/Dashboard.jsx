@@ -229,7 +229,7 @@ export default function Dashboard({ dark = true, setActive }) {
   useEffect(() => { load(); }, []);
 
   // theme tokens
-  const bg      = dark ? "#0b0f17" : "#f0f4f8";
+  const bg      = dark ? "#0b0f17" : "#FFFFFF";
   const surface = dark ? "#111827" : "#ffffff";
   const border  = dark ? "#1f2d3d" : "#e2e8f0";
   const text    = dark ? "#f1f5f9" : "#0f172a";
@@ -483,7 +483,7 @@ export default function Dashboard({ dark = true, setActive }) {
                 onMouseEnter={e => {
                   e.currentTarget.style.background = isErr
                     ? (dark ? "#ef444415" : "#fee2e2")
-                    : (dark ? "#151f2e" : "#f8fafc");
+                    : (dark ? "#151f2e" : "#FFFFFF");
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.background = isErr

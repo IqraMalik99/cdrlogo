@@ -6,13 +6,13 @@ const TABS = ["Main Categories", "Brand Categories", "Template Categories"];
 
 export default function AdminCategories({ dark = true }) {
   // ── Theme tokens ───────────────────────────────────────────────────────
-  const bg         = dark ? "#0f1117"                    : "#f8fafc";
+  const bg         = dark ? "#0f1117"                    : "#FFFFFF";
   const card       = dark ? "#131929"                    : "#ffffff";
   const border     = dark ? "#1e2d45"                    : "#e2e8f0";
   const text       = dark ? "#e2e8f0"                    : "#1e293b";
   const muted      = dark ? "#64748b"                    : "#94a3b8";
   const green      = "#22c55e";
-  const inputBg    = dark ? "#0f1825"                    : "#f8fafc";
+  const inputBg    = dark ? "#0f1825"                    : "#FFFFFF";
   const surfaceHov = dark ? "rgba(255,255,255,0.055)"    : "#ffffff";
   const borderHov  = dark ? "rgba(255,255,255,0.16)"     : "rgba(0,0,0,0.18)";
 

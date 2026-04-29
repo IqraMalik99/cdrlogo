@@ -11,12 +11,12 @@ export default function BulkOperations({ dark }) {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const bg = dark ? "#0f1117" : "#f8fafc";
+  const bg = dark ? "#0f1117" : "#FFFFFF";
   const card = dark ? "#131720" : "#ffffff";
   const border = dark ? "#1e2535" : "#e2e8f0";
   const text = dark ? "#e2e8f0" : "#1e293b";
   const muted = dark ? "#64748b" : "#94a3b8";
-  const inputBg = dark ? "#0d1117" : "#f8fafc";
+  const inputBg = dark ? "#0d1117" : "#FFFFFF";
   const green = "#22c55e";
   const greenDim = dark ? "rgba(34,197,94,0.12)" : "rgba(22,163,74,0.08)";
   const redDim = dark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.07)";
@@ -182,7 +182,7 @@ export default function BulkOperations({ dark }) {
 
             {/* Bulk Status */}
             <div style={{
-              background: dark ? "#0d1117" : "#f8fafc",
+              background: dark ? "#0d1117" : "#FFFFFF",
               borderRadius: 10, border: `1px solid ${border}`,
               padding: 16
             }}>
@@ -207,7 +207,7 @@ export default function BulkOperations({ dark }) {
 
             {/* Bulk Category */}
             <div style={{
-              background: dark ? "#0d1117" : "#f8fafc",
+              background: dark ? "#0d1117" : "#FFFFFF",
               borderRadius: 10, border: `1px solid ${border}`,
               padding: 16
             }}>
@@ -233,7 +233,7 @@ export default function BulkOperations({ dark }) {
 
             {/* Bulk SEO */}
             <div style={{
-              background: dark ? "#0d1117" : "#f8fafc",
+              background: dark ? "#0d1117" : "#FFFFFF",
               borderRadius: 10, border: `1px solid ${border}`,
               padding: 16
             }}>
@@ -253,7 +253,7 @@ export default function BulkOperations({ dark }) {
 
             {/* Bulk Delete */}
             <div style={{
-              background: dark ? "#0d1117" : "#f8fafc",
+              background: dark ? "#0d1117" : "#FFFFFF",
               borderRadius: 10, border: `1px solid ${border}`,
               padding: 16
             }}>

@@ -60,12 +60,12 @@ export default function UploadLogo({ dark }) {
   });
 
   // ── theme tokens ─────────────────────────────────────────────────
-  const bg       = dark ? "#0f1117" : "#f8fafc";
+  const bg       = dark ? "#0f1117" : "#FFFFFF";
   const card     = dark ? "#131720" : "#ffffff";
   const border   = dark ? "#1e2535" : "#e2e8f0";
   const text     = dark ? "#e2e8f0" : "#1e293b";
   const muted    = dark ? "#64748b" : "#94a3b8";
-  const inputBg  = dark ? "#0d1117" : "#f8fafc";
+  const inputBg  = dark ? "#0d1117" : "#FFFFFF";
   const inputBdr = dark ? "#1e2535" : "#e2e8f0";
   const labelClr = dark ? "#94a3b8" : "#475569";
   const green    = "#22c55e";

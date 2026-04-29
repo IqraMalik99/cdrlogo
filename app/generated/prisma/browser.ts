@@ -57,3 +57,8 @@ export type ContactMessage = Prisma.ContactMessageModel
  * 
  */
 export type Blog = Prisma.BlogModel
+/**
+ * Model Report
+ * 
+ */
+export type Report = Prisma.ReportModel
