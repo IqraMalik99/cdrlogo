@@ -5,15 +5,13 @@ import { useTheme } from "../context/ThemeContext";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 
-
-
-
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropOpen, setDropOpen] = useState(false);
   const { dark, setDark } = useTheme();
-const [navLinks, setNavLinks] = useState([]);
-const [loadingNav, setLoadingNav] = useState(true);
+  const [navLinks, setNavLinks] = useState([]);
+  const [loadingNav, setLoadingNav] = useState(true);
+  const [showThemeToggle, setShowThemeToggle] = useState(false);
 
   const dropRef = useRef(null);
   const { data: session, status } = useSession();
@@ -23,12 +21,9 @@ const [loadingNav, setLoadingNav] = useState(true);
 
   const username = session?.user?.name ?? "";
   const email = session?.user?.email ?? "";
-  const initial = username?.charAt(0)?.toUpperCase() ?? "";
-  const [showThemeToggle, setShowThemeToggle] = useState(false);
+  const initial = username?.charAt(0)?.toUpperCase() || email?.charAt(0)?.toUpperCase() || "?";
 
-  // Close dropdown on outside click
   useEffect(() => {
-
     function handleClick(e) {
       if (dropRef.current && !dropRef.current.contains(e.target)) {
         setDropOpen(false);
@@ -39,36 +34,28 @@ const [loadingNav, setLoadingNav] = useState(true);
   }, []);
 
   useEffect(() => {
-  async function loadNav() {
-    try {
-      const res = await fetch("/api/website/header", {
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (Array.isArray(data?.navItems)) {
-        setNavLinks(
-          data.navItems
-            .filter((item) => item.add)
-            .map((item) => ({
-              label: item.label,
-              href: item.link,
-            }))
-        );
+    async function loadNav() {
+      try {
+        const res = await fetch("/api/website/header", { cache: "no-store" });
+        const data = await res.json();
+        if (Array.isArray(data?.navItems)) {
+          setNavLinks(
+            data.navItems
+              .filter((item) => item.add)
+              .map((item) => ({ label: item.label, href: item.link }))
+          );
+        }
+        if (typeof data?.showmode === "boolean") {
+          setShowThemeToggle(data.showmode);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingNav(false);
       }
-      if (typeof data?.showmode === "boolean") {
-  setShowThemeToggle(data.showmode);
-}
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingNav(false);
     }
-  }
-
-  loadNav();
-}, []);
+    loadNav();
+  }, []);
 
   return (
     <>
@@ -80,7 +67,6 @@ const [loadingNav, setLoadingNav] = useState(true);
           --nav-border: rgba(255,255,255,0.06);
           --nav-mobile-bg: rgba(10,10,15,0.98);
           --nav-mobile-border: rgba(255,255,255,0.07);
-          --logo-text: #ffffff;
           --link-color: rgba(255,255,255,0.65);
           --link-hover-color: #fff;
           --link-hover-bg: rgba(255,255,255,0.07);
@@ -88,14 +74,14 @@ const [loadingNav, setLoadingNav] = useState(true);
           --icon-hover-color: #fff;
           --icon-hover-bg: rgba(255,255,255,0.08);
           --hamburger-line: rgba(255,255,255,0.7);
-          --drop-bg: rgba(16,16,22,0.97);
+          --drop-bg: rgba(14,14,20,0.98);
           --drop-border: rgba(255,255,255,0.08);
           --drop-text: rgba(255,255,255,0.85);
-          --drop-sub: rgba(255,255,255,0.4);
+          --drop-sub: rgba(255,255,255,0.38);
           --drop-divider: rgba(255,255,255,0.07);
-          --drop-hover: rgba(255,255,255,0.06);
-          --drop-logout: rgba(239,68,68,0.12);
-          --drop-logout-hover: rgba(239,68,68,0.2);
+          --drop-hover: rgba(255,255,255,0.05);
+          --drop-logout-bg: rgba(239,68,68,0.1);
+          --drop-logout-hover: rgba(239,68,68,0.18);
           --drop-logout-color: #f87171;
         }
         [data-theme="light"] {
@@ -103,7 +89,6 @@ const [loadingNav, setLoadingNav] = useState(true);
           --nav-border: rgba(0,0,0,0.08);
           --nav-mobile-bg: rgba(250,250,252,0.99);
           --nav-mobile-border: rgba(0,0,0,0.07);
-          --logo-text: #0a0a14;
           --link-color: rgba(0,0,0,0.58);
           --link-hover-color: #000;
           --link-hover-bg: rgba(0,0,0,0.05);
@@ -114,11 +99,11 @@ const [loadingNav, setLoadingNav] = useState(true);
           --drop-bg: rgba(255,255,255,0.98);
           --drop-border: rgba(0,0,0,0.09);
           --drop-text: rgba(0,0,0,0.85);
-          --drop-sub: rgba(0,0,0,0.42);
+          --drop-sub: rgba(0,0,0,0.4);
           --drop-divider: rgba(0,0,0,0.07);
           --drop-hover: rgba(0,0,0,0.04);
-          --drop-logout: rgba(239,68,68,0.07);
-          --drop-logout-hover: rgba(239,68,68,0.14);
+          --drop-logout-bg: rgba(239,68,68,0.07);
+          --drop-logout-hover: rgba(239,68,68,0.13);
           --drop-logout-color: #dc2626;
         }
 
@@ -181,13 +166,12 @@ const [loadingNav, setLoadingNav] = useState(true);
           transition: background 0.2s, border-color 0.2s, color 0.2s;
           white-space: nowrap; font-family: 'Sora', sans-serif;
         }
-        .login-btn:hover { background: rgba(7,166,38,0.18); border-color: rgba(7,166,38,0.55); color: #05891e; }
-        [data-theme="dark"] .login-btn { color: #4ade80; background: rgba(7,166,38,0.1); border-color: rgba(7,166,38,0.3); }
-        [data-theme="dark"] .login-btn:hover { color: #86efac; background: rgba(7,166,38,0.18); border-color: rgba(7,166,38,0.5); }
+        .login-btn:hover { background: rgba(7,166,38,0.18); border-color: rgba(7,166,38,0.55); }
+        [data-theme="dark"] .login-btn { color: #4ade80; }
+        [data-theme="dark"] .login-btn:hover { color: #86efac; }
 
-        /* ── Avatar button ─────────────────────────────── */
+        /* Avatar button */
         .avatar-wrap { position: relative; }
-
         .avatar-btn {
           width: 36px; height: 36px; border-radius: 50%;
           background: linear-gradient(135deg, #07A626 0%, #05891e 100%);
@@ -200,8 +184,8 @@ const [loadingNav, setLoadingNav] = useState(true);
         }
         .avatar-btn:hover {
           transform: scale(1.07);
-          box-shadow: 0 0 0 3px rgba(7,166,38,0.22);
-          border-color: rgba(7,166,38,0.65);
+          box-shadow: 0 0 0 3px rgba(7,166,38,0.2);
+          border-color: rgba(7,166,38,0.6);
         }
 
         /* Dropdown */
@@ -211,11 +195,11 @@ const [loadingNav, setLoadingNav] = useState(true);
           background: var(--drop-bg);
           border: 1px solid var(--drop-border);
           border-radius: 14px;
-          box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+          box-shadow: 0 16px 40px rgba(0,0,0,0.2);
           overflow: hidden;
           opacity: 0; transform: translateY(-6px) scale(0.97);
           pointer-events: none;
-          transition: opacity 0.2s, transform 0.2s;
+          transition: opacity 0.18s, transform 0.18s;
           z-index: 200;
         }
         .avatar-dropdown.open {
@@ -224,33 +208,34 @@ const [loadingNav, setLoadingNav] = useState(true);
         }
 
         .drop-header {
-          display: flex; align-items: center; gap: 12px;
+          display: flex; align-items: center; gap: 11px;
           padding: 14px 16px 12px;
         }
         .drop-avatar {
-          width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+          width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
           background: linear-gradient(135deg, #07A626 0%, #05891e 100%);
           display: flex; align-items: center; justify-content: center;
-          color: #fff; font-size: 16px; font-weight: 700;
+          color: #fff; font-size: 15px; font-weight: 700;
           font-family: 'Sora', sans-serif;
         }
         .drop-user-info { overflow: hidden; }
         .drop-name {
-          font-size: 13.5px; font-weight: 600;
+          font-size: 13px; font-weight: 600;
           color: var(--drop-text);
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .drop-email {
-          font-size: 11.5px; font-weight: 400;
+          font-size: 11px;
           color: var(--drop-sub); margin-top: 1px;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
-        .drop-divider { height: 1px; background: var(--drop-divider); margin: 0; }
+        .drop-divider { height: 1px; background: var(--drop-divider); }
 
+        /* Generic dropdown item */
         .drop-item {
           display: flex; align-items: center; gap: 9px;
-          padding: 10px 16px;
+          padding: 9px 16px;
           font-size: 13px; font-weight: 500;
           color: var(--drop-text); text-decoration: none;
           transition: background 0.15s;
@@ -258,14 +243,68 @@ const [loadingNav, setLoadingNav] = useState(true);
           width: 100%; font-family: 'Sora', sans-serif; text-align: left;
         }
         .drop-item:hover { background: var(--drop-hover); }
-        .drop-item.logout {
-          color: var(--drop-logout-color);
-          background: var(--drop-logout);
-          margin: 6px 8px 8px;
-          width: calc(100% - 16px);
-          border-radius: 9px;
+
+        /* Profile item — green accent */
+        .drop-item.profile {
+          color: #07A626;
         }
-        .drop-item.logout:hover { background: var(--drop-logout-hover); }
+        [data-theme="dark"] .drop-item.profile { color: #4ade80; }
+        .drop-item.profile:hover {
+          background: rgba(7,166,38,0.08);
+        }
+
+        /* Sign out item — red */
+        .drop-item.signout {
+          color: var(--drop-logout-color);
+        }
+        .drop-item.signout:hover {
+          background: var(--drop-logout-bg);
+        }
+
+        /* Bottom action row inside dropdown */
+        .drop-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 6px;
+          padding: 8px;
+        }
+        .drop-action-btn {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          border: 1px solid;
+          font-family: 'Sora', sans-serif;
+          font-size: 12px; font-weight: 600;
+          cursor: pointer;
+          transition: background 0.15s, border-color 0.15s;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+        /* Profile action btn — green */
+        .drop-action-btn.profile {
+          background: rgba(7,166,38,0.08);
+          border-color: rgba(7,166,38,0.25);
+          color: #07A626;
+        }
+        [data-theme="dark"] .drop-action-btn.profile {
+          color: #4ade80;
+          background: rgba(7,166,38,0.1);
+          border-color: rgba(7,166,38,0.28);
+        }
+        .drop-action-btn.profile:hover {
+          background: rgba(7,166,38,0.15);
+          border-color: rgba(7,166,38,0.4);
+        }
+        /* Sign out action btn — subtle red */
+        .drop-action-btn.signout {
+          background: var(--drop-logout-bg);
+          border-color: rgba(239,68,68,0.2);
+          color: var(--drop-logout-color);
+        }
+        .drop-action-btn.signout:hover {
+          background: var(--drop-logout-hover);
+          border-color: rgba(239,68,68,0.35);
+        }
 
         /* Hamburger */
         .hamburger {
@@ -288,7 +327,7 @@ const [loadingNav, setLoadingNav] = useState(true);
           display: none; flex-direction: column;
           background: var(--nav-mobile-bg);
           border-top: 1px solid var(--nav-mobile-border);
-          padding: 12px 24px 20px; gap: 2px;
+          padding: 12px 16px 20px; gap: 2px;
           transition: background 0.3s;
         }
         .mobile-menu.open { display: flex; }
@@ -302,7 +341,7 @@ const [loadingNav, setLoadingNav] = useState(true);
         /* Mobile user card */
         .mobile-user-card {
           display: flex; align-items: center; gap: 12px;
-          padding: 12px; margin: 4px 0 2px;
+          padding: 12px; margin: 6px 0 2px;
           background: var(--drop-hover);
           border: 1px solid var(--drop-border);
           border-radius: 11px;
@@ -312,15 +351,44 @@ const [loadingNav, setLoadingNav] = useState(true);
           background: linear-gradient(135deg, #07A626 0%, #05891e 100%);
           display: flex; align-items: center; justify-content: center;
           color: #fff; font-size: 15px; font-weight: 700;
-          font-family: 'Sora', sans-serif;
         }
-        .mobile-user-info .mob-name {
-          font-size: 13.5px; font-weight: 600; color: var(--drop-text);
-        }
-        .mobile-user-info .mob-email {
-          font-size: 11.5px; color: var(--drop-sub); margin-top: 1px;
-        }
+        .mob-name { font-size: 13.5px; font-weight: 600; color: var(--drop-text); }
+        .mob-email { font-size: 11.5px; color: var(--drop-sub); margin-top: 1px; }
 
+        /* Mobile action buttons row */
+        .mobile-action-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        .mob-action-btn {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          padding: 10px 8px;
+          border-radius: 9px; border: 1px solid;
+          font-family: 'Sora', sans-serif;
+          font-size: 13px; font-weight: 600;
+          cursor: pointer; text-decoration: none;
+          transition: background 0.2s;
+        }
+        .mob-action-btn.profile {
+          background: rgba(7,166,38,0.08);
+          border-color: rgba(7,166,38,0.3);
+          color: #07A626;
+        }
+        [data-theme="dark"] .mob-action-btn.profile {
+          color: #4ade80;
+          background: rgba(7,166,38,0.1);
+        }
+        .mob-action-btn.profile:hover { background: rgba(7,166,38,0.16); }
+        .mob-action-btn.signout {
+          background: var(--drop-logout-bg);
+          border-color: rgba(239,68,68,0.22);
+          color: var(--drop-logout-color);
+        }
+        .mob-action-btn.signout:hover { background: var(--drop-logout-hover); }
+
+        /* Mobile login */
         .mobile-login {
           margin-top: 10px;
           display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -328,29 +396,40 @@ const [loadingNav, setLoadingNav] = useState(true);
           background: rgba(7,166,38,0.1); border: 1px solid rgba(7,166,38,0.35);
           border-radius: 9px; color: #07A626;
           font-size: 14px; font-weight: 600;
-          cursor: pointer; text-decoration: none;
-          transition: background 0.2s; font-family: 'Sora', sans-serif;
+          text-decoration: none; font-family: 'Sora', sans-serif;
+          transition: background 0.2s;
         }
         .mobile-login:hover { background: rgba(7,166,38,0.18); }
         [data-theme="dark"] .mobile-login { color: #4ade80; }
 
-        .mobile-logout {
-          margin-top: 6px;
-          display: flex; align-items: center; justify-content: center; gap: 6px;
-          padding: 10px 16px;
-          background: var(--drop-logout); border: 1px solid rgba(239,68,68,0.2);
-          border-radius: 9px; color: var(--drop-logout-color);
-          font-size: 14px; font-weight: 600; cursor: pointer;
-          font-family: 'Sora', sans-serif; transition: background 0.2s;
+        /* Mobile theme toggle */
+        .mob-theme-row {
+          display: flex; gap: 8px;
+          margin: 8px 0 4px;
         }
-        .mobile-logout:hover { background: var(--drop-logout-hover); }
+        .mob-theme-btn {
+          flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid;
+          font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600;
+          cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+          transition: all 0.2s;
+        }
+        .mob-theme-btn.active {
+          border-color: rgba(7,166,38,0.5);
+          background: rgba(7,166,38,0.1);
+          color: #07A626;
+        }
+        [data-theme="dark"] .mob-theme-btn.active { color: #4ade80; }
+        .mob-theme-btn:not(.active) {
+          border-color: var(--nav-mobile-border);
+          background: transparent;
+          color: var(--link-color);
+        }
 
         @media (max-width: 900px) {
           .nav-links    { display: none; }
           .login-btn    { display: none; }
           .hamburger    { display: flex; }
           .theme-toggle { display: none; }
-          /* avatar still visible on mobile — hamburger handles full menu */
           .avatar-wrap  { display: none; }
         }
       `}</style>
@@ -360,53 +439,51 @@ const [loadingNav, setLoadingNav] = useState(true);
 
           {/* Logo */}
           <Link href="/" className="navbar-logo">
-            <img
-              src={dark ? "/cdrlogo-dark.svg" : "/cdrlogo-light.svg"}
-              alt="CDRLogo"
-            />
+            <img src={dark ? "/cdrlogo-dark.svg" : "/cdrlogo-light.svg"} alt="CDRLogo" />
           </Link>
 
           {/* Desktop nav links */}
-       {!loadingNav && (
-  <ul className="nav-links">
-    {navLinks.map((link) => (
-      <li key={link.label}>
-        <a href={link.href}>{link.label}</a>
-      </li>
-    ))}
-  </ul>
-)}
+          {!loadingNav && (
+            <ul className="nav-links">
+              {navLinks.map((link) => (
+                <li key={link.label}>
+                  <a href={link.href}>{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          )}
+
           {/* Actions */}
           <div className="navbar-actions">
 
             {/* Theme toggle */}
-          {showThemeToggle&&(
+            {showThemeToggle && (
               <div className="theme-toggle">
-              <button
-                className={`theme-btn${!dark ? " active" : ""}`}
-                aria-label="Light mode" onClick={() => setDark(false)} title="Light mode"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5" />
-                  <line x1="12" y1="1" x2="12" y2="3" />  <line x1="12" y1="21" x2="12" y2="23" />
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                  <line x1="1" y1="12" x2="3" y2="12" />  <line x1="21" y1="12" x2="23" y2="12" />
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                </svg>
-              </button>
-              <button
-                className={`theme-btn${dark ? " active" : ""}`}
-                aria-label="Dark mode" onClick={() => setDark(true)} title="Dark mode"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              </button>
-            </div>
-          )}
+                <button
+                  className={`theme-btn${!dark ? " active" : ""}`}
+                  aria-label="Light mode" onClick={() => setDark(false)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
+                </button>
+                <button
+                  className={`theme-btn${dark ? " active" : ""}`}
+                  aria-label="Dark mode" onClick={() => setDark(true)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
+                </button>
+              </div>
+            )}
 
-            {/* ── Logged in: Avatar + Dropdown ── */}
-      {!isLoading && isLogged ? (
+            {/* Desktop: Avatar + Dropdown */}
+            {!isLoading && isLogged ? (
               <div className="avatar-wrap" ref={dropRef}>
                 <button
                   className="avatar-btn"
@@ -417,51 +494,48 @@ const [loadingNav, setLoadingNav] = useState(true);
                 </button>
 
                 <div className={`avatar-dropdown${dropOpen ? " open" : ""}`}>
-                  {/* User info header */}
+                  {/* User info */}
                   <div className="drop-header">
                     <div className="drop-avatar">{initial}</div>
                     <div className="drop-user-info">
-                      <div className="drop-name">{username}</div>
+                      <div className="drop-name">{username || "Account"}</div>
                       <div className="drop-email">{email}</div>
                     </div>
                   </div>
 
                   <div className="drop-divider" />
 
-                  {/* Menu items */}
-                  {/* <Link href="/dashboard" className="drop-item" onClick={() => setDropOpen(false)}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-                      <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-                    </svg>
-                    Dashboard
-                  </Link>
+                  {/* Profile + Sign out as two side-by-side buttons */}
+                  <div className="drop-actions">
+                    <Link
+                      href="/profile"
+                      className="drop-action-btn profile"
+                      onClick={() => setDropOpen(false)}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      Profile
+                    </Link>
 
-                  <Link href="/profile" className="drop-item" onClick={() => setDropOpen(false)}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    My Profile
-                  </Link>*/}
-
-                  <div className="drop-divider" />
-
-                  <button
-                    className="drop-item logout"
-                    onClick={() => { setDropOpen(false); signOut(); }}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                      <polyline points="16 17 21 12 16 7" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
-                    </svg>
-                    Sign Out
-                  </button> 
+                    <button
+                      className="drop-action-btn signout"
+                      onClick={() => { setDropOpen(false); signOut(); }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                      </svg>
+                      Sign out
+                    </button>
+                  </div>
                 </div>
               </div>
-            ) : (
-              /* ── Guest: Login button ── */
+            ) : !isLoading ? (
               <Link href="/login" className="login-btn">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -469,7 +543,7 @@ const [loadingNav, setLoadingNav] = useState(true);
                 </svg>
                 Login
               </Link>
-            )}
+            ) : null}
 
             {/* Hamburger */}
             <button
@@ -484,73 +558,73 @@ const [loadingNav, setLoadingNav] = useState(true);
 
         {/* ── Mobile menu ── */}
         <div className={`mobile-menu${menuOpen ? " open" : ""}`}>
+
+          {/* Nav links */}
           {navLinks.map(link => (
-            <a key={link.label} href={link.href}>{link.label}</a>
+            <a key={link.label} href={link.href} onClick={() => setMenuOpen(false)}>
+              {link.label}
+            </a>
           ))}
 
-          {/* Mobile theme toggle */}
-          <div style={{ display: "flex", gap: 8, margin: "8px 0 4px", padding: "0 2px" }}>
-            <button
-              onClick={() => setDark(false)}
-              style={{
-                flex: 1, padding: "8px 0", borderRadius: 8, border: "1px solid",
-                borderColor: !dark ? "rgba(7,166,38,0.5)" : "var(--nav-mobile-border)",
-                background: !dark ? "rgba(7,166,38,0.1)" : "transparent",
-                color: !dark ? "#07A626" : "var(--link-color)",
-                fontFamily: "'Sora',sans-serif", fontSize: 13, fontWeight: 600,
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                transition: "all 0.2s"
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-              Light
-            </button>
-            <button
-              onClick={() => setDark(true)}
-              style={{
-                flex: 1, padding: "8px 0", borderRadius: 8, border: "1px solid",
-                borderColor: dark ? "rgba(7,166,38,0.5)" : "var(--nav-mobile-border)",
-                background: dark ? "rgba(7,166,38,0.1)" : "transparent",
-                color: dark ? "#4ade80" : "var(--link-color)",
-                fontFamily: "'Sora',sans-serif", fontSize: 13, fontWeight: 600,
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                transition: "all 0.2s"
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-              Dark
-            </button>
-          </div>
+          {/* Theme toggle */}
+          {showThemeToggle && (
+            <div className="mob-theme-row">
+              <button className={`mob-theme-btn${!dark ? " active" : ""}`} onClick={() => setDark(false)}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+                Light
+              </button>
+              <button className={`mob-theme-btn${dark ? " active" : ""}`} onClick={() => setDark(true)}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                Dark
+              </button>
+            </div>
+          )}
 
-          {/* Mobile: logged in user card + sign out */}
+          {/* Logged in */}
           {isLogged ? (
             <>
               <div className="mobile-user-card">
                 <div className="mobile-avatar">{initial}</div>
-                <div className="mobile-user-info">
-                  <div className="mob-name">{username}</div>
+                <div>
+                  <div className="mob-name">{username || "Account"}</div>
                   <div className="mob-email">{email}</div>
                 </div>
               </div>
-              <button className="mobile-logout" onClick={() => signOut()}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-                Sign Out
-              </button>
+
+              <div className="mobile-action-row">
+                <Link
+                  href="/profile"
+                  className="mob-action-btn profile"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  Profile
+                </Link>
+                <button className="mob-action-btn signout" onClick={() => signOut()}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  Sign out
+                </button>
+              </div>
             </>
           ) : (
-            <Link href="/login" className="mobile-login">
+            <Link href="/login" className="mobile-login" onClick={() => setMenuOpen(false)}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />

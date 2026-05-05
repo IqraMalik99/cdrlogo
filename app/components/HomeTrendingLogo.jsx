@@ -11,14 +11,24 @@ const FORMAT_COLORS = {
 };
 
 // Generate a gradient bg from brand colors, fallback to dark slate
-function gradientFromColors(colors) {
+function gradientFromColors(colors, dark) {
   if (colors?.length >= 2) {
-    return { bgFrom: colors[0], bgTo: colors[1] };
+    return {
+      bgFrom: dark ? colors[0] : `${colors[0]}22`, // 👈 add opacity
+      bgTo: dark ? colors[1] : `${colors[1]}22`,
+    };
   }
+
   if (colors?.length === 1) {
-    return { bgFrom: colors[0], bgTo: "#0f1221" };
+    return {
+      bgFrom: dark ? colors[0] : `${colors[0]}22`,
+      bgTo: dark ? "#0f1221" : "#f8fafc",
+    };
   }
-  return { bgFrom: "#1a1f3a", bgTo: "#0f1221" };
+
+  return dark
+    ? { bgFrom: "#1a1f3a", bgTo: "#0f1221" }
+    : { bgFrom: "#f1f5f9", bgTo: "#e2e8f0" };
 }
 
 function SkeletonCard() {
@@ -37,7 +47,7 @@ function SkeletonCard() {
 function TrendingCard({ logo, dark }) {
   const [hovered, setHovered] = useState(false);
   const [imgErr, setImgErr] = useState(false);
-  const { bgFrom, bgTo } = gradientFromColors(logo.brandColors);
+const { bgFrom, bgTo } = gradientFromColors(logo.brandColors, dark);
   const router = useRouter();
 
   return (
@@ -141,7 +151,7 @@ export default function TrendingLogos() {
           --tl-sk:rgba(255,255,255,0.07);
         }
         [data-theme="light"]{
-          --tl-bg:#f4f4f8;--tl-surface:#ffffff;
+          --tl-bg:#ffffff;--tl-surface:#ffffff;
           --tl-border:rgba(0,0,0,0.07);--tl-border-h:rgba(0,0,0,0.14);
           --tl-title:#0a0a14;--tl-subtitle:rgba(0,0,0,0.42);
           --tl-name:#111120;--tl-category:rgba(0,0,0,0.42);
