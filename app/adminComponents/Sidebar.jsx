@@ -12,26 +12,40 @@ import { useRouter } from "next/navigation";
 // ── NAV_ITEMS ─────────────────────────────────────────────────────────────
 // key MUST exactly match the case string used in AdminPage's renderContent switch
 const NAV_ITEMS = [
+  // 🧠 Core overview
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+
+  // ⚡ Main business actions (most used)
   { key: "upload", label: "Upload Logo", icon: Upload },
   { key: "LogoManagement", label: "Logo Management", icon: LayoutGrid },
+
+  // 🏷️ Organization
   { key: "categories", label: "Categories", icon: Tag },
   { key: "Tags", label: "Tags", icon: Tag },
-  { key: "watermark", label: "Watermark", icon: Droplets },
+
+  // 👥 Users & interactions
   { key: "User", label: "Users", icon: Users },
-  { key: "Blog", label: "Blog", icon: FileText },
-  {key:"Api Integration", label:"Api Integration", icon: Key},
   { key: "ContactMessages", label: "Contact Messages", icon: Mail },
   { key: "LogoRequests", label: "Logo Requests", icon: Bookmark },
+
+  // ⚠️ Moderation / Legal (important but less frequent)
+  { key: "DCMA/Report", label: "DCMA / Report", icon: Menu },
+
+  // 📝 Content management
+  { key: "Blog", label: "Blog", icon: FileText },
   { key: "Page/CMS", label: "CMS / Pages", icon: FileText },
-  {key: "Email Templates", label: "Email Templates", icon: Mail},
-    { key: "DCMA/Report", label: "DCMA / Report", icon: Menu },
   { key: "Navigation/Menu", label: "Navigation/Menu", icon: Navigation },
+
+  // 🖼️ Assets & branding
   { key: "Media Library", label: "Media Library", icon: Image },
+  { key: "watermark", label: "Watermark", icon: Droplets },
+
+  // 🔌 System / technical
+  { key: "Api Integration", label: "Api Integration", icon: Key },
+  { key: "Email Templates", label: "Email Templates", icon: Mail },
+
+  // ⚙️ Lowest priority (rarely changed)
   { key: "SiteSettings", label: "Site Settings", icon: Settings },
-
-
-
 ];
 
 export default function Sidebar({ active, setActive, dark }) {
@@ -222,7 +236,7 @@ export default function Sidebar({ active, setActive, dark }) {
       )}
 
       {/* Nav items */}
-   
+
       <nav style={{
         padding: "4px 8px",
         display: "flex", flexDirection: "column", gap: 2,
