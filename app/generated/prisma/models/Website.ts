@@ -66,6 +66,7 @@ export type WebsiteCountAggregateOutputType = {
   metaDescription: number
   limit: number
   MaintanceMessage: number
+  tags: number
   showmode: number
   createdAt: number
   updatedAt: number
@@ -113,6 +114,7 @@ export type WebsiteCountAggregateInputType = {
   metaDescription?: true
   limit?: true
   MaintanceMessage?: true
+  tags?: true
   showmode?: true
   createdAt?: true
   updatedAt?: true
@@ -215,6 +217,7 @@ export type WebsiteGroupByOutputType = {
   metaDescription: string | null
   limit: number
   MaintanceMessage: string | null
+  tags: runtime.JsonValue
   showmode: boolean
   createdAt: Date
   updatedAt: Date
@@ -253,6 +256,7 @@ export type WebsiteWhereInput = {
   metaDescription?: Prisma.StringNullableFilter<"Website"> | string | null
   limit?: Prisma.IntFilter<"Website"> | number
   MaintanceMessage?: Prisma.StringNullableFilter<"Website"> | string | null
+  tags?: Prisma.JsonFilter<"Website">
   showmode?: Prisma.BoolFilter<"Website"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Website"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Website"> | Date | string
@@ -268,6 +272,7 @@ export type WebsiteOrderByWithRelationInput = {
   metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   limit?: Prisma.SortOrder
   MaintanceMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  tags?: Prisma.SortOrder
   showmode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -286,6 +291,7 @@ export type WebsiteWhereUniqueInput = Prisma.AtLeast<{
   metaDescription?: Prisma.StringNullableFilter<"Website"> | string | null
   limit?: Prisma.IntFilter<"Website"> | number
   MaintanceMessage?: Prisma.StringNullableFilter<"Website"> | string | null
+  tags?: Prisma.JsonFilter<"Website">
   showmode?: Prisma.BoolFilter<"Website"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Website"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Website"> | Date | string
@@ -301,6 +307,7 @@ export type WebsiteOrderByWithAggregationInput = {
   metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   limit?: Prisma.SortOrder
   MaintanceMessage?: Prisma.SortOrderInput | Prisma.SortOrder
+  tags?: Prisma.SortOrder
   showmode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -324,6 +331,7 @@ export type WebsiteScalarWhereWithAggregatesInput = {
   metaDescription?: Prisma.StringNullableWithAggregatesFilter<"Website"> | string | null
   limit?: Prisma.IntWithAggregatesFilter<"Website"> | number
   MaintanceMessage?: Prisma.StringNullableWithAggregatesFilter<"Website"> | string | null
+  tags?: Prisma.JsonWithAggregatesFilter<"Website">
   showmode?: Prisma.BoolWithAggregatesFilter<"Website"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Website"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Website"> | Date | string
@@ -339,6 +347,7 @@ export type WebsiteCreateInput = {
   metaDescription?: string | null
   limit?: number
   MaintanceMessage?: string | null
+  tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   showmode?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -354,6 +363,7 @@ export type WebsiteUncheckedCreateInput = {
   metaDescription?: string | null
   limit?: number
   MaintanceMessage?: string | null
+  tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   showmode?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -369,6 +379,7 @@ export type WebsiteUpdateInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   limit?: Prisma.IntFieldUpdateOperationsInput | number
   MaintanceMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   showmode?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -384,6 +395,7 @@ export type WebsiteUncheckedUpdateInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   limit?: Prisma.IntFieldUpdateOperationsInput | number
   MaintanceMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   showmode?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -399,6 +411,7 @@ export type WebsiteCreateManyInput = {
   metaDescription?: string | null
   limit?: number
   MaintanceMessage?: string | null
+  tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   showmode?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -414,6 +427,7 @@ export type WebsiteUpdateManyMutationInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   limit?: Prisma.IntFieldUpdateOperationsInput | number
   MaintanceMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   showmode?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -429,6 +443,7 @@ export type WebsiteUncheckedUpdateManyInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   limit?: Prisma.IntFieldUpdateOperationsInput | number
   MaintanceMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   showmode?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -444,6 +459,7 @@ export type WebsiteCountOrderByAggregateInput = {
   metaDescription?: Prisma.SortOrder
   limit?: Prisma.SortOrder
   MaintanceMessage?: Prisma.SortOrder
+  tags?: Prisma.SortOrder
   showmode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -495,6 +511,7 @@ export type WebsiteSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   metaDescription?: boolean
   limit?: boolean
   MaintanceMessage?: boolean
+  tags?: boolean
   showmode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -510,6 +527,7 @@ export type WebsiteSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   metaDescription?: boolean
   limit?: boolean
   MaintanceMessage?: boolean
+  tags?: boolean
   showmode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -525,6 +543,7 @@ export type WebsiteSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   metaDescription?: boolean
   limit?: boolean
   MaintanceMessage?: boolean
+  tags?: boolean
   showmode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -540,12 +559,13 @@ export type WebsiteSelectScalar = {
   metaDescription?: boolean
   limit?: boolean
   MaintanceMessage?: boolean
+  tags?: boolean
   showmode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type WebsiteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "categories" | "navItems" | "watermark" | "Footer" | "metaTitle" | "metaDescription" | "limit" | "MaintanceMessage" | "showmode" | "createdAt" | "updatedAt", ExtArgs["result"]["website"]>
+export type WebsiteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "categories" | "navItems" | "watermark" | "Footer" | "metaTitle" | "metaDescription" | "limit" | "MaintanceMessage" | "tags" | "showmode" | "createdAt" | "updatedAt", ExtArgs["result"]["website"]>
 
 export type $WebsitePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Website"
@@ -560,6 +580,7 @@ export type $WebsitePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     metaDescription: string | null
     limit: number
     MaintanceMessage: string | null
+    tags: runtime.JsonValue
     showmode: boolean
     createdAt: Date
     updatedAt: Date
@@ -995,6 +1016,7 @@ export interface WebsiteFieldRefs {
   readonly metaDescription: Prisma.FieldRef<"Website", 'String'>
   readonly limit: Prisma.FieldRef<"Website", 'Int'>
   readonly MaintanceMessage: Prisma.FieldRef<"Website", 'String'>
+  readonly tags: Prisma.FieldRef<"Website", 'Json'>
   readonly showmode: Prisma.FieldRef<"Website", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Website", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Website", 'DateTime'>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Upload, Plus, X, Globe, BarChart2, RefreshCw } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, Plus, X, Globe, BarChart2, RefreshCw, Tag, Loader2 } from "lucide-react";
 
 const COLORS_INIT = ["#3B82F6", "#1E3A5F", "#FBFAFC"];
 
@@ -40,15 +40,18 @@ export default function UploadLogo({ dark }) {
   const [files, setFiles] = useState([]);
   const [colors, setColors] = useState(COLORS_INIT);
   const [newColor, setNewColor] = useState("#ffffff");
-  const [tags, setTags] = useState(["Brands", "Technology", "AI"]);
-  const [tagInput, setTagInput] = useState("");
+
+  // ── Tags — fetched from backend ──────────────────────────────────
+  const [availableTags, setAvailableTags] = useState([]);  // all tags from Website.tags
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const [selectedTags, setSelectedTags] = useState([]);    // tags chosen for this logo
+
   const [publishStatus, setPublishStatus] = useState("Draft");
   const [slugEdited, setSlugEdited] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
 
-  // Download counter — single value or unlimited
-  const [dlCount, setDlCount] = useState(0);
+  const [dlCount, setDlCount] = useState(100);
   const [dlUnlimited, setDlUnlimited] = useState(false);
 
   const [form, setForm] = useState({
@@ -58,6 +61,23 @@ export default function UploadLogo({ dark }) {
     metaTitle: "", metaDescription: "", altText: "",
     focusKeywords: "",
   });
+
+  // ── Fetch available tags once on mount ───────────────────────────
+  useEffect(() => {
+    async function loadTags() {
+      setTagsLoading(true);
+      try {
+        const res = await fetch("/api/admin/tags");
+        const data = await res.json();
+        setAvailableTags(Array.isArray(data.tags) ? data.tags : []);
+      } catch {
+        setAvailableTags([]);
+      } finally {
+        setTagsLoading(false);
+      }
+    }
+    loadTags();
+  }, []);
 
   // ── theme tokens ─────────────────────────────────────────────────
   const bg       = dark ? "#0f1117" : "#FFFFFF";
@@ -70,6 +90,8 @@ export default function UploadLogo({ dark }) {
   const labelClr = dark ? "#94a3b8" : "#475569";
   const green    = "#22c55e";
   const greenDim = dark ? "rgba(34,197,94,0.12)" : "rgba(22,163,74,0.08)";
+  const tagBg    = dark ? "#1a2235" : "#f1f5f9";
+  const tagBdr   = dark ? "#263047" : "#e2e8f0";
 
   const inputStyle = {
     width: "100%", padding: "9px 12px",
@@ -128,15 +150,14 @@ export default function UploadLogo({ dark }) {
   const handleBrowse = (e) => { addFiles(e.target.files); e.target.value = ""; };
   const removeFile = (id) => setFiles(prev => prev.filter(x => x.id !== id));
 
-  // ── tags / colors ─────────────────────────────────────────────────
-  const addTag = (e) => {
-    if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
-      e.preventDefault();
-      if (!tags.includes(tagInput.trim())) setTags(p => [...p, tagInput.trim()]);
-      setTagInput("");
-    }
+  // ── tag toggle (select / deselect) ────────────────────────────────
+  const toggleTag = (tag) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
   };
-  const removeTag = (t) => setTags(p => p.filter(x => x !== t));
+
+  // ── colors ────────────────────────────────────────────────────────
   const removeColor = (c) => setColors(p => p.filter(x => x !== c));
   const addColor = () => { if (!colors.includes(newColor)) setColors(p => [...p, newColor]); };
 
@@ -153,49 +174,31 @@ export default function UploadLogo({ dark }) {
 
     try {
       const fd = new FormData();
-
-      // ── ZIP files (field name "files" matches backend getAll("files")) ──
       files.forEach(({ file }) => fd.append("files", file));
-
-      // ── Core identity ──
       fd.append("logoName",        form.logoName.trim());
       fd.append("slug",            form.slug.trim());
-
-      // ── Classification ──
       fd.append("brand",           form.brand);
       fd.append("website",         form.website);
       fd.append("category",        form.category);
       fd.append("industry",        form.industry);
       fd.append("country",         form.country);
       fd.append("license",         form.license);
-
-      // ── Content ──
       fd.append("description",     form.description);
       fd.append("history",         form.history);
-
-      // ── Taxonomy (JSON arrays) ──
-      fd.append("tags",            JSON.stringify(tags));
+      fd.append("tags",            JSON.stringify(selectedTags));  // ← only selected tags
       fd.append("brandColors",     JSON.stringify(colors));
-
-      // ── SEO ──
       fd.append("metaTitle",       form.metaTitle);
       fd.append("metaDescription", form.metaDescription);
       fd.append("altText",         form.altText);
       fd.append("focusKeywords",   form.focusKeywords);
-
-      // ── Publishing ──
       fd.append("publishStatus",   publishStatus);
-
-      // ── Download counter — "unlimited" or numeric string ──
       fd.append("downloadCount",   dlUnlimited ? "unlimited" : String(dlCount));
 
-      // ── POST to correct API route ──
       const res  = await fetch("/api/logo/upload/single", { method: "POST", body: fd });
       const data = await res.json();
 
       if (res.ok) {
         setSubmitResult({ ok: true, message: data.message || "Logo uploaded successfully!" });
-        // Reset form
         setForm({
           logoName: "", slug: "", brand: "", website: "",
           category: "", industry: "", country: "",
@@ -204,7 +207,7 @@ export default function UploadLogo({ dark }) {
           focusKeywords: "",
         });
         setFiles([]);
-        setTags(["Brands", "Technology", "AI"]);
+        setSelectedTags([]);
         setColors(COLORS_INIT);
         setPublishStatus("Draft");
         setSlugEdited(false);
@@ -383,14 +386,11 @@ export default function UploadLogo({ dark }) {
           <p style={{ margin: "0 0 16px", fontSize: 12, color: muted }}>
             Set the visible download count shown on the logo page.
           </p>
-
           <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap" }}>
-            {/* Count input */}
             <div style={{ flex: 1, minWidth: 160 }}>
               <label style={labelStyle}>Download Count</label>
               <input
-                type="number"
-                min={0}
+                type="number" min={0}
                 value={dlUnlimited ? "" : dlCount}
                 placeholder={dlUnlimited ? "Unlimited" : "0"}
                 disabled={dlUnlimited}
@@ -404,18 +404,10 @@ export default function UploadLogo({ dark }) {
                 }}
               />
             </div>
-
-            {/* Unlimited toggle */}
             <div style={{ paddingBottom: 10 }}>
-              <Toggle
-                on={dlUnlimited}
-                toggle={() => setDlUnlimited(p => !p)}
-                label="Unlimited"
-              />
+              <Toggle on={dlUnlimited} toggle={() => setDlUnlimited(p => !p)} label="Unlimited" />
             </div>
           </div>
-
-          {/* Preview pill */}
           <div style={{
             marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6,
             background: greenDim, border: `1px solid ${green}33`,
@@ -448,18 +440,123 @@ export default function UploadLogo({ dark }) {
           </div>
         </div>
 
-        {/* ── Tags ── */}
+        {/* ── Tags — fetched from Website.tags ── */}
         <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 20 }}>
-          <h3 style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: text }}>Tags</h3>
-          <input style={inputStyle} placeholder="Type a tag and press Enter..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={addTag} />
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-            {tags.map(t => (
-              <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: greenDim, border: `1px solid ${green}44`, borderRadius: 99, padding: "3px 10px", color: green, fontSize: 12, fontWeight: 600 }}>
-                {t}
-                <button onClick={() => removeTag(t)} style={{ background: "none", border: "none", cursor: "pointer", color: green, padding: 0, display: "flex" }}><X size={11} /></button>
-              </span>
-            ))}
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: greenDim, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Tag size={13} color={green} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: text }}>Tags</h3>
+                <p style={{ margin: 0, fontSize: 11, color: muted }}>
+                  {tagsLoading ? "Loading tags..." : `${selectedTags.length} of ${availableTags.length} selected`}
+                </p>
+              </div>
+            </div>
+            {/* Clear all */}
+            {selectedTags.length > 0 && (
+              <button
+                onClick={() => setSelectedTags([])}
+                style={{
+                  background: "none", border: `1px solid ${border}`,
+                  borderRadius: 7, padding: "4px 10px", cursor: "pointer",
+                  fontSize: 11, fontWeight: 600, color: muted,
+                  fontFamily: "'DM Sans', sans-serif",
+                  display: "flex", alignItems: "center", gap: 4,
+                }}
+              >
+                <X size={10} /> Clear all
+              </button>
+            )}
           </div>
+
+          {/* Loading skeleton */}
+          {tagsLoading ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} style={{
+                  height: 30, width: 60 + (i % 4) * 18, borderRadius: 99,
+                  background: dark ? "#1e2535" : "#e2e8f0",
+                  animation: "shimmer 1.4s ease-in-out infinite",
+                  animationDelay: `${i * 0.07}s`,
+                }} />
+              ))}
+            </div>
+          ) : availableTags.length === 0 ? (
+            /* Empty state */
+            <div style={{
+              textAlign: "center", padding: "24px 0",
+              color: muted, fontSize: 12,
+            }}>
+              <Tag size={20} color={muted} style={{ marginBottom: 8, display: "block", margin: "0 auto 8px" }} />
+              <p style={{ margin: 0, fontWeight: 600, color: text, fontSize: 13 }}>No tags available</p>
+              <p style={{ margin: "4px 0 0" }}>Go to Tag Manager to add tags first.</p>
+            </div>
+          ) : (
+            /* Selectable tag pills */
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+              {availableTags.map(tag => {
+                const active = selectedTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "5px 12px", borderRadius: 99,
+                      border: `1px solid ${active ? green + "66" : tagBdr}`,
+                      background: active ? greenDim : tagBg,
+                      color: active ? green : text,
+                      fontSize: 12, fontWeight: active ? 700 : 500,
+                      cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                      transition: "all 0.15s",
+                      outline: "none",
+                    }}
+                  >
+                    {active && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5l2.5 2.5L8 3" stroke="#22c55e" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Selected preview */}
+          {selectedTags.length > 0 && (
+            <div style={{
+              marginTop: 14, paddingTop: 14,
+              borderTop: `1px solid ${border}`,
+            }}>
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: muted, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Selected ({selectedTags.length})
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {selectedTags.map(tag => (
+                  <span key={tag} style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    background: greenDim, border: `1px solid ${green}44`,
+                    borderRadius: 99, padding: "3px 10px",
+                    color: green, fontSize: 12, fontWeight: 600,
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}>
+                    {tag}
+                    <button
+                      onClick={() => toggleTag(tag)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: green, padding: 0, display: "flex", alignItems: "center" }}
+                    >
+                      <X size={11} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── SEO Settings ── */}
@@ -549,6 +646,7 @@ export default function UploadLogo({ dark }) {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>

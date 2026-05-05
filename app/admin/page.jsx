@@ -15,11 +15,13 @@ import NavigationMenu from "../adminComponents/NavigationMenu";
 import MediaLibrary from "../adminComponents/Media";
 import SiteSettings from "../adminComponents/SiteSetting";
 import ContactMessages from "../adminComponents/ContactMessages";
-import LogoRequests    from "../adminComponents/LogoRequest";
+import LogoRequests from "../adminComponents/LogoRequest";
 import BlogManager from "../adminComponents/Blog";
 import Report from "../adminComponents/Report";
 import { useRouter } from "next/navigation";
 import Email from "../adminComponents/EmailTemplate";
+import Tags from "../adminComponents/Tag";
+import ApiReference from "../adminComponents/Api";
 
 // ── Page title map — keys MUST match the case used in setActive() calls ──
 const PAGE_TITLES = {
@@ -28,16 +30,18 @@ const PAGE_TITLES = {
   LogoManagement: "Logo Management",
   watermark: "Watermark Settings",
   categories: "Categories",
+  Tags: "Tags",
   User: "User Management",
   "Page/CMS": "CMS / Pages",
   "Navigation/Menu": "Navigation/Menu",
   "Media Library": "Media Library",
   "SiteSettings": "Site Settings",
   "ContactMessages": "Contact Messages",
-"LogoRequests":    "Logo Requests",
-"BlogManager": "Blog Manager",
-"DCMA/Report": "DCMA / Report",
-"Email Templates": "Email Templates"
+  "LogoRequests": "Logo Requests",
+  "BlogManager": "Blog Manager",
+  "DCMA/Report": "DCMA / Report",
+  "Email Templates": "Email Templates",
+  "Api Integration": "Api Integration"
 
 };
 
@@ -100,11 +104,13 @@ export default function AdminPage() {
         return <MediaLibrary dark={dark} />;
       case "SiteSettings":
         return <SiteSettings dark={dark} />;
-        case "ContactMessages": return <ContactMessages dark={dark} />;
-case "LogoRequests":    return <LogoRequests dark={dark} />;
-case "Blog": return <BlogManager dark={dark} />;
-case "DCMA/Report": return <Report dark={dark} />;
-case "Email Templates": return <Email dark={dark} />;
+      case "ContactMessages": return <ContactMessages dark={dark} />;
+      case "LogoRequests": return <LogoRequests dark={dark} />;
+      case "Blog": return <BlogManager dark={dark} />;
+      case "DCMA/Report": return <Report dark={dark} />;
+      case "Email Templates": return <Email dark={dark} />;
+      case "Tags": return <Tags dark={dark} />;
+      case "Api Integration" : return <ApiReference dark={dark} />;
       default:
         return (
           <div style={{

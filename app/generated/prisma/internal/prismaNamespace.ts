@@ -1240,6 +1240,7 @@ export const WebsiteScalarFieldEnum = {
   metaDescription: 'metaDescription',
   limit: 'limit',
   MaintanceMessage: 'MaintanceMessage',
+  tags: 'tags',
   showmode: 'showmode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

@@ -83,6 +83,7 @@ model Website {
   metaDescription String?
   limit           Int @default(20)
   MaintanceMessage String?
+   tags        Json @default("[]")
   showmode    Boolean @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

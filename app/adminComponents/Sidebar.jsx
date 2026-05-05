@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Upload, LayoutGrid, Droplets,
   Tag, Users, FileText, Navigation, Image,
-  Mail, Bookmark, Settings, Menu, X, ChevronRight
+  Mail, Bookmark, Settings, Menu, X, ChevronRight,
+  Key
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -15,9 +16,11 @@ const NAV_ITEMS = [
   { key: "upload", label: "Upload Logo", icon: Upload },
   { key: "LogoManagement", label: "Logo Management", icon: LayoutGrid },
   { key: "categories", label: "Categories", icon: Tag },
+  { key: "Tags", label: "Tags", icon: Tag },
   { key: "watermark", label: "Watermark", icon: Droplets },
   { key: "User", label: "Users", icon: Users },
   { key: "Blog", label: "Blog", icon: FileText },
+  {key:"Api Integration", label:"Api Integration", icon: Key},
   { key: "ContactMessages", label: "Contact Messages", icon: Mail },
   { key: "LogoRequests", label: "Logo Requests", icon: Bookmark },
   { key: "Page/CMS", label: "CMS / Pages", icon: FileText },
@@ -26,6 +29,7 @@ const NAV_ITEMS = [
   { key: "Navigation/Menu", label: "Navigation/Menu", icon: Navigation },
   { key: "Media Library", label: "Media Library", icon: Image },
   { key: "SiteSettings", label: "Site Settings", icon: Settings },
+
 
 
 ];

@@ -74,31 +74,61 @@ export default function LogoDetail() {
 
     const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
-    const handleDownload = async () => {
-        if (!agreed || !logo?.id || !selectedFormat) return;
-        if (status === "loading") return;
-        setDownloading(true);
-        setDownloadUrl(null);
-        try {
-            const res = await fetch("/api/logo/download/default", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ logoId: logo.id, format: selectedFormat, user: session?.user?.id || "" }),
-            });
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${logo.slug}.${selectedFormat}`;
-            a.click();
-            URL.revokeObjectURL(url);
-        } catch (e) {
-            console.error("Download failed", e);
-        } finally {
-            setDownloading(false);
-        }
-    };
+  const handleDownload = async () => {
+    if (!agreed || !logo?.id || !selectedFormat) return;
+    if (status === "loading") return;
+    setDownloading(true);
 
+    try {
+        const res = await fetch("/api/logo/download/default", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                logoId: logo.id,
+                format: selectedFormat,
+                user: session?.user?.id || "",
+            }),
+        });
+
+        // ✅ FIX 1: Check if response is ok BEFORE reading as blob
+        if (!res.ok) {
+            const errData = await res.json();
+            const msg =
+                res.status === 403
+                    ? "⚠️ Download limit reached. Please sign in or upgrade."
+                    : res.status === 404
+                    ? `❌ File not available in ${selectedFormat.toUpperCase()} format.`
+                    : `❌ Download failed: ${errData?.error || "Unknown error"}`;
+            alert(msg);
+            return;
+        }
+
+        // ✅ FIX 2: Verify we actually got a file (not JSON disguised as blob)
+        const contentType = res.headers.get("Content-Type") || "";
+        if (contentType.includes("application/json")) {
+            const errData = await res.json();
+            alert(`❌ Download failed: ${errData?.error || "Unknown error"}`);
+            return;
+        }
+
+        // ✅ Safe to read as blob now
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${logo.slug}.${selectedFormat}`;
+        document.body.appendChild(a); // ✅ FIX 3: Must append to DOM for Firefox
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+    } catch (e) {
+        console.error("Download failed", e);
+        alert("❌ Network error. Please try again.");
+    } finally {
+        setDownloading(false);
+    }
+};
     const handleCopySvg = () => {
         if (!logo?.svgContent) return;
         navigator.clipboard.writeText(logo.svgContent);
