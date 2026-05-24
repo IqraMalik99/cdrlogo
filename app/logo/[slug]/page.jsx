@@ -21,20 +21,22 @@ export default function LogoDetail() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const [reportOpen, setReportOpen] = useState(false);
-    const [reportReason, setReportReason] = useState("");
-    const [reportEmail, setReportEmail] = useState("");
-    const [reportSubmitting, setReportSubmitting] = useState(false);
-    const [reportDone, setReportDone] = useState(false);
-
     const [agreed, setAgreed] = useState(false);
     const [selectedFormat, setSelectedFormat] = useState(null);
     const [downloading, setDownloading] = useState(false);
-    const [downloadUrl, setDownloadUrl] = useState(null);
     const [svgCopied, setSvgCopied] = useState(false);
     const [copiedColor, setCopiedColor] = useState(null);
     const [expandDesc, setExpandDesc] = useState(false);
     const [ready, setReady] = useState(false);
+    const [policyOpen, setPolicyOpen] = useState(false);
+
+    // Policy form state
+    const [policyFirstName, setPolicyFirstName] = useState("");
+    const [policyLastName, setPolicyLastName] = useState("");
+    const [policyEmail, setPolicyEmail] = useState("");
+    const [policyMessage, setPolicyMessage] = useState("");
+    const [policySubmitting, setPolicySubmitting] = useState(false);
+    const [policyDone, setPolicyDone] = useState(false);
 
     useEffect(() => {
         const t = setTimeout(() => setReady(true), 60);
@@ -86,7 +88,6 @@ export default function LogoDetail() {
                 });
                 const data = await res.json();
                 setLogo(data.data || data);
-                console.log("Fetched logo data:", data);
                 setRelated(data.related || []);
             } catch (e) {
                 setError(e.message);
@@ -181,6 +182,38 @@ export default function LogoDetail() {
         setTimeout(() => setCopiedColor(null), 2000);
     };
 
+    const handlePolicySubmit = async () => {
+        if (!policyFirstName.trim() || !policyLastName.trim() || !policyEmail.trim() || !policyMessage.trim()) return;
+        setPolicySubmitting(true);
+        try {
+            await fetch("/api/report/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    logoId: logo.id,
+                    logoName: logo.logoName,
+                    firstName: policyFirstName,
+                    lastName: policyLastName,
+                    reporterEmail: policyEmail,
+                    reason: policyMessage,
+                }),
+            });
+            setPolicyDone(true);
+            setTimeout(() => {
+                setPolicyDone(false);
+                setPolicyOpen(false);
+                setPolicyFirstName("");
+                setPolicyLastName("");
+                setPolicyEmail("");
+                setPolicyMessage("");
+            }, 2500);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setPolicySubmitting(false);
+        }
+    };
+
     const formatDate = (d) => {
         if (!d) return "—";
         return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -198,34 +231,6 @@ export default function LogoDetail() {
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);
         return `${r}, ${g}, ${b}`;
-    };
-
-    const handleReport = async () => {
-        if (!reportReason.trim() || !reportEmail.trim()) return;
-        setReportSubmitting(true);
-        try {
-            await fetch("/api/report/create", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    logoId: logo.id,
-                    logoName: logo.logoName,
-                    reason: reportReason,
-                    reporterEmail: reportEmail,
-                }),
-            });
-            setReportDone(true);
-            setTimeout(() => {
-                setReportOpen(false);
-                setReportDone(false);
-                setReportReason("");
-                setReportEmail("");
-            }, 2000);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setReportSubmitting(false);
-        }
     };
 
     if (loading) return <LoadingSkeleton dark={dark} />;
@@ -273,108 +278,6 @@ export default function LogoDetail() {
 
   .fmt-select-size { font-size: 8px; font-weight: 600; color: var(--muted); opacity: 0.75; letter-spacing: .3px; }
 
-  /* ── Report flag button ── */
-  .preview-card { position: relative; }
-  .report-flag-btn {
-    position: absolute; top: 10px; right: 10px;
-    width: 30px; height: 30px; border-radius: 8px;
-    background: rgba(0,0,0,0.45); backdrop-filter: blur(6px);
-    border: 1px solid rgba(255,255,255,0.12);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 14px;
-    opacity: 0; transform: translateY(-4px);
-    transition: opacity .2s, transform .2s;
-    z-index: 5;
-  }
-  [data-theme="light"] .report-flag-btn {
-    background: rgba(255,255,255,0.75);
-    border-color: rgba(0,0,0,0.1);
-  }
-  .preview-card:hover .report-flag-btn {
-    opacity: 1; transform: translateY(0);
-  }
-
-  /* ── Report modal overlay ── */
-  .report-overlay {
-    position: fixed; inset: 0; z-index: 2000;
-    background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-  }
-  .report-modal {
-    width: 100%; max-width: 420px;
-    background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: 16px; padding: 22px;
-    font-family: 'Sora', sans-serif;
-    animation: report-in .18s cubic-bezier(.22,1,.36,1);
-  }
-  @keyframes report-in {
-    from { opacity:0; transform: scale(.96) translateY(8px); }
-    to   { opacity:1; transform: scale(1) translateY(0); }
-  }
-  .report-modal-header {
-    display: flex; align-items: center;
-    justify-content: space-between; margin-bottom: 16px;
-  }
-  .report-modal-title {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 14px; font-weight: 800; color: var(--heading);
-  }
-  .report-modal-close {
-    width: 26px; height: 26px; border-radius: 7px;
-    border: 1px solid var(--border); background: var(--input-bg);
-    cursor: pointer; color: var(--muted);
-    display: flex; align-items: center; justify-content: center;
-    transition: background .15s, color .15s;
-  }
-  .report-modal-close:hover { background: var(--surface2); color: var(--heading); }
-  .report-logo-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px; border-radius: 100px;
-    background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2);
-    font-size: 11px; font-weight: 600; color: #ef4444;
-    margin-bottom: 16px;
-  }
-  .report-label {
-    font-size: 11px; font-weight: 600; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .5px;
-    margin-bottom: 6px; margin-top: 12px;
-  }
-  .report-label:first-of-type { margin-top: 0; }
-  .report-textarea {
-    width: 100%; padding: 10px 12px;
-    background: var(--input-bg); border: 1px solid var(--border);
-    border-radius: 9px; color: var(--heading);
-    font-family: 'DM Sans', sans-serif; font-size: 13px;
-    line-height: 1.6; resize: none; outline: none;
-    transition: border-color .2s;
-  }
-  .report-textarea:focus { border-color: rgba(239,68,68,.4); }
-  .report-input {
-    width: 100%; padding: 9px 12px;
-    background: var(--input-bg); border: 1px solid var(--border);
-    border-radius: 9px; color: var(--heading);
-    font-family: 'DM Sans', sans-serif; font-size: 13px;
-    outline: none; transition: border-color .2s;
-  }
-  .report-input:focus { border-color: rgba(239,68,68,.4); }
-  .report-submit-btn {
-    width: 100%; margin-top: 16px; padding: 11px;
-    border-radius: 10px; border: none; cursor: pointer;
-    font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: #fff; transition: opacity .2s, transform .15s;
-    display: flex; align-items: center; justify-content: center; gap: 7px;
-  }
-  .report-submit-btn:hover { opacity: .9; transform: translateY(-1px); }
-  .report-submit-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-  .report-success {
-    text-align: center; padding: 16px 0 4px;
-    font-size: 13px; color: #22c55e; font-weight: 600;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-  }
-
   .dot-grid {
     position: fixed; inset: 0;
     background-image: radial-gradient(var(--dot) 1px, transparent 1px);
@@ -395,7 +298,6 @@ export default function LogoDetail() {
   .breadcrumb-sep { opacity: 0.4; }
   .breadcrumb-current { color: var(--body); font-weight: 600; }
 
-  /* ── Symmetric two-column layout ── */
   .layout {
     position: relative; z-index: 1;
     max-width: 1100px; margin: 0 auto;
@@ -408,15 +310,19 @@ export default function LogoDetail() {
 
   .left { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 96px; align-self: start; }
 
-  .preview-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; position: relative; width: 100%; }
-  .preview-img-wrap {
-    width: 100%; aspect-ratio: 1 / 1;
-    display: flex; align-items: center; justify-content: center;
-    padding: 32px;
-    background: repeating-conic-gradient(rgba(128,128,128,0.06) 0% 25%, transparent 0% 50%) 0 0 / 20px 20px;
-  }
-  .preview-img-wrap img { width: 100%; height: 100%; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; }
-  .preview-img-placeholder { font-size: clamp(28px, 6vw, 52px); font-weight: 900; color: var(--heading); letter-spacing: -2px; opacity: 0.85; }
+.preview-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; position: relative; width: 100%; }
+
+.preview-img-wrap {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: repeating-conic-gradient(rgba(128,128,128,0.06) 0% 25%, transparent 0% 50%) 0 0 / 20px 20px;
+}
+
+.preview-img-wrap img { width: 100%; height: 100%; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; }
+
+.preview-img-placeholder { font-size: clamp(22px, 4vw, 40px); font-weight: 900; color: var(--heading); letter-spacing: -2px; opacity: 0.85; }
 
   .meta-strip { display: flex; flex-wrap: wrap; gap: 0; border-top: 1px solid var(--border); flex-shrink: 0; }
   .meta-item { flex: 1; min-width: 100px; padding: 12px 14px; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
@@ -480,10 +386,104 @@ export default function LogoDetail() {
   .agree-text a { color: #07A626; text-decoration: none; }
   .agree-text a:hover { text-decoration: underline; }
 
-  .privacy-note { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 10px; color: var(--muted); margin-bottom: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: border-color .2s; }
+  /* ── Policy Accordion ── */
+  .policy-accordion { margin-bottom: 14px; }
+
+  .privacy-note {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 10px; color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: border-color .2s, border-radius .2s;
+    width: 100%;
+  }
   .privacy-note:hover { border-color: var(--border2); }
+  .privacy-note.open {
+    border-radius: 8px 8px 0 0;
+    border-bottom-color: transparent;
+  }
   .privacy-note-left { display: flex; align-items: center; gap: 6px; }
-  .privacy-chevron { color: var(--muted); opacity: .5; }
+  .privacy-chevron {
+    color: var(--muted); opacity: .5;
+    transition: transform .22s cubic-bezier(.22,1,.36,1);
+  }
+  .privacy-chevron.open { transform: rotate(180deg); opacity: .8; }
+
+  .policy-panel {
+    background: rgba(245,158,11,.04);
+    border: 1px solid var(--border);
+    border-top: 1px solid rgba(245,158,11,.2);
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    animation: policy-slide .22s cubic-bezier(.22,1,.36,1);
+  }
+  @keyframes policy-slide {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .policy-body { padding: 14px; }
+
+  .policy-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 800; color: #f59e0b;
+    margin-bottom: 10px;
+  }
+  .policy-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11.5px; color: var(--body); line-height: 1.65;
+  }
+  .policy-text strong { color: var(--heading); font-weight: 600; }
+
+  .policy-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .policy-field { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .policy-field:first-child { margin-top: 0; }
+  .policy-label {
+    font-size: 9px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .policy-input-wrap {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--input-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; color: var(--muted);
+    transition: border-color .2s;
+  }
+  .policy-input-wrap:focus-within { border-color: rgba(245,158,11,.4); }
+  .policy-input {
+    flex: 1; background: none; border: none; outline: none;
+    font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--heading);
+  }
+  .policy-input::placeholder { color: var(--muted); opacity: .55; }
+  .policy-textarea {
+    width: 100%;
+    background: var(--input-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; outline: none; resize: none;
+    font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--heading);
+    line-height: 1.6; transition: border-color .2s;
+  }
+  .policy-textarea::placeholder { color: var(--muted); opacity: .55; }
+  .policy-textarea:focus { border-color: rgba(245,158,11,.4); }
+
+  .policy-submit-btn {
+    width: 100%; margin-top: 12px; padding: 11px;
+    border-radius: 9px; border: none; cursor: pointer;
+    font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 700;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: opacity .2s, transform .15s;
+  }
+  .policy-submit-btn:hover { opacity: .9; transform: translateY(-1px); }
+  .policy-submit-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  .policy-success {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px; padding: 12px 0 4px;
+    font-size: 12px; font-weight: 600; color: #22c55e;
+    font-family: 'Sora', sans-serif;
+  }
 
   .dl-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; cursor: pointer; font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 7px; transition: opacity .2s, transform .15s; }
   .dl-btn-active { background: linear-gradient(135deg, #07A626, #059c1f); color: #fff; }
@@ -625,6 +625,7 @@ export default function LogoDetail() {
     .meta-item { border-right: none; border-bottom: 1px solid var(--border); }
     .meta-item:last-child { border-bottom: none; }
     .related-grid { grid-template-columns: repeat(2, 1fr); }
+    .policy-form-row { grid-template-columns: 1fr; }
   }
   @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 `}</style>
@@ -668,13 +669,6 @@ export default function LogoDetail() {
                                     >
                                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                                     </svg>
-                                </button>
-                                <button
-                                    className="report-flag-btn"
-                                    onClick={() => setReportOpen(true)}
-                                    title="Report this logo"
-                                >
-                                    🚩
                                 </button>
 
                                 <div className="preview-img-wrap">
@@ -791,16 +785,148 @@ export default function LogoDetail() {
                                     </label>
                                 </div>
 
-                                <div className="privacy-note">
-                                    <div className="privacy-note-left">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                {/* ── Policy Accordion ── */}
+                                <div className="policy-accordion">
+                                    <button
+                                        className={`privacy-note${policyOpen ? " open" : ""}`}
+                                        onClick={() => setPolicyOpen(v => !v)}
+                                    >
+                                        <div className="privacy-note-left">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                            </svg>
+                                            Trademark &amp; Copyright Policy
+                                        </div>
+                                        <svg
+                                            className={`privacy-chevron${policyOpen ? " open" : ""}`}
+                                            width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                        >
+                                            <polyline points="6 9 12 15 18 9" />
                                         </svg>
-                                        Trademark &amp; Copyright Policy
-                                    </div>
-                                    <svg className="privacy-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="6 9 12 15 18 9" />
-                                    </svg>
+                                    </button>
+
+                                    {policyOpen && (
+                                        <div className="policy-panel">
+                                            <div className="policy-body">
+                                                <div className="policy-title">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                                    </svg>
+                                                    Trademark &amp; Copyright Policy
+                                                </div>
+                                                <p className="policy-text">
+                                                    We respect all trademark and copyright owners. Logos on this site are for <strong>educational and reference purposes only</strong>. All rights belong to their respective owners.
+                                                </p>
+                                                <p className="policy-text" style={{ marginTop: 8 }}>
+                                                    If you are the rightful owner and believe your content is used without permission, please <strong>contact us from your official email</strong> with proof of ownership.
+                                                </p>
+                                                <p className="policy-text" style={{ marginTop: 8 }}>
+                                                    We will review and <strong>remove the content within 24 hours</strong> if verified.
+                                                </p>
+
+                                                {policyDone ? (
+                                                    <div className="policy-success">
+                                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <circle cx="12" cy="12" r="10" />
+                                                            <polyline points="9 12 11 14 15 10" />
+                                                        </svg>
+                                                        Report submitted successfully
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="policy-form-row">
+                                                            <div className="policy-field" style={{ marginTop: 12 }}>
+                                                                <div className="policy-label">FIRST NAME</div>
+                                                                <div className="policy-input-wrap">
+                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                                                                    </svg>
+                                                                    <input
+                                                                        className="policy-input"
+                                                                        type="text"
+                                                                        placeholder="John"
+                                                                        value={policyFirstName}
+                                                                        onChange={e => setPolicyFirstName(e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="policy-field" style={{ marginTop: 12 }}>
+                                                                <div className="policy-label">LAST NAME</div>
+                                                                <div className="policy-input-wrap">
+                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                                                                    </svg>
+                                                                    <input
+                                                                        className="policy-input"
+                                                                        type="text"
+                                                                        placeholder="Doe"
+                                                                        value={policyLastName}
+                                                                        onChange={e => setPolicyLastName(e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="policy-field">
+                                                            <div className="policy-label">EMAIL ADDRESS</div>
+                                                            <div className="policy-input-wrap">
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                                                                </svg>
+                                                                <input
+                                                                    className="policy-input"
+                                                                    type="email"
+                                                                    placeholder="you@company.com"
+                                                                    value={policyEmail}
+                                                                    onChange={e => setPolicyEmail(e.target.value)}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="policy-field">
+                                                            <div className="policy-label">MESSAGE</div>
+                                                            <textarea
+                                                                className="policy-textarea"
+                                                                placeholder="Please describe the copyright issue…"
+                                                                rows={3}
+                                                                value={policyMessage}
+                                                                onChange={e => setPolicyMessage(e.target.value)}
+                                                            />
+                                                        </div>
+
+                                                        <button
+                                                            className="policy-submit-btn"
+                                                            onClick={handlePolicySubmit}
+                                                            disabled={
+                                                                !policyFirstName.trim() ||
+                                                                !policyLastName.trim() ||
+                                                                !policyEmail.trim() ||
+                                                                !policyMessage.trim() ||
+                                                                policySubmitting
+                                                            }
+                                                        >
+                                                            {policySubmitting ? (
+                                                                <>
+                                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}>
+                                                                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                                                    </svg>
+                                                                    Submitting…
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                                                    </svg>
+                                                                    Submit Report
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button
@@ -927,71 +1053,6 @@ export default function LogoDetail() {
                 </div>
                 <Footer />
             </div>
-
-            {reportOpen && (
-                <div className="report-overlay" onClick={() => setReportOpen(false)}>
-                    <div
-                        data-theme={dark ? "dark" : "light"}
-                        className="report-modal"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="report-modal-header">
-                            <div className="report-modal-title">🚩 Report Logo</div>
-                            <button className="report-modal-close" onClick={() => setReportOpen(false)}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div className="report-logo-pill">📁 {logo.logoName}</div>
-
-                        {reportDone ? (
-                            <div className="report-success">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <polyline points="9 12 11 14 15 10" />
-                                </svg>
-                                Report submitted successfully
-                            </div>
-                        ) : (
-                            <>
-                                <div className="report-label">Reason for reporting</div>
-                                <textarea
-                                    className="report-textarea"
-                                    rows={4}
-                                    placeholder="e.g. Trademark infringement, copyright violation, unauthorized use…"
-                                    value={reportReason}
-                                    onChange={e => setReportReason(e.target.value)}
-                                />
-                                <div className="report-label">Your contact email</div>
-                                <input
-                                    type="email"
-                                    className="report-input"
-                                    placeholder="legal@yourcompany.com"
-                                    value={reportEmail}
-                                    onChange={e => setReportEmail(e.target.value)}
-                                />
-                                <button
-                                    className="report-submit-btn"
-                                    onClick={handleReport}
-                                    disabled={!reportReason.trim() || !reportEmail.trim() || reportSubmitting}
-                                >
-                                    {reportSubmitting ? (
-                                        <>
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}>
-                                                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                                            </svg>
-                                            Submitting…
-                                        </>
-                                    ) : "Submit Report"}
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
         </>
     );
 }

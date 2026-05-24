@@ -63,6 +63,7 @@ export async function POST(req) {
         brand: true,
         description: true,
         webpUrl: true,
+        slug: true
       },
     });
 

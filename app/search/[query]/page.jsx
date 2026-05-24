@@ -34,9 +34,10 @@ function LogoCard({ logo }) {
     const [imgErr, setImgErr] = useState(false);
     const colors = Array.isArray(logo.brandColors) ? logo.brandColors : [];
     const formats = ["SVG", "PNG", "AI", "CDR"];
+    const router = useRouter(); 
 
     return (
-        <div className="logo-card">
+        <div className="logo-card"  onClick={() => router.push(`/logo/${logo.slug}`)}  >
             <div className="card-image">
                 {!imgErr && logo.webpUrl ? (
                     <img src={logo.webpUrl} alt={logo.logoName}
@@ -104,6 +105,7 @@ export default function SearchPage() {
             });
             if (!res.ok) throw new Error(`Server error ${res.status}`);
             const data = await res.json();
+            console.log("Search results:", data);
             setAllLogos(data.results ?? []);
         } catch (err) {
             setError(err.message);
