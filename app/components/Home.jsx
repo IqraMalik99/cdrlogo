@@ -316,10 +316,10 @@ const handleKeyDown = (e) => {
 
           {/* Sub */}
           <div className="anim d2">
-            <p className="home-sub">
+            <h2 className="home-sub">
               Your free library of high-quality brand logos and creative templates.
               Download instantly in multiple formats for any design project.
-            </p>
+            </h2>
           </div>
 
           {/* Formats */}

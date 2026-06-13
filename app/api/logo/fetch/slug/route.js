@@ -58,6 +58,7 @@ export async function POST(req) {
         brand: true,
         webpUrl: true,
         brandColors: true,
+        downloadedNumberByPeople: true,
       },
       take: 5,
       orderBy: { downloadedNumberByPeople: "desc" },
