@@ -43,6 +43,18 @@ function levenshtein(a, b) {
   return matrix[b.length][a.length];
 }
 
+// tags is stored as Json, expected shape: ["graphics", "fashion"]
+// guard against null / bad data / non-string entries from older rows
+function toTagArray(tags) {
+  if (!Array.isArray(tags)) return [];
+  return tags.filter((t) => typeof t === "string");
+}
+
+// true if ANY tag in the array matches the query
+function isTagMatch(query, tags) {
+  return toTagArray(tags).some((tag) => isMatch(query, tag));
+}
+
 export async function POST(req) {
   try {
 
@@ -62,6 +74,7 @@ export async function POST(req) {
         category: true,
         brand: true,
         description: true,
+        tags: true,
         webpUrl: true,
         slug: true
       },
@@ -79,6 +92,9 @@ export async function POST(req) {
 
         // 🥉 brand/company
         if (isMatch(query, logo.brand)) score += 50;
+
+        // tags — same priority tier as brand
+        if (isTagMatch(query, logo.tags)) score += 50;
 
         // low priority: description
         if (isMatch(query, logo.description)) score += 20;
