@@ -10,6 +10,7 @@ export async function uploadToR2({ fileBuffer, fileName, mimeType }) {
       Key: fileName,
       Body: fileBuffer,
       ContentType: mimeType,
+      CacheControl: "public, max-age=31536000"
     })
   );
 

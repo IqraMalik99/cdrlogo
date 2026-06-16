@@ -32,25 +32,25 @@ export async function POST(req) {
         name: userRecord.name || "unknown",
       };
 
-      // 🚫 LIMIT CHECK
-      if (
-        userRecord.downloadLimit !== -1 &&
-        userRecord.downloadCountUsed >= userRecord.downloadLimit
-      ) {
-        await prisma.log.create({
-          data: {
-            who: `user:${userinfo.email}`,
-            content: `Download blocked - limit reached`,
-          },
-        });
+      // // 🚫 LIMIT CHECK
+      // if (
+      //   userRecord.downloadLimit !== -1 &&
+      //   userRecord.downloadCountUsed >= userRecord.downloadLimit
+      // ) {
+      //   await prisma.log.create({
+      //     data: {
+      //       who: `user:${userinfo.email}`,
+      //       content: `Download blocked - limit reached`,
+      //     },
+      //   });
 
 
 
-        return Response.json(
-          { error: "Download limit reached" },
-          { status: 403 }
-        );
-      }
+      //   return Response.json(
+      //     { error: "Download limit reached" },
+      //     { status: 403 }
+      //   );
+      // }
     }
 
     // ── VALIDATION ────────────────────────────────────────────

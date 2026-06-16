@@ -216,7 +216,6 @@ export default function UploadLogo({ dark }) {
     if (!form.logoName.trim())    return setSubmitResult({ ok: false, message: "Logo Name is required." });
     if (!form.slug.trim())        return setSubmitResult({ ok: false, message: "Slug is required." });
     if (!form.category)           return setSubmitResult({ ok: false, message: "Category is required." });
-    if (!form.description.trim()) return setSubmitResult({ ok: false, message: "Description is required." });
     if (files.length === 0)       return setSubmitResult({ ok: false, message: "Please upload at least one ZIP file." });
 
     setSubmitting(true);
@@ -239,8 +238,6 @@ export default function UploadLogo({ dark }) {
       fd.append("brandColors",     JSON.stringify(colors));
       fd.append("metaTitle",       form.metaTitle);
       fd.append("metaDescription", form.metaDescription);
-      fd.append("altText",         form.altText);
-      fd.append("focusKeywords",   form.focusKeywords);
       fd.append("publishStatus",   publishStatus);
       fd.append("downloadCount",   dlUnlimited ? "unlimited" : String(dlCount));
 
@@ -253,8 +250,7 @@ export default function UploadLogo({ dark }) {
           logoName: "", slug: "", brand: "", website: "",
           category: "", industry: "", country: "",
           license: "", description: "", history: "",
-          metaTitle: "", metaDescription: "", altText: "",
-          focusKeywords: "",
+          metaTitle: "", metaDescription: ""
         });
         setFiles([]);
         setSelectedTags([]);
@@ -417,7 +413,7 @@ export default function UploadLogo({ dark }) {
             </div>
 
             <div>
-              <label style={labelStyle}>Description <span style={{ color: green }}>*</span></label>
+              <label style={labelStyle}>Description <span style={{ color: green }}></span></label>
               <textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical" }} placeholder="Detailed description of the logo and brand..." value={form.description} onChange={setField("description")} />
             </div>
             <div>
@@ -687,16 +683,10 @@ export default function UploadLogo({ dark }) {
               <textarea style={{ ...inputStyle, minHeight: 72, resize: "vertical" }} placeholder="Free download TechNova logo vector..." value={form.metaDescription} onChange={setField("metaDescription")} />
               <p style={{ margin: "4px 0 0", fontSize: 11, color: muted }}>Recommended: 150–160 characters</p>
             </div>
-            <div>
-              <label style={labelStyle}>Focus Keywords</label>
-              <input style={inputStyle} placeholder="technova logo, technova vector, download technova" value={form.focusKeywords} onChange={setField("focusKeywords")} />
-            </div>
-            <div>
-              <label style={labelStyle}>Alt Text for Images</label>
-              <input style={inputStyle} placeholder="TechNova logo vector download free AI CDR SVG PNG" value={form.altText} onChange={setField("altText")} />
-            </div>
+            
+            
           </div>
-        </div>
+        </div>            
 
         {/* ── Publish Status ── */}
         <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 20 }}>

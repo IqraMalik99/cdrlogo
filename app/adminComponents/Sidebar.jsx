@@ -19,6 +19,7 @@ const NAV_ITEMS = [
 
   // ⚡ Main business actions (most used)
   { key: "upload", label: "Upload Logo", icon: Upload },
+  { key: "bulk", label: "Bulk Upload", icon: Upload },
   { key: "LogoManagement", label: "Logo Management", icon: LayoutGrid },
 
   // 🏷️ Organization
@@ -29,7 +30,7 @@ const NAV_ITEMS = [
   { key: "User", label: "Users", icon: Users },
   { key: "ContactMessages", label: "Contact Messages", icon: Mail },
   { key: "LogoRequests", label: "Logo Requests", icon: Bookmark },
-  {key:"Favourites", label:"Favourites", icon: Heart},
+  { key: "Favourites", label: "Favourites", icon: Heart },
 
   // ⚠️ Moderation / Legal (important but less frequent)
   { key: "DCMA/Report", label: "DCMA / Report", icon: Menu },

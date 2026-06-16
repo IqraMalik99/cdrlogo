@@ -25,6 +25,7 @@ export async function GET() {
         downloadCountUsed: true,
         downloadLimit: true,
         role: true,
+        createdAt: true,
         favorites: {
           select: {
             id: true,
@@ -39,11 +40,14 @@ export async function GET() {
       },
     });
 
+    console.log("[user/favorites]", user);
+
     if (!user) {
       return Response.json({ error: "User not found" }, { status: 404 });
     }
 
     return Response.json({
+      joined: user.createdAt,
       favorites: user.favorites,
       downloadCountUsed: user.downloadCountUsed,
       downloadLimit: user.downloadLimit,

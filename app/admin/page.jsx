@@ -23,6 +23,7 @@ import Email from "../adminComponents/EmailTemplate";
 import Tags from "../adminComponents/Tag";
 import ApiReference from "../adminComponents/Api";
 import AdminFavourites from "../adminComponents/Favourite";
+import BulkUpload from "../adminComponents/BulkComponent";
 
 // ── Page title map — keys MUST match the case used in setActive() calls ──
 const PAGE_TITLES = {
@@ -31,6 +32,7 @@ const PAGE_TITLES = {
   LogoManagement: "Logo Management",
   watermark: "Watermark Settings",
   categories: "Categories",
+  bulk:"Bulk Upload",
   Tags: "Tags",
   User: "User Management",
   "Page/CMS": "CMS / Pages",
@@ -85,6 +87,9 @@ export default function AdminPage() {
 
       case "upload":
         return <UploadLogo dark={dark} />;
+
+      case "bulk":
+        return <BulkUpload dark={dark} />;
 
       case "watermark":
         return <WatermarkSettings dark={dark} />;

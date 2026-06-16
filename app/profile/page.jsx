@@ -17,6 +17,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState(null);
   const [ready, setReady] = useState(false);
+  const [count, setCount] = useState(0);
+  const [join, setJoin] = useState(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -35,6 +37,10 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/user/favorites");
       const data = await res.json();
+
+      console.log(data.joined);
+   setJoin(new Date(data.joined));
+      setCount(data.downloadCountUsed);
       setFavorites(data.favorites ?? []);
     } catch {
       setFavorites([]);
@@ -52,7 +58,7 @@ export default function ProfilePage() {
         body: JSON.stringify({ logoId }),
       });
       setFavorites((prev) => prev.filter((l) => l.id !== logoId));
-    } catch {}
+    } catch { }
     setRemoving(null);
   };
 
@@ -550,7 +556,9 @@ export default function ProfilePage() {
                   </div>
                   <div className="pr-meta-row">
                     <span className="pr-meta-key">Joined</span>
-                    <span className="pr-meta-val">{memberSince}</span>
+                    <span className="pr-meta-val">
+  {join ? join.toLocaleDateString("en-GB") : "-"}
+</span>
                   </div>
                 </div>
               </div>
@@ -561,7 +569,7 @@ export default function ProfilePage() {
                   <div className="pr-stat-lbl">Saved</div>
                 </div>
                 <div className="pr-stat-box">
-                  <div className="pr-stat-n">{user?.downloadCountUsed ?? 0}</div>
+                  <div className="pr-stat-n">{count ?? count ?? 0}</div>
                   <div className="pr-stat-lbl">Downloads</div>
                 </div>
               </div>

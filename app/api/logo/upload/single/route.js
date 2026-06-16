@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import AdmZip from "adm-zip";
 import sharp from "sharp";
+import OpenAI from "openai";
 import { uploadToR2 } from "../../../../lib/uploadToR2";
 import { prisma } from "../../../../lib/prisma";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ── mime helpers ──────────────────────────────────────────────────────────────
 const MIME = {
@@ -34,7 +37,6 @@ function escapeXml(str) {
 }
 
 // ── Per-char advance-width table for Arial Bold (em units at 1000 UPM) ───────
-// Far more accurate than the flat 0.6 estimate for ASCII printable range.
 const ARIAL_BOLD_W = {
   " ": 0.278, "!": 0.333, '"': 0.474, "#": 0.556, "$": 0.556, "%": 0.889,
   "&": 0.722, "'": 0.278, "(": 0.333, ")": 0.333, "*": 0.389, "+": 0.584,
@@ -53,7 +55,7 @@ const ARIAL_BOLD_W = {
   "t": 0.333, "u": 0.611, "v": 0.556, "w": 0.778, "x": 0.556, "y": 0.556,
   "z": 0.500, "{": 0.389, "|": 0.280, "}": 0.389, "~": 0.584,
 };
-const FALLBACK_W = 0.62; // for chars outside the table (e.g. accented)
+const FALLBACK_W = 0.62;
 
 function measureText(text, fontSize) {
   let w = 0;
@@ -74,14 +76,11 @@ async function applyWatermark(buffer, wm) {
   const color = wm.color || "#ffffff";
   const position = wm.position || "center";
 
-  // Accurate bounding box
   const textW = measureText(wm.text, fontSize);
-  const textH = Math.ceil(fontSize * 1.15); // tight cap-height for Arial Bold
+  const textH = Math.ceil(fontSize * 1.15);
 
-  // Padding: 1.5% of shorter side, min 8px
   const pad = Math.max(8, Math.floor(Math.min(W, H) * 0.015));
 
-  // Resolve top-left corner of the text box
   let tx, ty;
   switch (position) {
     case "top-left": tx = pad; ty = pad; break;
@@ -94,14 +93,9 @@ async function applyWatermark(buffer, wm) {
     default: tx = Math.round((W - textW) / 2); ty = Math.round((H - textH) / 2); break;
   }
 
-  // Clamp — never let text bleed off canvas
   tx = Math.max(0, Math.min(tx, W - textW));
   ty = Math.max(0, Math.min(ty, H - textH));
 
-  // SVG overlay:
-  //   text-anchor="start"   → x is the LEFT edge of the text
-  //   dominant-baseline="hanging" → y is the TOP of the em square
-  // Together these make (tx, ty) the exact top-left of the rendered glyph block.
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
   <text
     x="${tx}"
@@ -121,17 +115,214 @@ async function applyWatermark(buffer, wm) {
     .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
     .toBuffer();
 }
-//  file size
+
+// ── file size formatter ────────────────────────────────────────────────────────
 function formatSize(bytes) {
   if (!bytes || bytes === 0) return "0 KB";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
+
+// ── Generate slug from logo name ────────────────────────────────────────────
+function generateSlugFromName(name) {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/--+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+// ── Normalize a logo name for fuzzy comparison ────────────────────────────────
+function normalizeName(name) {
+  return name
+    .toLowerCase()
+    .replace(/\b(19|20)\d{2}\b/g, "")
+    .replace(/\bversion\s*\d+\b/g, "")
+    .replace(/\bv\.?\s*\d+\b/g, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+}
+
+// ── Extract significant words for DB pre-filtering ───────────────────────────
+function getSignificantWords(name) {
+  const stop = new Set(["logo", "version", "the", "and", "of", "new", "old"]);
+  return name
+    .toLowerCase()
+    .replace(/\b(19|20)\d{2}\b/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter(w => w && !stop.has(w) && !/^v\.?\d+$/.test(w) && !/^\d+$/.test(w));
+}
+
+// ── Find related logos by fuzzy/normalized name match ─────────────────────────
+// FIX: only version if the FULL normalized name matches, not just a shared word.
+// e.g. "Nike" won't trigger versioning for "Nike Air" anymore.
+async function findRelatedLogos(logoName) {
+  const words = getSignificantWords(logoName);
+  if (!words.length) return { related: [], exactNormalizedMatches: [] };
+
+  const candidates = await prisma.logo.findMany({
+    where: {
+      OR: words.map(w => ({ logoName: { contains: w, mode: "insensitive" } })),
+    },
+    select: {
+      logoName: true,
+      metaTitle: true,
+      metaDescription: true,
+      description: true,
+      tags: true,
+      category: true,
+      brand: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  const targetNorm = normalizeName(logoName);
+
+  // Only exact normalized matches trigger auto-versioning
+  const exactNormalizedMatches = candidates.filter(
+    c => normalizeName(c.logoName) === targetNorm
+  );
+
+  // Related = candidates sharing words, used only for AI context (not versioning)
+  const related = candidates.slice(0, 5);
+
+  return { related, exactNormalizedMatches };
+}
+
+// ── Generate next version name ────────────────────────────────────────────────
+function generateVersionedName(logoName, exactNormalizedMatches) {
+  const usedVersions = new Set();
+
+  for (const match of exactNormalizedMatches) {
+    const m = match.logoName.match(/\bv(?:ersion)?\.?\s*(\d+)\b/i);
+    if (m) {
+      usedVersions.add(parseInt(m[1], 10));
+    } else {
+      usedVersions.add(1);
+    }
+  }
+
+  let next = 1;
+  while (usedVersions.has(next)) next++;
+  if (next === 1 && usedVersions.has(1)) next = 2;
+
+  const cleanBase = logoName
+    .replace(/\b(19|20)\d{2}\b/g, "")
+    .replace(/\bversion\s*\d+\b/gi, "")
+    .replace(/\bv\.?\s*\d+\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return `${cleanBase} V${next}`;
+}
+
+// ── OpenAI call with 1 retry ──────────────────────────────────────────────────
+async function callOpenAIWithRetry(params, retries = 1) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await openai.chat.completions.create(params);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      console.warn(`[OpenAI] Attempt ${attempt + 1} failed, retrying...`);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+}
+
+// ── OpenAI: generate SEO content + tags ───────────────────────────────────────
+// UPDATED PROMPT:
+//  - Removed "shapes, colors" from description requirements (we don't send the image)
+//  - Focus is now on brand identity, historical context, industry relevance, and era
+//  - Temperature lowered to 0.4 for more consistent JSON output
+//  - Added history field generation
+async function generateAIContent({ logoName, brand, category, industry, country, relatedLogos }) {
+  const isVariant = relatedLogos.length > 0;
+
+  const relatedContext = isVariant
+    ? relatedLogos
+        .slice(0, 5)
+        .map(
+          (r, i) =>
+            `Previous version ${i + 1}:
+- Name: ${r.logoName}
+- Meta Title: ${r.metaTitle || "N/A"}
+- Meta Description: ${r.metaDescription || "N/A"}
+- Description: ${r.description || "N/A"}
+- Tags: ${Array.isArray(r.tags) ? r.tags.join(", ") : "N/A"}`
+        )
+        .join("\n\n")
+    : "";
+
+  const systemPrompt = `You are an expert SEO copywriter specializing in logo and branding content for a logo download website. You write factual, unique, non-generic content grounded in real brand history and industry context. You never invent or guess visual details (colors, shapes) you cannot verify. You always respond with valid JSON only, no markdown formatting, no code fences.`;
+
+  const userPrompt = `Generate SEO content for the following logo entry.
+
+Logo Name: ${logoName}
+Brand: ${brand || "N/A"}
+Category: ${category || "N/A"}
+Industry: ${industry || "N/A"}
+Country: ${country || "N/A"}
+${isVariant
+  ? `\nThis is a variant/new version of an existing logo in our database. Below are the previous version(s) already published. Write NEW, DIFFERENT content for THIS version — do not repeat the same wording. Focus on what makes this version distinct: its era, any known rebranding events, market context, and how the brand identity evolved.\n\n${relatedContext}`
+  : "\nThis is a new logo with no prior versions in the database."}
+
+Requirements:
+- main_description: 100-150 words. Write factual, SEO-friendly content about the brand's identity, history, industry relevance, and what era or version this logo represents. Do NOT invent or describe visual details (colors, shapes, typography) — focus only on verifiable brand context, market position, and historical significance.
+- history: 40-60 words. A short factual paragraph about the brand's founding, key milestones, and how this logo fits into their timeline. Omit if the brand is not well-known.
+- meta_title: Under 60 characters, SEO-optimized, include brand name and relevant keywords.
+- meta_description: Under 160 characters, SEO-optimized, compelling and specific to this logo version.
+- tags: 10-15 highly relevant SEO keywords as an array (brand name, industry terms, logo type, version/year identifiers, format keywords like "vector", "SVG").
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "meta_title": "...",
+  "meta_description": "...",
+  "main_description": "...",
+  "history": "...",
+  "tags": ["...", "...", ...]
+}`;
+
+  const completion = await callOpenAIWithRetry({
+    model: "gpt-4o-mini",
+    temperature: 0.4,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    response_format: { type: "json_object" },
+  });
+
+  const raw = completion.choices[0]?.message?.content || "{}";
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = {};
+  }
+
+  return {
+    metaTitle: parsed.meta_title || "",
+    metaDescription: parsed.meta_description || "",
+    description: parsed.main_description || "",
+    history: parsed.history || "",
+    tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+    isVariant,
+  };
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req) {
+  console.log("\n========== UPLOAD-LOGO START ==========");
+  const startTime = Date.now();
+
   try {
     const formData = await req.formData();
+    console.log("[1] ✓ Form data received");
 
     // ── 1. pull fields ────────────────────────────────────────────────────────
     const slug = formData.get("slug")?.trim();
@@ -142,44 +333,158 @@ export async function POST(req) {
     const industry = formData.get("industry") || "";
     const country = formData.get("country") || "";
     const license = formData.get("license") || "";
-    const description = formData.get("description") || "";
-    const history = formData.get("history") || "";
-    const metaTitle = formData.get("metaTitle") || "";
-    const metaDescription = formData.get("metaDescription") || "";
-    const altText = formData.get("altText") || "";
-    const focusKeywords = formData.get("focusKeywords") || "";
     const publishStatus = formData.get("publishStatus") || "Draft";
     const downloadCount = formData.get("downloadCount") || "unlimited";
+    const altText = formData.get("altText") || "";
+    const focusKeywords = formData.get("focusKeywords") || "";
 
-    let tags = [];
+    // Manually entered fields — used as fallback if AI generation fails/disabled
+    let description = formData.get("description") || "";
+    let metaTitle = formData.get("metaTitle") || "";
+    let metaDescription = formData.get("metaDescription") || "";
+    let history = formData.get("history") || "";
+
     let brandColors = [];
-    try { tags = JSON.parse(formData.get("tags") || "[]"); } catch { }
     try { brandColors = JSON.parse(formData.get("brandColors") || "[]"); } catch { }
 
-    if (!slug) return NextResponse.json({ error: "slug is required." }, { status: 400 });
-    if (!logoName) return NextResponse.json({ error: "logoName is required." }, { status: 400 });
+    const useAI = formData.get("useAI") !== "false";
 
-    const existing = await prisma.logo.findUnique({ where: { slug } });
-    if (existing) {
-      return NextResponse.json(
-        { error: `Slug "${slug}" is already taken. Please use a different slug.` },
-        { status: 409 }
-      );
+    console.log("[1a] Parsed form fields:");
+    console.log(`  slug: "${slug}"`);
+    console.log(`  logoName: "${logoName}"`);
+    console.log(`  brand: "${brand}"`);
+    console.log(`  category: "${category}"`);
+    console.log(`  useAI: ${useAI}`);
+
+    // // ── Validation ────────────────────────────────────────────────────────────
+    if (!slug) {
+      console.log("[1b] ❌ VALIDATION FAILED: slug is required");
+      return NextResponse.json({ error: "slug is required." }, { status: 400 });
     }
+    if (!logoName) {
+      console.log("[1b] ❌ VALIDATION FAILED: logoName is required");
+      return NextResponse.json({ error: "logoName is required." }, { status: 400 });
+    }
+    console.log("[1b] ✓ Basic validation passed");
+
+    // ── Check slug uniqueness (RESTORED) ─────────────────────────────────────
+    // console.log("[1c] Checking slug uniqueness...");
+    // const existing = await prisma.logo.findUnique({ where: { slug } });
+    // if (existing) {
+    //   console.log(`[1c] ❌ Slug already exists: "${slug}"`);
+    //   return NextResponse.json(
+    //     { error: `Slug "${slug}" is already taken. Please use a different slug.` },
+    //     { status: 409 }
+    //   );
+    // }
+    // console.log("[1c] ✓ Slug is unique");
 
     // ── 2. collect ZIP files ──────────────────────────────────────────────────
+    console.log("[2] Collecting ZIP files...");
     const zipFiles = formData.getAll("files");
     if (!zipFiles.length) {
+      console.log("[2] ❌ No ZIP files found");
       return NextResponse.json({ error: "No ZIP file uploaded." }, { status: 400 });
     }
+    console.log(`[2] ✓ Found ${zipFiles.length} ZIP file(s)`);
 
     // ── 3. fetch watermark settings from DB ───────────────────────────────────
+    console.log("[3] Fetching watermark settings...");
     const websiteRecord = await prisma.website.findFirst();
     const watermark = websiteRecord?.watermark ?? null;
+    console.log(`[3] ✓ Watermark config: ${watermark?.enabled ? "ENABLED" : "DISABLED"}`);
 
-    // ── 4. process every ZIP ──────────────────────────────────────────────────
-    const publicFiles = []; // WebP previews (watermarked)
-    const privateFiles = []; // Original files (clean)
+    // ── 4. AI content generation ──────────────────────────────────────────────
+    let tags = [];
+    let aiMeta = { isVariant: false };
+    let finalLogoName = logoName;
+    let finalSlug = slug;
+
+    if (useAI) {
+      console.log("[4] AI GENERATION ENABLED - Starting process...");
+      try {
+        console.log(`[4a] Finding related logos for "${logoName}"...`);
+        const { related, exactNormalizedMatches } = await findRelatedLogos(logoName);
+        console.log(`[4a] ✓ Found ${related.length} related logo(s), ${exactNormalizedMatches.length} exact normalized match(es)`);
+
+        // FIX: only auto-version on exact normalized matches, not loose word matches
+        if (exactNormalizedMatches.length > 0) {
+          console.log(`[4b] Exact matches found — auto-versioning LOGO NAME...`);
+          exactNormalizedMatches.forEach((m, i) => {
+            console.log(`     ${i + 1}. "${m.logoName}"`);
+          });
+          finalLogoName = generateVersionedName(logoName, exactNormalizedMatches);
+          finalSlug = generateSlugFromName(finalLogoName);
+          console.log(`[4b] ✓ Logo name: "${logoName}" → "${finalLogoName}"`);
+          console.log(`[4b] ✓ Slug: "${slug}" → "${finalSlug}"`);
+
+          // Re-check that the new auto-versioned slug is also unique
+          const versionedSlugExists = await prisma.logo.findUnique({ where: { slug: finalSlug } });
+          if (versionedSlugExists) {
+            console.log(`[4b] ❌ Auto-versioned slug "${finalSlug}" already exists`);
+            return NextResponse.json(
+              { error: `Auto-versioned slug "${finalSlug}" is already taken. Please upload again or check existing logos.` },
+              { status: 409 }
+            );
+          }
+        } else {
+          console.log(`[4b] No exact matches — this is a new logo, no versioning needed`);
+        }
+
+        console.log(`[4c] Calling OpenAI (gpt-4o-mini, temp=0.4)...`);
+        const aiContent = await generateAIContent({
+          logoName: finalLogoName,
+          brand,
+          category,
+          industry,
+          country,
+          relatedLogos: related,
+        });
+        console.log(`[4c] ✓ AI response received`);
+        console.log(`     - meta_title: "${aiContent.metaTitle.substring(0, 60)}"`);
+        console.log(`     - tags: ${aiContent.tags.length} generated`);
+        console.log(`     - history: ${aiContent.history ? "✓" : "empty"}`);
+
+        aiMeta = {
+          isVariant: aiContent.isVariant,
+          relatedCount: related.length,
+          originalLogoName: logoName,
+          finalLogoName,
+          versioned: finalLogoName !== logoName,
+        };
+
+        if (aiContent.metaTitle) metaTitle = aiContent.metaTitle;
+        if (aiContent.metaDescription) metaDescription = aiContent.metaDescription;
+        if (aiContent.description) description = aiContent.description;
+        if (aiContent.history) history = aiContent.history;
+        if (aiContent.tags.length) tags = aiContent.tags;
+        console.log(`[4d] ✓ AI content applied to logo`);
+      } catch (aiErr) {
+        console.error("[4] ❌ AI generation failed:", aiErr.message);
+        await prisma.log.create({
+          data: {
+            who: "api:upload-logo",
+            content: `AI generation error for "${logoName}": ${aiErr?.message}`,
+          },
+        });
+        console.log("[4] ⚠ Falling back to manually entered fields");
+        try { tags = JSON.parse(formData.get("tags") || "[]"); } catch { }
+      }
+    } else {
+      console.log("[4] AI DISABLED - Using manual fields only");
+      try { tags = JSON.parse(formData.get("tags") || "[]"); } catch { }
+    }
+
+    if (!description) {
+      console.log("[4] ❌ No description found");
+      return NextResponse.json({ error: "description is required (AI generation may have failed)." }, { status: 400 });
+    }
+    console.log("[4] ✓ Description present");
+
+    // ── 5. process every ZIP ──────────────────────────────────────────────────
+    console.log("[5] Processing ZIP contents...");
+    const publicFiles = [];
+    const privateFiles = [];
     let svgContent = null;
 
     const fileSizes = { svg: 0, png: 0, ai: 0, cdr: 0 };
@@ -194,77 +499,92 @@ export async function POST(req) {
         const filename = entry.entryName.split("/").pop();
         const fileExt = ext(filename);
         const fileBuffer = entry.getData();
+        const fileSize = (fileBuffer.length / 1024).toFixed(2);
+
+        console.log(`     - ${filename} (${fileSize} KB)`);
 
         if (fileExt === "svg") {
-          // Private: original SVG
           privateFiles.push({
-            key: `separate/${slug}/${filename}`,
+            key: `separate/${finalSlug}/${filename}`,
             buffer: fileBuffer,
             contentType: mime(filename),
           });
           fileSizes.svg = fileBuffer.length;
-          // Capture SVG source for DB (first SVG wins)
           if (!svgContent) svgContent = fileBuffer.toString("utf-8");
+          console.log(`       → private SVG stored (${fileSize} KB)`);
 
         } else if (fileExt === "png") {
-          // Private: original PNG (always clean)
           privateFiles.push({
-            key: `separate/${slug}/${filename}`,
+            key: `separate/${finalSlug}/${filename}`,
             buffer: fileBuffer,
             contentType: mime(filename),
           });
-
           fileSizes.png = fileBuffer.length;
 
-          // Public: watermarked WebP
           const watermarked = await applyWatermark(fileBuffer, watermark);
           const webpBuffer = await sharp(watermarked).webp({ quality: 90 }).toBuffer();
           const webpName = filename.replace(/\.png$/i, ".webp");
           publicFiles.push({
-            key: `public/${slug}/${webpName}`,
+            key: `public/${finalSlug}/${webpName}`,
             buffer: webpBuffer,
             contentType: "image/webp",
           });
+          console.log(`       → private PNG (${fileSize} KB) + public WebP (${(webpBuffer.length / 1024).toFixed(2)} KB)`);
 
-        }
-        else if (fileExt === "ai") {
+        } else if (fileExt === "ai") {
           privateFiles.push({
-            key: `separate/${slug}/${filename}`,
+            key: `separate/${finalSlug}/${filename}`,
             buffer: fileBuffer,
             contentType: mime(filename),
           });
-
-          fileSizes.ai = fileBuffer.length;           // ← add this
+          fileSizes.ai = fileBuffer.length;
+          console.log(`       → private AI stored (${fileSize} KB)`);
 
         } else if (fileExt === "cdr") {
           privateFiles.push({
-            key: `separate/${slug}/${filename}`,
+            key: `separate/${finalSlug}/${filename}`,
             buffer: fileBuffer,
             contentType: mime(filename),
           });
+          fileSizes.cdr = fileBuffer.length;
+          console.log(`       → private CDR stored (${fileSize} KB)`);
 
-          fileSizes.cdr = fileBuffer.length;          // ← add this
-        }
-        else {
+        } else {
           privateFiles.push({
-            key: `private/${slug}/${filename}`,
+            key: `private/${finalSlug}/${filename}`,
             buffer: fileBuffer,
             contentType: mime(filename),
           });
+          console.log(`       → private misc file (${fileSize} KB)`);
         }
       }
     }
+    console.log(`[5] ✓ ZIP processing complete: ${publicFiles.length} public, ${privateFiles.length} private`);
 
-    // ── 5. upload everything to R2 ────────────────────────────────────────────
+    // ── 6. upload everything to R2 (with per-file error handling) ────────────
+    console.log("[6] Uploading files to R2...");
     const allUploads = [...publicFiles, ...privateFiles];
+
     const uploadResults = await Promise.all(
-      allUploads.map(({ key, buffer, contentType }) =>
-        uploadToR2({ fileBuffer: buffer, fileName: key, mimeType: contentType })
-      )
+      allUploads.map(async ({ key, buffer, contentType }) => {
+        try {
+          console.log(`     Uploading: ${key}`);
+          return await uploadToR2({ fileBuffer: buffer, fileName: key, mimeType: contentType });
+        } catch (err) {
+          console.error(`     ❌ Failed to upload: ${key} — ${err.message}`);
+          return null; // don't let one failure kill the whole batch
+        }
+      })
     );
 
     const urlMap = {};
     allUploads.forEach(({ key }, i) => { urlMap[key] = uploadResults[i]; });
+
+    const failedUploads = allUploads.filter((_, i) => !uploadResults[i]);
+    if (failedUploads.length) {
+      console.warn(`[6] ⚠ ${failedUploads.length} file(s) failed to upload: ${failedUploads.map(f => f.key).join(", ")}`);
+    }
+    console.log(`[6] ✓ Upload complete (${allUploads.length - failedUploads.length}/${allUploads.length} succeeded)`);
 
     const findUrl = (predicate) => {
       const match = allUploads.find(predicate);
@@ -277,31 +597,52 @@ export async function POST(req) {
     const aiUrl = findUrl(f => f.key.endsWith(".ai"));
     const cdrUrl = findUrl(f => f.key.endsWith(".cdr"));
 
-    // ── 6. save to DB ─────────────────────────────────────────────────────────
+    console.log("[6a] Resolved file URLs:");
+    if (svgUrl) console.log(`     SVG: ${svgUrl}`);
+    if (pngUrl) console.log(`     PNG: ${pngUrl}`);
+    if (webpUrl) console.log(`     WebP (public): ${webpUrl}`);
+    if (aiUrl) console.log(`     AI: ${aiUrl}`);
+    if (cdrUrl) console.log(`     CDR: ${cdrUrl}`);
+
+    // ── 7. save to DB ─────────────────────────────────────────────────────────
+    console.log("[7] Saving logo to database...");
+    console.log(`     Final logo name: "${finalLogoName}"`);
+    console.log(`     Final slug: "${finalSlug}"`);
+    console.log(`     Tags (${tags.length}): ${tags.slice(0, 5).join(", ")}${tags.length > 5 ? "..." : ""}`);
+
     const logo = await prisma.logo.create({
       data: {
-        logoName, slug, brand, website, category, industry, country,
+        logoName: finalLogoName, slug: finalSlug, brand, website, category, industry, country,
         license, description, history, tags, brandColors, publishStatus,
         downloadCount, svgUrl, pngUrl, webpUrl, aiUrl, cdrUrl, svgContent,
         metaTitle, metaDescription, altText, focusKeywords,
-        // ── File sizes ──────────────────────────────────────────────────────
         svgfilesize: formatSize(fileSizes.svg),
         pngfilesize: formatSize(fileSizes.png),
         aifilesize: formatSize(fileSizes.ai),
         cdrfilesize: formatSize(fileSizes.cdr),
       },
     });
+    console.log(`[7] ✓ Logo saved to DB with ID: ${logo.id}`);
 
     await prisma.log.create({
       data: {
         who: "api:upload-logo",
-        content: `Logo uploaded successfully: ${slug}`,
+        content: `Logo uploaded successfully: ${finalSlug} (name: "${finalLogoName}")${aiMeta.versioned ? ` [auto-versioned from "${logoName}"]` : ""}${aiMeta.isVariant ? ` (AI variant content based on ${aiMeta.relatedCount} related logo(s))` : useAI ? " (AI-generated content)" : ""}`,
       },
     });
+
+    const duration = Date.now() - startTime;
+    console.log(`\n========== UPLOAD-LOGO SUCCESS ==========`);
+    console.log(`Total time: ${duration}ms`);
+    console.log(`Final Slug: "${finalSlug}"`);
+    console.log(`Logo Name: "${finalLogoName}"${aiMeta.versioned ? ` (auto-versioned from "${logoName}")` : ""}`);
+    console.log(`Files: ${allUploads.length} total (${publicFiles.length} public, ${privateFiles.length} private)`);
+    console.log(`========================================\n`);
 
     return NextResponse.json({
       message: "Logo uploaded successfully!",
       logo,
+      ai: aiMeta,
       files: {
         public: publicFiles.map(f => ({ key: f.key, url: urlMap[f.key] })),
         private: privateFiles.map(f => ({ key: f.key, url: urlMap[f.key] })),
@@ -309,7 +650,13 @@ export async function POST(req) {
     });
 
   } catch (error) {
-    console.error("[upload-logo]", error);
+    const duration = Date.now() - startTime;
+    console.error(`\n========== UPLOAD-LOGO ERROR ==========`);
+    console.error(`Time elapsed: ${duration}ms`);
+    console.error(`Error: ${error.message}`);
+    console.error(`Stack: ${error.stack}`);
+    console.error(`========================================\n`);
+
     await prisma.log.create({
       data: {
         who: "api:upload-logo",
