@@ -212,10 +212,6 @@ function EditModal({ logo, dark, onClose, onSave, categories = [] }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <Field label="META TITLE"       k="metaTitle"       {...fieldProps} />
               <Field label="META DESCRIPTION" k="metaDescription" type="textarea" {...fieldProps} />
-              <TwoCol>
-                <Field label="ALT TEXT"       k="altText"         {...fieldProps} />
-                <Field label="FOCUS KEYWORDS" k="focusKeywords"   {...fieldProps} />
-              </TwoCol>
             </div>
           </div>
 

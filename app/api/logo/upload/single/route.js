@@ -234,11 +234,18 @@ async function callOpenAIWithRetry(params, retries = 1) {
 }
 
 // ── OpenAI: generate SEO content + tags ───────────────────────────────────────
-// UPDATED PROMPT:
+// UPDATED PROMPT (v2):
 //  - Removed "shapes, colors" from description requirements (we don't send the image)
 //  - Focus is now on brand identity, historical context, industry relevance, and era
-//  - Temperature lowered to 0.4 for more consistent JSON output
 //  - Added history field generation
+//  - NEW: for versioned/variant logos, we now extract the previous version's
+//    opening sentence and explicitly ban it, force a distinct angle (rebrand
+//    trigger / market shift / usage context / identity evolution), forbid
+//    structural mirroring, and require partial tag divergence — so versioned
+//    logos get genuinely unique, non-duplicate SEO content instead of just
+//    reworded copies of the prior version.
+//  - Temperature raised slightly (0.4 → 0.6) to support that lexical variety;
+//    response_format json_object still enforces valid JSON output.
 async function generateAIContent({ logoName, brand, category, industry, country, relatedLogos }) {
   const isVariant = relatedLogos.length > 0;
 
@@ -257,7 +264,16 @@ async function generateAIContent({ logoName, brand, category, industry, country,
         .join("\n\n")
     : "";
 
-  const systemPrompt = `You are an expert SEO copywriter specializing in logo and branding content for a logo download website. You write factual, unique, non-generic content grounded in real brand history and industry context. You never invent or guess visual details (colors, shapes) you cannot verify. You always respond with valid JSON only, no markdown formatting, no code fences.`;
+  // Pull the opening sentence/clause of each prior description so we can
+  // explicitly ban those openers — this is what actually forces variation,
+  // rather than just telling the model "be different" and hoping it complies.
+  const usedOpeners = isVariant
+    ? relatedLogos
+        .map(r => (r.description || "").split(/[.!?]/)[0].trim())
+        .filter(Boolean)
+    : [];
+
+  const systemPrompt = `You are an expert SEO copywriter specializing in logo and branding content for a logo download website. You write factual, unique, non-generic content grounded in real brand history and industry context. You never invent or guess visual details (colors, shapes, layout) you cannot verify. Every piece of content you write must be structurally and lexically distinct from any prior version shown to you — same facts, different sentences. You always respond with valid JSON only, no markdown formatting, no code fences.`;
 
   const userPrompt = `Generate SEO content for the following logo entry.
 
@@ -267,7 +283,16 @@ Category: ${category || "N/A"}
 Industry: ${industry || "N/A"}
 Country: ${country || "N/A"}
 ${isVariant
-  ? `\nThis is a variant/new version of an existing logo in our database. Below are the previous version(s) already published. Write NEW, DIFFERENT content for THIS version — do not repeat the same wording. Focus on what makes this version distinct: its era, any known rebranding events, market context, and how the brand identity evolved.\n\n${relatedContext}`
+  ? `\nThis is a variant/new version of an existing logo already published on the site. Below are the previous version(s). Search engines penalize near-duplicate content, so this version's content MUST be unique at the sentence level, not just reworded.
+
+${relatedContext}
+
+UNIQUENESS RULES (mandatory):
+1. Do NOT begin main_description with any of these previously-used openers: ${usedOpeners.length ? usedOpeners.map(o => `"${o}"`).join(", ") : "N/A"}.
+2. Pick ONE distinct angle for this version that the previous version(s) did NOT lead with — for example: the rebrand/version trigger, a shift in market or industry positioning, a notable usage context, or how the brand's identity strategy evolved. Lead the description with that angle, not a generic brand intro.
+3. Vary sentence structure and length from the previous version(s) — do not mirror their paragraph shape or clause order.
+4. Do not reuse specific phrases, adjectives, or descriptive combinations from the previous meta_title, meta_description, or description shown above.
+5. tags should overlap on core brand/industry terms where accurate, but include at least 3-4 tags not present in the previous version's tag list (e.g. version/year identifiers, more specific industry or use-case terms).`
   : "\nThis is a new logo with no prior versions in the database."}
 
 Requirements:
@@ -288,7 +313,7 @@ Respond ONLY with valid JSON in this exact format:
 
   const completion = await callOpenAIWithRetry({
     model: "gpt-4o-mini",
-    temperature: 0.4,
+    temperature: 0.6,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -431,7 +456,7 @@ export async function POST(req) {
           console.log(`[4b] No exact matches — this is a new logo, no versioning needed`);
         }
 
-        console.log(`[4c] Calling OpenAI (gpt-4o-mini, temp=0.4)...`);
+        console.log(`[4c] Calling OpenAI (gpt-4o-mini, temp=0.6)...`);
         const aiContent = await generateAIContent({
           logoName: finalLogoName,
           brand,

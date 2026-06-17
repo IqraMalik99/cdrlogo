@@ -585,25 +585,31 @@ export default function LogoDetail() {
                                 )}
                             </div>
 
-                            {/* Info grid */}
-                            <div className="card anim d2">
-                                <div className="info-grid">
-                                    {[
-                                        { icon: "🏷️", label: "Brand",    value: logo.brand    || "—" },
-                                        { icon: "⚙️", label: "Industry", value: logo.industry || "—" },
-                                        { icon: "🌍", label: "Country",  value: logo.country  || "—" },
-                                        { icon: "📁", label: "Category", value: logo.category || "—" },
-                                    ].map(item => (
-                                        <div key={item.label} className="info-cell">
-                                            <div className="info-cell-icon" style={{ fontSize: 14 }}>{item.icon}</div>
-                                            <div>
-                                                <div className="info-cell-label">{item.label}</div>
-                                                <div className="info-cell-value">{item.value}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                           <div className="card anim d2">
+  <div className="info-grid">
+    {[
+      { icon: "🏷️", label: "Brand", value: logo.brand },
+      { icon: "⚙️", label: "Industry", value: logo.industry },
+      { icon: "🌍", label: "Country", value: logo.country },
+      { icon: "📁", label: "Category", value: logo.category },
+    ]
+      .filter(item => item.value && item.value.trim() !== "")
+      .map(item => (
+        <div key={item.label} className="info-cell">
+          <div
+            className="info-cell-icon"
+            style={{ fontSize: 14 }}
+          >
+            {item.icon}
+          </div>
+          <div>
+            <div className="info-cell-label">{item.label}</div>
+            <div className="info-cell-value">{item.value}</div>
+          </div>
+        </div>
+      ))}
+  </div>
+</div>
 
                             <div className="ad-card anim d3" />
                         </div>

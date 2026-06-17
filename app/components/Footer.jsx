@@ -491,7 +491,7 @@ export default function Footer() {
                     {/* ── Bottom bar ── */}
                     <div className="cdr-footer-bottom">
                         <span className="f-copyright">
-                            {footer.copyright || "© 2024 CDRLOGO.com. All rights reserved."}
+                            {footer.copyright || "© 2026 CDRLOGO.com. All rights reserved."}
                         </span>
                         <div className="f-bottom-right">
                             <span className="f-badge">

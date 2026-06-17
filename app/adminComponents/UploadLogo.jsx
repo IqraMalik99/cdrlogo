@@ -36,6 +36,7 @@ function FileIcon() {
 export default function UploadLogo({ dark }) {
   const fileInputRef = useRef(null);
   const tagInputRef = useRef(null);
+  const nameDebounceRef = useRef(null);
 
   const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState([]);
@@ -57,6 +58,10 @@ export default function UploadLogo({ dark }) {
 
   const [dlCount, setDlCount] = useState(100);
   const [dlUnlimited, setDlUnlimited] = useState(false);
+
+  // ── Logo name AI suggestion ─────────────────────────────────────
+  const [nameSuggestion, setNameSuggestion] = useState(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
 
   const [form, setForm] = useState({
     logoName: "", slug: "", brand: "", website: "",
@@ -82,6 +87,42 @@ export default function UploadLogo({ dark }) {
     }
     loadTags();
   }, []);
+
+  // ── Debounced AI name suggestion (2s after typing stops) ─────────
+  useEffect(() => {
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+
+    const name = form.logoName.trim();
+
+    if (name.length < 2) {
+      setNameSuggestion(null);
+      return;
+    }
+
+    nameDebounceRef.current = setTimeout(async () => {
+      setSuggestLoading(true);
+      try {
+        const res = await fetch("/api/logo/suggest-name", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            logoName: name,
+            brand: form.brand,
+            category: form.category,
+          }),
+        });
+        const data = await res.json();
+        setNameSuggestion(data.suggestion || null);
+      } catch {
+        setNameSuggestion(null);
+      } finally {
+        setSuggestLoading(false);
+      }
+    }, 2000);
+
+    return () => clearTimeout(nameDebounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.logoName]);
 
   // ── theme tokens ─────────────────────────────────────────────────
   const bg       = dark ? "#0f1117" : "#FFFFFF";
@@ -131,6 +172,17 @@ export default function UploadLogo({ dark }) {
   const regenerateSlug = () => {
     setSlugEdited(false);
     setForm(prev => ({ ...prev, slug: toSlug(prev.logoName) }));
+  };
+
+  // ── accept AI name suggestion ─────────────────────────────────────
+  const acceptSuggestion = () => {
+    if (!nameSuggestion) return;
+    setForm(prev => {
+      const next = { ...prev, logoName: nameSuggestion };
+      if (!slugEdited) next.slug = toSlug(nameSuggestion);
+      return next;
+    });
+    setNameSuggestion(null);
   };
 
   // ── file handling ─────────────────────────────────────────────────
@@ -259,6 +311,7 @@ export default function UploadLogo({ dark }) {
         setSlugEdited(false);
         setDlCount(0);
         setDlUnlimited(false);
+        setNameSuggestion(null);
       } else {
         setSubmitResult({ ok: false, message: data.error || "Upload failed." });
       }
@@ -357,6 +410,28 @@ export default function UploadLogo({ dark }) {
               <div style={colStyle}>
                 <label style={labelStyle}>Logo Name <span style={{ color: green }}>*</span></label>
                 <input style={inputStyle} placeholder="e.g. Nike" value={form.logoName} onChange={setField("logoName")} />
+
+                {suggestLoading && (
+                  <p style={{ margin: "6px 0 0", fontSize: 11, color: muted, display: "flex", alignItems: "center", gap: 5 }}>
+                    <Loader2 size={11} style={{ animation: "spin 0.8s linear infinite" }} />
+                    Checking name…
+                  </p>
+                )}
+
+                {!suggestLoading && nameSuggestion && (
+                  <button
+                    onClick={acceptSuggestion}
+                    style={{
+                      marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6,
+                      background: greenDim, border: `1px solid ${green}44`,
+                      borderRadius: 99, padding: "5px 12px",
+                      color: green, fontSize: 12, fontWeight: 600,
+                      cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                     Use "{nameSuggestion}"
+                  </button>
+                )}
               </div>
               <div style={colStyle}>
                 <label style={labelStyle}>
