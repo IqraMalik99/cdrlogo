@@ -7,6 +7,8 @@ import { prisma } from "../../../../lib/prisma";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const DEFAULT_WEBSITE = "cdrlogo.com";
+
 // ── mime helpers ──────────────────────────────────────────────────────────────
 const MIME = {
   svg: "image/svg+xml",
@@ -115,20 +117,11 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-/**
- * Derive a human-readable logo name from the folder name.
- * Strips a leading numeric prefix (e.g. "01 ", "02 ") then Title Cases the rest.
- *
- * Examples:
- *   "01 cdr logo"              → "Cdr Logo"
- *   "04 TIMNAS INDONESIA 2025" → "Timnas Indonesia 2025"
- *   "05 Olympique de Marseille"→ "Olympique De Marseille"
- */
 function logoNameFromFolderName(folderName) {
   return folderName
-    .replace(/^\d+\s+/, "")                    // strip leading number + spaces
-    .replace(/[-_]+/g, " ")                    // hyphens/underscores → spaces
-    .replace(/\b\w/g, (c) => c.toUpperCase()) // Title Case
+    .replace(/^\d+\s+/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
     .trim();
 }
 
@@ -161,7 +154,26 @@ function getSignificantWords(name) {
     .filter((w) => w && !stop.has(w) && !/^v\.?\d+$/.test(w) && !/^\d+$/.test(w));
 }
 
-// ── DB: find related / exact matches ─────────────────────────────────────────
+// ── Normalize Website.categories into a flat list of category names ──────────
+function extractCategoryNames(categoriesJson) {
+  if (!categoriesJson) return [];
+
+  let list = categoriesJson;
+  if (typeof list === "string") {
+    try { list = JSON.parse(list); } catch { return []; }
+  }
+  if (!Array.isArray(list)) return [];
+
+  return list
+    .map((c) => {
+      if (typeof c === "string") return c;
+      if (c && typeof c === "object") return c.name || c.title || c.label || c.slug || null;
+      return null;
+    })
+    .filter(Boolean);
+}
+
+// ── DB: find related / exact matches ──────────────────────────────────────────
 async function findRelatedLogos(logoName) {
   const words = getSignificantWords(logoName);
   if (!words.length) return { related: [], exactNormalizedMatches: [] };
@@ -178,6 +190,9 @@ async function findRelatedLogos(logoName) {
       tags: true,
       category: true,
       brand: true,
+      website: true,
+      country: true,
+      industry: true,
     },
     orderBy: { createdAt: "desc" },
     take: 20,
@@ -229,7 +244,15 @@ async function callOpenAIWithRetry(params, retries = 1) {
 }
 
 // ── AI content generation ─────────────────────────────────────────────────────
-async function generateAIContent({ logoName, category, relatedLogos }) {
+// Generates: category, brand, website, country, industry + SEO fields.
+// Category is fetched from DB (Website.categories) and AI must pick from that list.
+// brand/website/country/industry are confidence-gated: empty string if not sure.
+async function generateAIContent({
+  logoName,
+  userCategory,        // uploader's hint (may be "")
+  availableCategories, // string[] from Website.categories in DB
+  relatedLogos,
+}) {
   const isVariant = relatedLogos.length > 0;
 
   const relatedContext = isVariant
@@ -237,17 +260,24 @@ async function generateAIContent({ logoName, category, relatedLogos }) {
         .slice(0, 5)
         .map(
           (r, i) =>
-            `Previous version ${i + 1}:\n- Name: ${r.logoName}\n- Meta Title: ${r.metaTitle || "N/A"}\n- Meta Description: ${r.metaDescription || "N/A"}\n- Description: ${r.description || "N/A"}\n- Tags: ${Array.isArray(r.tags) ? r.tags.join(", ") : "N/A"}`
+            `Previous version ${i + 1}:\n- Name: ${r.logoName}\n- Category: ${r.category || "N/A"}\n- Brand: ${r.brand || "N/A"}\n- Website: ${r.website || "N/A"}\n- Country: ${r.country || "N/A"}\n- Industry: ${r.industry || "N/A"}\n- Meta Title: ${r.metaTitle || "N/A"}\n- Meta Description: ${r.metaDescription || "N/A"}\n- Description: ${r.description || "N/A"}\n- Tags: ${Array.isArray(r.tags) ? r.tags.join(", ") : "N/A"}`
         )
         .join("\n\n")
     : "";
 
-  const systemPrompt = `You are an expert SEO copywriter specializing in logo and branding content for a logo download website. You write factual, unique, non-generic content grounded in real brand history and industry context. You never invent or guess visual details (colors, shapes) you cannot verify. You always respond with valid JSON only, no markdown formatting, no code fences.`;
+  const hasCategoryList = availableCategories.length > 0;
 
-  const userPrompt = `Generate SEO content for the following logo entry.
+  const systemPrompt = `You are an expert SEO copywriter and data classifier specializing in logo and branding content for a logo download website. You write factual, unique, non-generic content grounded in real brand history and industry context. You never invent or guess visual details (colors, shapes) you cannot verify. You are conservative about claiming a brand/company identity, official website, country, or industry — you only assert these when you are genuinely confident, because incorrect brand attribution is worse than leaving it blank. You always respond with valid JSON only, no markdown formatting, no code fences.`;
+
+  const userPrompt = `Generate SEO content and metadata for the following logo entry.
 
 Logo Name: ${logoName}
-Category: ${category || "N/A"}
+Uploader-selected category (hint, may be wrong or missing): ${userCategory || "(none provided)"}
+${
+  hasCategoryList
+    ? `\nAvailable categories on this site (you MUST choose exactly one of these, copying the string exactly as written — do not invent a new category, do not modify spelling/casing):\n${availableCategories.map((c) => `- ${c}`).join("\n")}`
+    : `\nNo category list is configured on this site. Use the uploader-selected category as-is, or your best single-word/short-phrase classification if none was provided.`
+}
 ${
   isVariant
     ? `\nThis is a variant/new version of an existing logo. Below are the previous version(s) already published. Write NEW, DIFFERENT content for THIS version — do not repeat the same wording. Focus on what makes this version distinct: its era, any known rebranding events, market context, and how the brand identity evolved.\n\n${relatedContext}`
@@ -255,6 +285,11 @@ ${
 }
 
 Requirements:
+- category: ${hasCategoryList ? "Pick the single best-fitting category from the provided list above, copied exactly. If the uploader's hint matches one of the list items, prefer it unless another item in the list is clearly a better fit for this specific logo." : "Best classification as described above."}
+- brand: The real, identifiable company/brand/organization name this logo belongs to. ONLY fill this if you are highly confident (e.g. well-known company, sports team, public organization). If you are not confident, return an empty string "".
+- website: The brand's real official website domain (e.g. "nike.com"). ONLY fill this if you are highly confident AND you filled in "brand". If brand is empty OR you are not fully confident about the official site, return an empty string "".
+- country: The country the brand/organization is primarily associated with or headquartered in (e.g. "United States", "Indonesia", "United Kingdom"). Use the brand's real home country — do not guess from visual style, language, or filename alone. ONLY fill this if you are highly confident AND you filled in "brand". If brand is empty OR you are not fully confident about the country, return an empty string "".
+- industry: The primary industry or sector this brand operates in (e.g. "Sports", "Technology", "Finance", "Automotive", "Fashion", "Food & Beverage", "Media & Entertainment", "Healthcare", "Education", "Retail"). Use a short, clean industry label. ONLY fill this if you filled in "brand" and are confident about their sector. If brand is empty, return an empty string "".
 - main_description: 100-150 words. Write factual, SEO-friendly content about the brand's identity, history, industry relevance, and what era or version this logo represents. Do NOT invent or describe visual details (colors, shapes, typography) — focus only on verifiable brand context, market position, and historical significance.
 - history: 40-60 words. A short factual paragraph about the brand's founding, key milestones, and how this logo fits into their timeline. Omit if the brand is not well-known.
 - meta_title: Under 60 characters, SEO-optimized, include brand name and relevant keywords.
@@ -263,6 +298,11 @@ Requirements:
 
 Respond ONLY with valid JSON in this exact format:
 {
+  "category": "...",
+  "brand": "...",
+  "website": "...",
+  "country": "...",
+  "industry": "...",
   "meta_title": "...",
   "meta_description": "...",
   "main_description": "...",
@@ -288,7 +328,48 @@ Respond ONLY with valid JSON in this exact format:
     parsed = {};
   }
 
+  // ── Resolve category: must be one of availableCategories if that list exists ──
+  let resolvedCategory = String(parsed.category || "").trim();
+  if (hasCategoryList) {
+    const match = availableCategories.find(
+      (c) => c.toLowerCase() === resolvedCategory.toLowerCase()
+    );
+    if (match) {
+      resolvedCategory = match; // use the exact stored casing/spelling
+    } else {
+      // AI didn't return a valid list item — fall back to uploader's hint,
+      // then to the first available category, never an invented value.
+      resolvedCategory =
+        availableCategories.find(
+          (c) => c.toLowerCase() === String(userCategory || "").toLowerCase()
+        ) || userCategory || availableCategories[0];
+    }
+  } else if (!resolvedCategory) {
+    resolvedCategory = userCategory || "";
+  }
+
+  // ── Resolve brand/website/country/industry with confidence gating ──────────
+  const brand = String(parsed.brand || "").trim();
+  let website  = String(parsed.website  || "").trim();
+  let country  = String(parsed.country  || "").trim();
+  let industry = String(parsed.industry || "").trim();
+
+  // Never trust website / country / industry without a confident brand attached.
+  if (!brand) {
+    website  = "";
+    country  = "";
+    industry = "";
+  }
+  if (!website) {
+    website = DEFAULT_WEBSITE;
+  }
+
   return {
+    category: resolvedCategory,
+    brand,
+    website,
+    country,
+    industry,
     metaTitle: parsed.meta_title || "",
     metaDescription: parsed.meta_description || "",
     description: parsed.main_description || "",
@@ -299,12 +380,10 @@ Respond ONLY with valid JSON in this exact format:
 }
 
 // ── Process one logo folder ───────────────────────────────────────────────────
-// folderName  : raw folder name from ZIP (e.g. "01 cdr logo")
-// folderFiles : [{ filename, buffer }]  — only the files inside that folder
 async function processOneLogoFolder({
   folderName,
   folderFiles,
-  sharedFields,   // { category, license, publishStatus, downloadCount, brandColors }
+  sharedFields,   // { category, license, publishStatus, downloadCount, brandColors, availableCategories }
   watermark,
 }) {
   const rawLogoName = logoNameFromFolderName(folderName);
@@ -326,13 +405,18 @@ async function processOneLogoFolder({
     const finalSlug = generateSlugFromName(finalLogoName);
     console.log(`  [slug] ${finalSlug}`);
 
-    // ── Step B: AI content generation ─────────────────────────────────────────
+    // ── Step B: AI content generation ────────────────────────────────────────
+    // Category is fetched from DB via sharedFields.availableCategories.
+    // brand, website, country, industry are all LLM-generated + confidence-gated.
     const aiContent = await generateAIContent({
       logoName: finalLogoName,
-      category: sharedFields.category,
+      userCategory: sharedFields.category,
+      availableCategories: sharedFields.availableCategories,
       relatedLogos: related,
     });
-    console.log(`  [ai] metaTitle: "${aiContent.metaTitle}" | tags: ${aiContent.tags.length}`);
+    console.log(
+      `  [ai] category: "${aiContent.category}" | brand: "${aiContent.brand || "(none)"}" | website: "${aiContent.website}" | country: "${aiContent.country || "(none)"}" | industry: "${aiContent.industry || "(none)"}" | metaTitle: "${aiContent.metaTitle}" | tags: ${aiContent.tags.length}`
+    );
 
     // ── Step C: classify & process files ──────────────────────────────────────
     const publicFiles = [];
@@ -343,7 +427,6 @@ async function processOneLogoFolder({
     for (const { filename, buffer: fileBuffer } of folderFiles) {
       const fileExt = ext(filename);
 
-      // ── ignore HTML / HTM files entirely ──────────────────────────────────
       if (fileExt === "html" || fileExt === "htm") {
         console.log(`  [skip] Ignoring HTML file: ${filename}`);
         continue;
@@ -395,7 +478,6 @@ async function processOneLogoFolder({
         fileSizes.cdr = fileBuffer.length;
 
       } else {
-        // unknown types go to private misc
         privateFiles.push({
           key: `private/${finalSlug}/${filename}`,
           buffer: fileBuffer,
@@ -436,11 +518,11 @@ async function processOneLogoFolder({
       data: {
         logoName: finalLogoName,
         slug: finalSlug,
-        brand: "",
-        website: "",
-        category: sharedFields.category,
-        industry: "",
-        country: "",
+        brand:    aiContent.brand,
+        website:  aiContent.website,
+        category: aiContent.category,
+        industry: aiContent.industry,   // ← now LLM-generated, no longer ""
+        country:  aiContent.country,
         license: sharedFields.license,
         description: aiContent.description,
         history: aiContent.history,
@@ -468,6 +550,11 @@ async function processOneLogoFolder({
       slug: finalSlug,
       versioned,
       originalName: rawLogoName,
+      category: aiContent.category,
+      brand:    aiContent.brand,
+      website:  aiContent.website,
+      country:  aiContent.country,
+      industry: aiContent.industry,
       id: logo.id,
     };
   } catch (err) {
@@ -489,7 +576,6 @@ export async function POST(req) {
   try {
     const formData = await req.formData();
 
-    // ── Shared fields ─────────────────────────────────────────────────────────
     const category      = formData.get("category") || "";
     const license       = formData.get("license") || "";
     const publishStatus = formData.get("publishStatus") || "Draft";
@@ -497,13 +583,6 @@ export async function POST(req) {
 
     let brandColors = [];
     try { brandColors = JSON.parse(formData.get("brandColors") || "[]"); } catch {}
-
-    if (!category) {
-      return NextResponse.json(
-        { error: "Category is required for bulk upload." },
-        { status: 400 }
-      );
-    }
 
     // ── Wrapper ZIP ───────────────────────────────────────────────────────────
     const wrapperFile = formData.get("file");
@@ -518,29 +597,22 @@ export async function POST(req) {
     const allEntries = wrapperZip.getEntries();
 
     // ── Group files by top-level folder ───────────────────────────────────────
-    // Structure expected: <folder-name>/<file>  (one level deep)
-    // We ignore __MACOSX, hidden folders, and any loose root-level files.
-    const folderMap = new Map(); // folderName → [{ filename, buffer }]
+    const folderMap = new Map();
 
     for (const entry of allEntries) {
       if (entry.isDirectory) continue;
 
       const parts = entry.entryName.split("/").filter(Boolean);
 
-      // Must be at least 2 parts: folder/file
       if (parts.length < 2) {
         console.log(`[skip] Root-level file ignored: ${entry.entryName}`);
         continue;
       }
 
       const topFolder = parts[0];
-
-      // Skip macOS metadata and hidden folders
       if (topFolder.startsWith("__MACOSX") || topFolder.startsWith(".")) continue;
 
       const filename = parts[parts.length - 1];
-
-      // Skip hidden files
       if (filename.startsWith(".")) continue;
 
       if (!folderMap.has(topFolder)) folderMap.set(topFolder, []);
@@ -557,12 +629,25 @@ export async function POST(req) {
     console.log(`[2] Found ${folderMap.size} logo folder(s):`);
     for (const [name] of folderMap) console.log(`     - ${name}`);
 
-    // ── Watermark settings ────────────────────────────────────────────────────
+    // ── Fetch Website settings: watermark + category list from DB ────────────
+    // availableCategories is passed into AI so it picks from this list.
     const websiteRecord = await prisma.website.findFirst();
     const watermark = websiteRecord?.watermark ?? null;
-    console.log(`[3] Watermark: ${watermark?.enabled ? "ENABLED" : "DISABLED"}`);
+    const availableCategories = extractCategoryNames(websiteRecord?.categories);
 
-    const sharedFields = { category, license, publishStatus, downloadCount, brandColors };
+    console.log(`[3] Watermark: ${watermark?.enabled ? "ENABLED" : "DISABLED"}`);
+    console.log(
+      `[3] Site categories (from DB): ${availableCategories.length ? availableCategories.join(", ") : "(none configured)"}`
+    );
+
+    const sharedFields = {
+      category,           // uploader hint
+      license,
+      publishStatus,
+      downloadCount,
+      brandColors,
+      availableCategories, // ← DB category list fed into AI per-logo
+    };
 
     // ── Process each folder sequentially ─────────────────────────────────────
     const results = [];
@@ -590,7 +675,7 @@ export async function POST(req) {
         data: {
           who: "api:bulk-upload-logo",
           content: result.success
-            ? `Bulk upload ✓ "${result.logoName}" (slug: ${result.slug})${result.versioned ? ` [auto-versioned from "${result.originalName}"]` : ""}`
+            ? `Bulk upload ✓ "${result.logoName}" (slug: ${result.slug}, category: ${result.category}, brand: ${result.brand || "—"}, website: ${result.website}, country: ${result.country || "—"}, industry: ${result.industry || "—"})${result.versioned ? ` [auto-versioned from "${result.originalName}"]` : ""}`
             : `Bulk upload ❌ "${result.logoName}": ${result.error}`,
         },
       });

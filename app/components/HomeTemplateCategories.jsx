@@ -91,7 +91,7 @@ export default function TemplateCategories() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("/api/catageory")
+    fetch("/api/catageory/template")
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => {
         // sort alphabetically — different order from BrandCategories

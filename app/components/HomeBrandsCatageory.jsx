@@ -58,7 +58,7 @@ export default function BrandCategories() {
   const [error,   setError]   = useState(null);
 
   useEffect(() => {
-    fetch("/api/catageory")
+    fetch("/api/catageory/brand")
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => {
         // sort by count descending
