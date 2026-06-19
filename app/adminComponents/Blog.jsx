@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const slugify = (str) =>
   str.toLowerCase().trim()
@@ -8,11 +8,9 @@ const slugify = (str) =>
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const EMOJI_OPTIONS = ["📝","🚀","💡","🎯","🔥","⚡","🌟","🛠️","📖","🎨","🧠","💻","🔐","🌐","📊","🤖","🧩","🎉"];
-
 const EMPTY_FORM = {
   title: "", slug: "", excerpt: "", content: "",
-  category: "", coverEmoji: "📝", readTime: 5, published: true,
+  category: "", readTime: 5, published: true,
 };
 
 function MiniPreview({ content, dark }) {
@@ -89,6 +87,14 @@ export default function BlogManager({ dark }) {
   const [catOpen, setCatOpen]         = useState(false);
   const [loadingCats, setLoadingCats] = useState(false);
 
+  // ── image upload state ────────────────────────────────────────────────
+  // Image can only be set on CREATE. On EDIT, the existing image is locked
+  // and never sent to the backend — imageFile stays null the whole time.
+  const [imageFile, setImageFile]     = useState(null);   // File object, pending upload (create only)
+  const [imagePreview, setImagePreview] = useState(null); // local object URL (create) or existing remote URL (edit, read-only)
+  const fileInputRef = useRef(null);
+  const isEditView = view === "edit";
+
   useEffect(() => {
     setLoadingCats(true);
     fetch("/api/catageory/home")
@@ -104,6 +110,15 @@ export default function BlogManager({ dark }) {
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
   }, [catOpen]);
+
+  // Revoke local object URLs when replaced/unmounted to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -140,12 +155,38 @@ export default function BlogManager({ dark }) {
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
+  const resetImageState = () => {
+    if (imagePreview && imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   const openCreate = () => {
     setForm(EMPTY_FORM);
     setEditId(null);
     setSlugManual(false);
     setTab("write");
+    resetImageState();
     setView("create");
+  };
+
+  const handleImageSelect = (file) => {
+    // Image picking is disabled entirely in edit mode — guard in case this
+    // is ever called programmatically while editing.
+    if (isEditView) return;
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      showToast("Use JPG, PNG, WEBP, or GIF", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Image must be under 5MB", "error");
+      return;
+    }
+    if (imagePreview && imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   // POST /api/blogs/by-slug  →  fills edit form with full content
@@ -153,12 +194,13 @@ export default function BlogManager({ dark }) {
     setForm({
       title: blog.title, slug: blog.slug, excerpt: blog.excerpt,
       content: blog.content ?? "", category: blog.category,
-      coverEmoji: blog.coverEmoji ?? "📝", readTime: blog.readTime ?? 5,
-      published: blog.published ?? true,
+      readTime: blog.readTime ?? 5, published: blog.published ?? true,
     });
     setEditId(blog.id);
     setSlugManual(true);
     setTab("write");
+    resetImageState();
+    setImagePreview(blog.image || null); // display-only existing image, never re-sent
     setView("edit");
 
     try {
@@ -172,9 +214,9 @@ export default function BlogManager({ dark }) {
         setForm({
           title: b.title, slug: b.slug, excerpt: b.excerpt,
           content: b.content ?? "", category: b.category,
-          coverEmoji: b.coverEmoji ?? "📝", readTime: b.readTime ?? 5,
-          published: b.published ?? true,
+          readTime: b.readTime ?? 5, published: b.published ?? true,
         });
+        setImagePreview(b.image || null);
       }
     } catch { /* keep optimistic data */ }
   };
@@ -184,22 +226,30 @@ export default function BlogManager({ dark }) {
     if (!title.trim() || !slug.trim() || !excerpt.trim() || !content.trim() || !category.trim()) {
       showToast("Please fill in all required fields", "error"); return;
     }
+    // Image required only on create; edit never touches the image field at all
+    if (view === "create" && !imageFile) {
+      showToast("Please upload a cover image", "error"); return;
+    }
+
     setSaving(true);
     try {
       const isEdit = view === "edit" && editId;
+      const fd = new FormData();
+      fd.append("title", form.title);
+      fd.append("slug", form.slug);
+      fd.append("excerpt", form.excerpt);
+      fd.append("content", form.content);
+      fd.append("category", form.category);
+      fd.append("readTime", String(Number(form.readTime)));
+      fd.append("published", String(Boolean(form.published)));
+      // Image is only ever appended on create. In edit mode imageFile is
+      // always null (picker is disabled), so the field is simply omitted
+      // and the backend should leave the existing image untouched.
+      if (!isEdit && imageFile) fd.append("image", imageFile);
+       
       const res = await fetch(isEdit ? `/api/blogs/${editId}` : "/api/blogs", {
         method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title:      form.title,
-          slug:       form.slug,
-          excerpt:    form.excerpt,
-          content:    form.content,
-          category:   form.category,
-          coverEmoji: form.coverEmoji,
-          readTime:   Number(form.readTime),
-          published:  Boolean(form.published),  // always explicit boolean
-        }),
+        body: fd, // no Content-Type header — browser sets multipart boundary
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
@@ -340,7 +390,9 @@ export default function BlogManager({ dark }) {
             onMouseEnter={e=>e.currentTarget.style.background=dark?"rgba(255,255,255,.02)":"rgba(0,0,0,.015)"}
             onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
             <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-              <span style={{ fontSize:22 }}>{b.coverEmoji||"📝"}</span>
+              {b.image
+                ? <img src={b.image} alt="" style={{ width:32, height:32, borderRadius:7, objectFit:"cover", flexShrink:0 }} />
+                : <span style={{ width:32, height:32, borderRadius:7, background:dark?"rgba(255,255,255,.06)":"#f1f5f9", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>🖼️</span>}
               <div style={{ minWidth:0 }}>
                 <div style={{ fontSize:13.5, fontWeight:600, color:text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.title}</div>
                 <div style={{ fontSize:11, color:muted, marginTop:1 }}>{b.slug}</div>
@@ -458,20 +510,77 @@ export default function BlogManager({ dark }) {
         </div>
 
         <div style={{ display:"flex", flexDirection:"column", gap:16, position:"sticky", top:16 }}>
+          {/* ── Cover Image ────────────────────────────────────────────── */}
           <div style={{ background:card, border:`1px solid ${border}`, borderRadius:14, padding:18 }}>
-            {lbl("Cover Emoji")}
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-              <span style={{ fontSize:42 }}>{form.coverEmoji}</span>
-              <input value={form.coverEmoji} onChange={e=>set("coverEmoji",e.target.value)} style={{ ...inp(), width:80, textAlign:"center", fontSize:20 }} maxLength={4} />
-            </div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-              {EMOJI_OPTIONS.map(e=>(
-                <button key={e} onClick={()=>set("coverEmoji",e)}
-                  style={{ width:36, height:36, borderRadius:8, background:form.coverEmoji===e?greenDim:(dark?"rgba(255,255,255,.04)":"#FFFFFF"), border:`1px solid ${form.coverEmoji===e?greenBdr:border}`, fontSize:18, cursor:"pointer", transition:"all .15s" }}>
-                  {e}
-                </button>
-              ))}
-            </div>
+            {lbl("Cover Image", !isEditView)}
+
+            {isEditView ? (
+              // Edit mode: image is locked — display only, no upload/replace/remove.
+              <>
+                <div style={{
+                  position:"relative", width:"100%", aspectRatio:"16/9", borderRadius:10,
+                  border:`1px solid ${border}`, overflow:"hidden",
+                  background: imagePreview ? "transparent" : (dark?"rgba(255,255,255,.03)":"#f8fafc"),
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Cover" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                  ) : (
+                    <div style={{ textAlign:"center", color:muted, fontSize:12.5, padding:"0 16px" }}>
+                      <div style={{ fontSize:26, marginBottom:6 }}>🖼️</div>
+                      No cover image
+                    </div>
+                  )}
+                </div>
+                <div style={{ marginTop:8, fontSize:11.5, color:muted, display:"flex", alignItems:"center", gap:5 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Image can't be changed when editing a post
+                </div>
+              </>
+            ) : (
+              // Create mode: full upload/replace/remove UI.
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  style={{ display:"none" }}
+                  onChange={e => handleImageSelect(e.target.files?.[0])}
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); handleImageSelect(e.dataTransfer.files?.[0]); }}
+                  style={{
+                    position:"relative", width:"100%", aspectRatio:"16/9", borderRadius:10,
+                    border:`1.5px dashed ${imagePreview ? "transparent" : inputBdr}`,
+                    background: imagePreview ? "transparent" : (dark?"rgba(255,255,255,.03)":"#f8fafc"),
+                    cursor:"pointer", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center",
+                  }}>
+                  {imagePreview ? (
+                    <>
+                      <img src={imagePreview} alt="Cover preview" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); resetImageState(); }}
+                        style={{ position:"absolute", top:8, right:8, width:26, height:26, borderRadius:7, background:"rgba(0,0,0,.55)", border:"none", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        ✕
+                      </button>
+                    </>
+                  ) : (
+                    <div style={{ textAlign:"center", color:muted, fontSize:12.5, padding:"0 16px" }}>
+                      <div style={{ fontSize:26, marginBottom:6 }}>🖼️</div>
+                      Click or drop an image<br/>JPG, PNG, WEBP, GIF · max 5MB
+                    </div>
+                  )}
+                </div>
+                {imageFile && (
+                  <div style={{ marginTop:8, fontSize:11.5, color:muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {imageFile.name}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <div style={{ background:card, border:`1px solid ${border}`, borderRadius:14, padding:18 }}>
@@ -489,6 +598,7 @@ export default function BlogManager({ dark }) {
                 ["Title",    form.title    ||"—",  !!form.title],
                 ["Slug",     form.slug     ||"—",  !!form.slug],
                 ["Category", form.category ||"—",  !!form.category],
+                ["Image",    isEditView ? (imagePreview ? "Locked (unchanged)" : "None") : (imageFile ? imageFile.name : "Not set"), isEditView ? true : !!imageFile],
                 ["Content",  form.content  ? `${form.content.length} chars` : "Empty", !!form.content],
                 ["Status",   form.published ? "Published" : "Draft", true],
               ].map(([k,v,ok])=>(

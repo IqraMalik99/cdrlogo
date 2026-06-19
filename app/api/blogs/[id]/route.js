@@ -35,7 +35,7 @@ export async function GET(request, { params }) {
           take: limit,
           select: {
             id: true, title: true, slug: true, excerpt: true,
-            content: true, category: true, coverEmoji: true,
+            content: true, category: true, image: true,
             readTime: true, published: true, createdAt: true,
           },
         }),
@@ -84,8 +84,19 @@ export async function POST(request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { title, slug, excerpt, content, category, coverEmoji, readTime, published } = body;
+
+    const formData = await request.formData();
+
+    const title     = formData.get("title");
+    const slug      = formData.get("slug");
+    const excerpt   = formData.get("excerpt");
+    const content   = formData.get("content");
+    const category  = formData.get("category");
+    const readTime  = formData.get("readTime");
+    const published = formData.get("published");
+
+    // NOTE: image is intentionally never read here. Editing a post must
+    // never change its cover image — that's set once at creation only.
 
     const existing = await prisma.blog.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -93,14 +104,13 @@ export async function PATCH(request, { params }) {
     const blog = await prisma.blog.update({
       where: { id },
       data: {
-        ...(title      !== undefined && { title }),
-        ...(slug       !== undefined && { slug }),
-        ...(excerpt    !== undefined && { excerpt }),
-        ...(content    !== undefined && { content }),
-        ...(category   !== undefined && { category }),
-        ...(coverEmoji !== undefined && { coverEmoji }),
-        ...(readTime   !== undefined && { readTime }),
-        ...(published  !== undefined && { published: Boolean(published) }),
+        ...(title      !== null && { title }),
+        ...(slug       !== null && { slug }),
+        ...(excerpt    !== null && { excerpt }),
+        ...(content    !== null && { content }),
+        ...(category   !== null && { category }),
+        ...(readTime   !== null && { readTime: Number(readTime) }),
+        ...(published  !== null && { published: published === "true" }),
       },
     });
 

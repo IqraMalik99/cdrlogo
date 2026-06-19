@@ -36,12 +36,12 @@ export type BlogSumAggregateOutputType = {
 
 export type BlogMinAggregateOutputType = {
   id: string | null
+  image: string | null
   title: string | null
   slug: string | null
   excerpt: string | null
   content: string | null
   category: string | null
-  coverEmoji: string | null
   readTime: number | null
   published: boolean | null
   createdAt: Date | null
@@ -50,12 +50,12 @@ export type BlogMinAggregateOutputType = {
 
 export type BlogMaxAggregateOutputType = {
   id: string | null
+  image: string | null
   title: string | null
   slug: string | null
   excerpt: string | null
   content: string | null
   category: string | null
-  coverEmoji: string | null
   readTime: number | null
   published: boolean | null
   createdAt: Date | null
@@ -64,12 +64,12 @@ export type BlogMaxAggregateOutputType = {
 
 export type BlogCountAggregateOutputType = {
   id: number
+  image: number
   title: number
   slug: number
   excerpt: number
   content: number
   category: number
-  coverEmoji: number
   readTime: number
   published: number
   createdAt: number
@@ -88,12 +88,12 @@ export type BlogSumAggregateInputType = {
 
 export type BlogMinAggregateInputType = {
   id?: true
+  image?: true
   title?: true
   slug?: true
   excerpt?: true
   content?: true
   category?: true
-  coverEmoji?: true
   readTime?: true
   published?: true
   createdAt?: true
@@ -102,12 +102,12 @@ export type BlogMinAggregateInputType = {
 
 export type BlogMaxAggregateInputType = {
   id?: true
+  image?: true
   title?: true
   slug?: true
   excerpt?: true
   content?: true
   category?: true
-  coverEmoji?: true
   readTime?: true
   published?: true
   createdAt?: true
@@ -116,12 +116,12 @@ export type BlogMaxAggregateInputType = {
 
 export type BlogCountAggregateInputType = {
   id?: true
+  image?: true
   title?: true
   slug?: true
   excerpt?: true
   content?: true
   category?: true
-  coverEmoji?: true
   readTime?: true
   published?: true
   createdAt?: true
@@ -217,12 +217,12 @@ export type BlogGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 
 export type BlogGroupByOutputType = {
   id: string
+  image: string
   title: string
   slug: string
   excerpt: string
   content: string
   category: string
-  coverEmoji: string
   readTime: number
   published: boolean
   createdAt: Date
@@ -254,12 +254,12 @@ export type BlogWhereInput = {
   OR?: Prisma.BlogWhereInput[]
   NOT?: Prisma.BlogWhereInput | Prisma.BlogWhereInput[]
   id?: Prisma.StringFilter<"Blog"> | string
+  image?: Prisma.StringFilter<"Blog"> | string
   title?: Prisma.StringFilter<"Blog"> | string
   slug?: Prisma.StringFilter<"Blog"> | string
   excerpt?: Prisma.StringFilter<"Blog"> | string
   content?: Prisma.StringFilter<"Blog"> | string
   category?: Prisma.StringFilter<"Blog"> | string
-  coverEmoji?: Prisma.StringFilter<"Blog"> | string
   readTime?: Prisma.IntFilter<"Blog"> | number
   published?: Prisma.BoolFilter<"Blog"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Blog"> | Date | string
@@ -268,12 +268,12 @@ export type BlogWhereInput = {
 
 export type BlogOrderByWithRelationInput = {
   id?: Prisma.SortOrder
+  image?: Prisma.SortOrder
   title?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   excerpt?: Prisma.SortOrder
   content?: Prisma.SortOrder
   category?: Prisma.SortOrder
-  coverEmoji?: Prisma.SortOrder
   readTime?: Prisma.SortOrder
   published?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -286,11 +286,11 @@ export type BlogWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.BlogWhereInput | Prisma.BlogWhereInput[]
   OR?: Prisma.BlogWhereInput[]
   NOT?: Prisma.BlogWhereInput | Prisma.BlogWhereInput[]
+  image?: Prisma.StringFilter<"Blog"> | string
   title?: Prisma.StringFilter<"Blog"> | string
   excerpt?: Prisma.StringFilter<"Blog"> | string
   content?: Prisma.StringFilter<"Blog"> | string
   category?: Prisma.StringFilter<"Blog"> | string
-  coverEmoji?: Prisma.StringFilter<"Blog"> | string
   readTime?: Prisma.IntFilter<"Blog"> | number
   published?: Prisma.BoolFilter<"Blog"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Blog"> | Date | string
@@ -299,12 +299,12 @@ export type BlogWhereUniqueInput = Prisma.AtLeast<{
 
 export type BlogOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
+  image?: Prisma.SortOrder
   title?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   excerpt?: Prisma.SortOrder
   content?: Prisma.SortOrder
   category?: Prisma.SortOrder
-  coverEmoji?: Prisma.SortOrder
   readTime?: Prisma.SortOrder
   published?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -321,12 +321,12 @@ export type BlogScalarWhereWithAggregatesInput = {
   OR?: Prisma.BlogScalarWhereWithAggregatesInput[]
   NOT?: Prisma.BlogScalarWhereWithAggregatesInput | Prisma.BlogScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Blog"> | string
+  image?: Prisma.StringWithAggregatesFilter<"Blog"> | string
   title?: Prisma.StringWithAggregatesFilter<"Blog"> | string
   slug?: Prisma.StringWithAggregatesFilter<"Blog"> | string
   excerpt?: Prisma.StringWithAggregatesFilter<"Blog"> | string
   content?: Prisma.StringWithAggregatesFilter<"Blog"> | string
   category?: Prisma.StringWithAggregatesFilter<"Blog"> | string
-  coverEmoji?: Prisma.StringWithAggregatesFilter<"Blog"> | string
   readTime?: Prisma.IntWithAggregatesFilter<"Blog"> | number
   published?: Prisma.BoolWithAggregatesFilter<"Blog"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Blog"> | Date | string
@@ -335,12 +335,12 @@ export type BlogScalarWhereWithAggregatesInput = {
 
 export type BlogCreateInput = {
   id?: string
+  image: string
   title: string
   slug: string
   excerpt: string
   content: string
   category: string
-  coverEmoji?: string
   readTime?: number
   published?: boolean
   createdAt?: Date | string
@@ -349,12 +349,12 @@ export type BlogCreateInput = {
 
 export type BlogUncheckedCreateInput = {
   id?: string
+  image: string
   title: string
   slug: string
   excerpt: string
   content: string
   category: string
-  coverEmoji?: string
   readTime?: number
   published?: boolean
   createdAt?: Date | string
@@ -363,12 +363,12 @@ export type BlogUncheckedCreateInput = {
 
 export type BlogUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   excerpt?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   category?: Prisma.StringFieldUpdateOperationsInput | string
-  coverEmoji?: Prisma.StringFieldUpdateOperationsInput | string
   readTime?: Prisma.IntFieldUpdateOperationsInput | number
   published?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -377,12 +377,12 @@ export type BlogUpdateInput = {
 
 export type BlogUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   excerpt?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   category?: Prisma.StringFieldUpdateOperationsInput | string
-  coverEmoji?: Prisma.StringFieldUpdateOperationsInput | string
   readTime?: Prisma.IntFieldUpdateOperationsInput | number
   published?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -391,12 +391,12 @@ export type BlogUncheckedUpdateInput = {
 
 export type BlogCreateManyInput = {
   id?: string
+  image: string
   title: string
   slug: string
   excerpt: string
   content: string
   category: string
-  coverEmoji?: string
   readTime?: number
   published?: boolean
   createdAt?: Date | string
@@ -405,12 +405,12 @@ export type BlogCreateManyInput = {
 
 export type BlogUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   excerpt?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   category?: Prisma.StringFieldUpdateOperationsInput | string
-  coverEmoji?: Prisma.StringFieldUpdateOperationsInput | string
   readTime?: Prisma.IntFieldUpdateOperationsInput | number
   published?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -419,12 +419,12 @@ export type BlogUpdateManyMutationInput = {
 
 export type BlogUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   excerpt?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   category?: Prisma.StringFieldUpdateOperationsInput | string
-  coverEmoji?: Prisma.StringFieldUpdateOperationsInput | string
   readTime?: Prisma.IntFieldUpdateOperationsInput | number
   published?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -433,12 +433,12 @@ export type BlogUncheckedUpdateManyInput = {
 
 export type BlogCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  image?: Prisma.SortOrder
   title?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   excerpt?: Prisma.SortOrder
   content?: Prisma.SortOrder
   category?: Prisma.SortOrder
-  coverEmoji?: Prisma.SortOrder
   readTime?: Prisma.SortOrder
   published?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -451,12 +451,12 @@ export type BlogAvgOrderByAggregateInput = {
 
 export type BlogMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  image?: Prisma.SortOrder
   title?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   excerpt?: Prisma.SortOrder
   content?: Prisma.SortOrder
   category?: Prisma.SortOrder
-  coverEmoji?: Prisma.SortOrder
   readTime?: Prisma.SortOrder
   published?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -465,12 +465,12 @@ export type BlogMaxOrderByAggregateInput = {
 
 export type BlogMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  image?: Prisma.SortOrder
   title?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   excerpt?: Prisma.SortOrder
   content?: Prisma.SortOrder
   category?: Prisma.SortOrder
-  coverEmoji?: Prisma.SortOrder
   readTime?: Prisma.SortOrder
   published?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -485,12 +485,12 @@ export type BlogSumOrderByAggregateInput = {
 
 export type BlogSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  image?: boolean
   title?: boolean
   slug?: boolean
   excerpt?: boolean
   content?: boolean
   category?: boolean
-  coverEmoji?: boolean
   readTime?: boolean
   published?: boolean
   createdAt?: boolean
@@ -499,12 +499,12 @@ export type BlogSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 
 export type BlogSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  image?: boolean
   title?: boolean
   slug?: boolean
   excerpt?: boolean
   content?: boolean
   category?: boolean
-  coverEmoji?: boolean
   readTime?: boolean
   published?: boolean
   createdAt?: boolean
@@ -513,12 +513,12 @@ export type BlogSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 
 export type BlogSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  image?: boolean
   title?: boolean
   slug?: boolean
   excerpt?: boolean
   content?: boolean
   category?: boolean
-  coverEmoji?: boolean
   readTime?: boolean
   published?: boolean
   createdAt?: boolean
@@ -527,31 +527,31 @@ export type BlogSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 
 export type BlogSelectScalar = {
   id?: boolean
+  image?: boolean
   title?: boolean
   slug?: boolean
   excerpt?: boolean
   content?: boolean
   category?: boolean
-  coverEmoji?: boolean
   readTime?: boolean
   published?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type BlogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "slug" | "excerpt" | "content" | "category" | "coverEmoji" | "readTime" | "published" | "createdAt" | "updatedAt", ExtArgs["result"]["blog"]>
+export type BlogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "image" | "title" | "slug" | "excerpt" | "content" | "category" | "readTime" | "published" | "createdAt" | "updatedAt", ExtArgs["result"]["blog"]>
 
 export type $BlogPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Blog"
   objects: {}
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
+    image: string
     title: string
     slug: string
     excerpt: string
     content: string
     category: string
-    coverEmoji: string
     readTime: number
     published: boolean
     createdAt: Date
@@ -980,12 +980,12 @@ export interface Prisma__BlogClient<T, Null = never, ExtArgs extends runtime.Typ
  */
 export interface BlogFieldRefs {
   readonly id: Prisma.FieldRef<"Blog", 'String'>
+  readonly image: Prisma.FieldRef<"Blog", 'String'>
   readonly title: Prisma.FieldRef<"Blog", 'String'>
   readonly slug: Prisma.FieldRef<"Blog", 'String'>
   readonly excerpt: Prisma.FieldRef<"Blog", 'String'>
   readonly content: Prisma.FieldRef<"Blog", 'String'>
   readonly category: Prisma.FieldRef<"Blog", 'String'>
-  readonly coverEmoji: Prisma.FieldRef<"Blog", 'String'>
   readonly readTime: Prisma.FieldRef<"Blog", 'Int'>
   readonly published: Prisma.FieldRef<"Blog", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Blog", 'DateTime'>

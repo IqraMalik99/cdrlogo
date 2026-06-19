@@ -33,6 +33,10 @@ function formatDate(iso) {
 function BlogCard({ blog, dark, index, ready }) {
   const router = useRouter();
   const catStyle = getCatColor(blog.category, dark);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError]   = useState(false);
+  const showImage = !!blog.image && !imgError;
+
   return (
     <article
       className="blog-card"
@@ -42,7 +46,24 @@ function BlogCard({ blog, dark, index, ready }) {
       onKeyDown={e => e.key === "Enter" && router.push(`/blog/${blog.slug}`)}
     >
       <div className="card-cover">
-        <span className="card-emoji">{blog.coverEmoji || "📝"}</span>
+        {showImage ? (
+          <>
+            <img
+              className={`card-image${imgLoaded ? " loaded" : ""}`}
+              src={blog.image}
+              alt={blog.title}
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgError(true)}
+            />
+            {!imgLoaded && <div className="card-image-skel skel-block" />}
+          </>
+        ) : (
+          <div className="card-image-fallback" style={catStyle}>
+            {blog.category?.[0]?.toUpperCase() ?? "?"}
+          </div>
+        )}
         <div className="card-cover-glow" />
       </div>
       <div className="card-body">
@@ -114,6 +135,7 @@ export default function BlogPage() {
       const p = new URLSearchParams({ page, limit: "9" });
       if (activeCategory !== "All") p.set("category", activeCategory);
       if (searchQuery) p.set("search", searchQuery);
+      console.log("pyyt",p)
       const res = await fetch(`/api/blogs?${p}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -169,24 +191,27 @@ export default function BlogPage() {
         .cat-tab.active{background:rgba(7,166,38,.15);border-color:rgba(7,166,38,.45);color:#4ade80}
         [data-theme="light"] .cat-tab:hover,[data-theme="light"] .cat-tab.active{color:#15803d}
         .cat-skel{width:80px;height:28px;border-radius:100px}
-        .blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+        .blog-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
         .blog-card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;opacity:0;transform:translateY(14px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1),background .25s,border-color .25s,box-shadow .25s}
         .ready .blog-card{opacity:1;transform:translateY(0)}
         .skel-card{opacity:1!important;transform:none!important;cursor:default;pointer-events:none}
         .blog-card:not(.skel-card):hover{background:var(--sfh);border-color:var(--bdh);transform:translateY(-3px);box-shadow:0 8px 32px rgba(7,166,38,.1),0 2px 8px rgba(0,0,0,.12)}
-        .card-cover{height:140px;position:relative;background:linear-gradient(135deg,rgba(7,166,38,.06),rgba(7,166,38,.02));display:flex;align-items:center;justify-content:center;overflow:hidden}
+        .card-cover{height:100px;position:relative;background:linear-gradient(135deg,rgba(7,166,38,.06),rgba(7,166,38,.02));display:flex;align-items:center;justify-content:center;overflow:hidden}
         .skel-block{background:var(--sk)}
         .card-cover-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(7,166,38,.08) 0%,transparent 65%);pointer-events:none}
-        .card-emoji{font-size:46px;position:relative;z-index:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,.2));transition:transform .3s cubic-bezier(.22,1,.36,1)}
-        .blog-card:not(.skel-card):hover .card-emoji{transform:scale(1.12) rotate(-4deg)}
-        .card-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px;flex:1}
-        .card-cat{display:inline-flex;align-items:center;padding:2px 9px;border-radius:5px;font-size:9.5px;font-weight:700;letter-spacing:.6px;width:fit-content}
-        .card-title{font-size:14.5px;font-weight:700;line-height:1.35;color:var(--hd);transition:color .25s}
+        .card-image{width:100%;height:100%;object-fit:contain;object-position:center;position:relative;z-index:1;opacity:0;transition:opacity .4s ease,transform .3s cubic-bezier(.22,1,.36,1)}
+        .card-image.loaded{opacity:1}
+        .blog-card:not(.skel-card):hover .card-image{transform:scale(1.04)}
+        .card-image-skel{position:absolute;inset:0;animation:shimmer 1.4s ease-in-out infinite;background:linear-gradient(90deg,var(--sk) 0%,var(--ss) 50%,var(--sk) 100%);background-size:200% 100%}
+        .card-image-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;position:relative;z-index:1;font-family:'Sora',sans-serif}
+        .card-body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:5px;flex:1}
+        .card-cat{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:8.5px;font-weight:700;letter-spacing:.5px;width:fit-content}
+        .card-title{font-size:12.5px;font-weight:700;line-height:1.3;color:var(--hd);transition:color .25s}
         .blog-card:not(.skel-card):hover .card-title{color:#4ade80}
         [data-theme="light"] .blog-card:not(.skel-card):hover .card-title{color:#15803d}
-        .card-excerpt{font-family:'DM Sans',sans-serif;font-size:12.5px;line-height:1.55;color:var(--bo);flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-        .card-footer{display:flex;align-items:center;gap:10px;margin-top:4px}
-        .card-meta{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--mt);font-family:'DM Sans',sans-serif}
+        .card-excerpt{font-family:'DM Sans',sans-serif;font-size:11px;line-height:1.45;color:var(--bo);flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .card-footer{display:flex;align-items:center;gap:7px;margin-top:2px}
+        .card-meta{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--mt);font-family:'DM Sans',sans-serif}
         .card-arrow{margin-left:auto;color:rgba(7,166,38,.5);transition:transform .2s,color .2s}
         .blog-card:not(.skel-card):hover .card-arrow{transform:translateX(3px);color:#4ade80}
         .skel{background:linear-gradient(90deg,var(--sk) 0%,var(--ss) 50%,var(--sk) 100%);background-size:200% 100%;animation:shimmer 1.4s ease-in-out infinite;border-radius:5px}

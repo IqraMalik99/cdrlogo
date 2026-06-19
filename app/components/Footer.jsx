@@ -494,10 +494,7 @@ export default function Footer() {
                             {footer.copyright || "© 2026 CDRLOGO.com. All rights reserved."}
                         </span>
                         <div className="f-bottom-right">
-                            <span className="f-badge">
-                                <span className="f-pulse" />
-                                Live Updates
-                            </span>
+                          
                         </div>
                     </div>
                 </div>

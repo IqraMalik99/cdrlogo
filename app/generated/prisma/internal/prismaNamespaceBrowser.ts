@@ -215,12 +215,12 @@ export type ContactMessageScalarFieldEnum = (typeof ContactMessageScalarFieldEnu
 
 export const BlogScalarFieldEnum = {
   id: 'id',
+  image: 'image',
   title: 'title',
   slug: 'slug',
   excerpt: 'excerpt',
   content: 'content',
   category: 'category',
-  coverEmoji: 'coverEmoji',
   readTime: 'readTime',
   published: 'published',
   createdAt: 'createdAt',

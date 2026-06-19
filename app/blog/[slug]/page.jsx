@@ -7,34 +7,38 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 }
 
 const CATEGORY_PALETTE = [
-  { bg: "rgba(239,68,68,.12)",  border: "rgba(239,68,68,.28)",  color: "#fca5a5", light: "#dc2626" },
-  { bg: "rgba(234,179,8,.12)",  border: "rgba(234,179,8,.28)",  color: "#fde68a", light: "#b45309" },
+  { bg: "rgba(239,68,68,.12)", border: "rgba(239,68,68,.28)", color: "#fca5a5", light: "#dc2626" },
+  { bg: "rgba(234,179,8,.12)", border: "rgba(234,179,8,.28)", color: "#fde68a", light: "#b45309" },
   { bg: "rgba(59,130,246,.12)", border: "rgba(59,130,246,.28)", color: "#93c5fd", light: "#1d4ed8" },
   { bg: "rgba(168,85,247,.12)", border: "rgba(168,85,247,.28)", color: "#d8b4fe", light: "#7e22ce" },
-  { bg: "rgba(7,166,38,.12)",   border: "rgba(7,166,38,.28)",   color: "#4ade80", light: "#15803d" },
+  { bg: "rgba(7,166,38,.12)", border: "rgba(7,166,38,.28)", color: "#4ade80", light: "#15803d" },
   { bg: "rgba(236,72,153,.12)", border: "rgba(236,72,153,.28)", color: "#f9a8d4", light: "#be185d" },
   { bg: "rgba(20,184,166,.12)", border: "rgba(20,184,166,.28)", color: "#5eead4", light: "#0f766e" },
 ];
 const catColorCache = {};
 let catColorIdx = 0;
 function getCatColor(name, dark) {
-  if (!catColorCache[name]) {
-    catColorCache[name] = CATEGORY_PALETTE[catColorIdx % CATEGORY_PALETTE.length];
+  const key = name || "General";
+  if (!catColorCache[key]) {
+    catColorCache[key] = CATEGORY_PALETTE[catColorIdx % CATEGORY_PALETTE.length];
     catColorIdx++;
   }
-  const s = catColorCache[name];
+  const s = catColorCache[key];
   return { background: s.bg, border: `1px solid ${s.border}`, color: dark ? s.color : s.light };
 }
 
 // Simple markdown-like renderer for content
 // Supports: # headings, **bold**, *italic*, `code`, ``` codeblock, > blockquote, - lists, blank lines = paragraphs
 function renderContent(content) {
-  if (!content) return null;
-  const lines = content.split("\n");
+  if (!content || typeof content !== "string") return null;
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
   const elements = [];
   let i = 0;
   let key = 0;
@@ -79,8 +83,8 @@ function renderContent(content) {
 
     // Headings
     if (line.startsWith("### ")) { elements.push(<h3 key={key++} className="c-h3">{parseInline(line.slice(4))}</h3>); i++; continue; }
-    if (line.startsWith("## "))  { elements.push(<h2 key={key++} className="c-h2">{parseInline(line.slice(3))}</h2>); i++; continue; }
-    if (line.startsWith("# "))   { elements.push(<h2 key={key++} className="c-h2">{parseInline(line.slice(2))}</h2>); i++; continue; }
+    if (line.startsWith("## ")) { elements.push(<h2 key={key++} className="c-h2">{parseInline(line.slice(3))}</h2>); i++; continue; }
+    if (line.startsWith("# ")) { elements.push(<h2 key={key++} className="c-h2">{parseInline(line.slice(2))}</h2>); i++; continue; }
 
     // Blockquote
     if (line.startsWith("> ")) { elements.push(<blockquote key={key++} className="c-quote">{parseInline(line.slice(2))}</blockquote>); i++; continue; }
@@ -121,6 +125,11 @@ function renderContent(content) {
     }
     if (paraLines.length > 0) {
       elements.push(<p key={key++} className="c-p">{parseInline(paraLines.join(" "))}</p>);
+    } else {
+      // Safety net: avoid an infinite loop if a line matched none of the
+      // branches above and produced zero paragraph lines (e.g. a bare "#"
+      // or "*" with no trailing space). Just skip it.
+      i++;
     }
   }
 
@@ -129,43 +138,74 @@ function renderContent(content) {
 
 export default function BlogPostPage() {
   const { dark } = useTheme();
-  const router   = useRouter();
+  const router = useRouter();
   const { slug } = useParams();
-  const theme    = dark ? "dark" : "light";
+  const theme = dark ? "dark" : "light";
 
-  const [blog, setBlog]     = useState(null);
+  const [blog, setBlog] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState(null);
-  const [ready, setReady]   = useState(false);
+  const [error, setError] = useState(null);
+  const [ready, setReady] = useState(false);
+  const [heroLoaded, setHeroLoaded] = useState(false);
+  const [heroError, setHeroError] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
-    setLoading(true); setError(null); setReady(false);
-   // In BlogPostPage useEffect — replace the existing fetch
-fetch(`/api/blogs/slug`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ slug }),
-})
-  .then(r => { if (!r.ok) throw new Error(r.status === 404 ? "not_found" : "error"); return r.json(); })
-  .then(d => { setBlog(d.blog); })
-  .catch(e => setError(e.message === "not_found" ? "not_found" : "error"))
-  .finally(() => setLoading(false));
+
+    const getBlog = async () => {
+      try {
+        setLoading(true);
+
+        const r = await fetch("/api/blogs/slug", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+        });
+
+        if (!r.ok) {
+          setError(r.status === 404 ? "not_found" : "error");
+          setBlog(null);
+          return;
+        }
+
+        const d = await r.json();
+        console.log(d);
+
+        // Handle either a raw blog object or a wrapper like { blog: {...} }
+        const post = d && d.blog ? d.blog : d;
+
+        if (!post || !post.content) {
+          setError("not_found");
+          setBlog(null);
+          return;
+        }
+
+        setBlog(post);
+        setError(null);
+      } catch (e) {
+        setError(e && e.message === "not_found" ? "not_found" : "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getBlog();
   }, [slug]);
 
   useEffect(() => {
     if (!loading && blog) { const t = setTimeout(() => setReady(true), 50); return () => clearTimeout(t); }
   }, [loading, blog]);
 
-  const catStyle = blog ? getCatColor(blog.category, dark) : {};
+  const catStyle = blog ? getCatColor(blog.category || "General", dark) : {};
+  const showHeroImage = !!(blog && blog.image) && !heroError;
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        [data-theme="dark"]{--bg:#09090f;--sf:rgba(255,255,255,.03);--bd:rgba(255,255,255,.08);--hd:#fff;--bo:rgba(255,255,255,.7);--mt:rgba(255,255,255,.35);--dot:rgba(255,255,255,.035);--code-bg:rgba(255,255,255,.06);--code-bdr:rgba(255,255,255,.1);--code-clr:#a5f3c0;--quote-bd:rgba(7,166,38,.4);--quote-bg:rgba(7,166,38,.06);--hr:rgba(255,255,255,.08);--back-bg:rgba(255,255,255,.05);--back-bdr:rgba(255,255,255,.1);--back-clr:rgba(255,255,255,.5)}
-        [data-theme="light"]{--bg:#f4f4f8;--sf:rgba(255,255,255,.9);--bd:rgba(0,0,0,.09);--hd:#0a0a14;--bo:rgba(0,0,0,.65);--mt:rgba(0,0,0,.4);--dot:rgba(0,0,0,.035);--code-bg:rgba(0,0,0,.05);--code-bdr:rgba(0,0,0,.1);--code-clr:#0f5132;--quote-bd:rgba(7,166,38,.4);--quote-bg:rgba(7,166,38,.04);--hr:rgba(0,0,0,.1);--back-bg:rgba(255,255,255,.7);--back-bdr:rgba(0,0,0,.1);--back-clr:rgba(0,0,0,.5)}
+        [data-theme="dark"]{--bg:#09090f;--sf:rgba(255,255,255,.03);--bd:rgba(255,255,255,.08);--hd:#fff;--bo:rgba(255,255,255,.7);--mt:rgba(255,255,255,.35);--dot:rgba(255,255,255,.035);--code-bg:rgba(255,255,255,.06);--code-bdr:rgba(255,255,255,.1);--code-clr:#a5f3c0;--quote-bd:rgba(7,166,38,.4);--quote-bg:rgba(7,166,38,.06);--hr:rgba(255,255,255,.08);--back-bg:rgba(255,255,255,.05);--back-bdr:rgba(255,255,255,.1);--back-clr:rgba(255,255,255,.5);--sk:rgba(255,255,255,.05);--ss:rgba(255,255,255,.09)}
+        [data-theme="light"]{--bg:#f4f4f8;--sf:rgba(255,255,255,.9);--bd:rgba(0,0,0,.09);--hd:#0a0a14;--bo:rgba(0,0,0,.65);--mt:rgba(0,0,0,.4);--dot:rgba(0,0,0,.035);--code-bg:rgba(0,0,0,.05);--code-bdr:rgba(0,0,0,.1);--code-clr:#0f5132;--quote-bd:rgba(7,166,38,.4);--quote-bg:rgba(7,166,38,.04);--hr:rgba(0,0,0,.1);--back-bg:rgba(255,255,255,.7);--back-bdr:rgba(0,0,0,.1);--back-clr:rgba(0,0,0,.5);--sk:rgba(0,0,0,.05);--ss:rgba(0,0,0,.09)}
         .post-root{min-height:100vh;background:var(--bg);font-family:'Sora',sans-serif;padding:0 20px 100px;position:relative;overflow:hidden;transition:background .35s}
         .bg-glow{position:absolute;inset:0;pointer-events:none;z-index:0}
         .bg-glow::before{content:'';position:absolute;top:-4%;left:50%;transform:translateX(-50%);width:700px;height:300px;background:radial-gradient(ellipse,rgba(7,166,38,.09) 0%,transparent 68%);border-radius:50%;animation:glow 7s ease-in-out infinite}
@@ -182,10 +222,12 @@ fetch(`/api/blogs/slug`, {
         /* Hero */
         .hero{opacity:0;transform:translateY(20px);transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1)}
         .hero.ready{opacity:1;transform:translateY(0)}
-        .hero-cover{margin-top:32px;border-radius:18px;background:linear-gradient(135deg,rgba(7,166,38,.07),rgba(7,166,38,.02));border:1px solid var(--bd);height:260px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
-        .hero-cover-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(7,166,38,.1) 0%,transparent 60%);pointer-events:none}
-        .hero-emoji{font-size:88px;position:relative;z-index:1;filter:drop-shadow(0 8px 24px rgba(0,0,0,.25));animation:float 4s ease-in-out infinite}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+        .hero-cover{margin-top:32px;border-radius:18px;background:linear-gradient(135deg,rgba(7,166,38,.07),rgba(7,166,38,.02));border:1px solid var(--bd);height:340px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+        .hero-cover-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(7,166,38,.1) 0%,transparent 60%);pointer-events:none;z-index:2}
+        .hero-img{width:100%;height:100%;object-fit:cover;object-position:center;position:absolute;inset:0;z-index:1;opacity:0;transition:opacity .45s ease}
+        .hero-img.loaded{opacity:1}
+        .hero-img-skel{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,var(--sk) 0%,var(--ss) 50%,var(--sk) 100%);background-size:200% 100%;animation:shimmer 1.4s ease-in-out infinite}
+        .hero-fallback{font-size:64px;font-weight:800;position:relative;z-index:1;font-family:'Sora',sans-serif}
         .hero-meta{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:28px}
         .hero-cat{display:inline-flex;align-items:center;padding:3px 11px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.6px}
         .hero-dot{width:3px;height:3px;border-radius:50%;background:var(--mt)}
@@ -225,18 +267,18 @@ fetch(`/api/blogs/slug`, {
         .go-back-btn:hover{background:rgba(7,166,38,.24)}
         [data-theme="light"] .go-back-btn{color:#15803d}
 
-        @media(max-width:560px){.post-root{padding:0 14px 80px}.hero-cover{height:200px}.hero-emoji{font-size:68px}}
+        @media(max-width:560px){.post-root{padding:0 14px 80px}.hero-cover{height:220px}.hero-fallback{font-size:48px}}
       `}</style>
 
       <div data-theme={theme} className="post-root">
-        <Navbar/>
-        
+        <Navbar />
+
         <div className="bg-glow" /><div className="dot-grid" />
-            <div className="h-10"/>
+        <div className="h-10" />
         <div className="inner">
 
           <button className="back-btn" onClick={() => router.push("/blog")}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
             Back to Blog
           </button>
 
@@ -263,30 +305,46 @@ fetch(`/api/blogs/slug`, {
           )}
 
           {/* Post */}
-          {!loading && blog && (
+          {!loading && !error && blog && (
             <>
               <div className={`hero${ready ? " ready" : ""}`}>
                 <div className="hero-cover">
+                  {showHeroImage ? (
+                    <>
+                      <img
+                        className={`hero-img${heroLoaded ? " loaded" : ""}`}
+                        src={blog.image}
+                        alt={blog.title}
+                        decoding="async"
+                        onLoad={() => setHeroLoaded(true)}
+                        onError={() => setHeroError(true)}
+                      />
+                      {!heroLoaded && <div className="hero-img-skel" />}
+                    </>
+                  ) : (
+                    <div className="hero-fallback" style={catStyle}>
+                      {(blog.category || "G")[0].toUpperCase()}
+                    </div>
+                  )}
                   <div className="hero-cover-glow" />
-                  <span className="hero-emoji">{blog.coverEmoji || "📝"}</span>
                 </div>
 
                 <div className="hero-meta">
-                  <span className="hero-cat" style={catStyle}>{blog.category.toUpperCase()}</span>
+                  <span className="hero-cat" style={catStyle}>{(blog.category || "General").toUpperCase()}</span>
                   <span className="hero-dot" />
                   <span className="hero-date">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
                     {formatDate(blog.createdAt)}
                   </span>
                   <span className="hero-dot" />
                   <span className="hero-read">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    {blog.readTime} min read
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                    {blog.readTime || "—"} min read
                   </span>
                 </div>
 
                 <h1 className="hero-title">{blog.title}</h1>
-                <p className="hero-excerpt">{blog.excerpt}</p>
+                {blog.excerpt && <p className="hero-excerpt">{blog.excerpt}</p>}
               </div>
 
               <article className={`article${ready ? " ready" : ""}`}>
@@ -297,7 +355,7 @@ fetch(`/api/blogs/slug`, {
 
         </div>
       </div>
-      <Footer/>
+      <Footer />
     </>
   );
 }
