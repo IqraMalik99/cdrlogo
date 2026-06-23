@@ -55,6 +55,11 @@ model Logo {
   metaDescription String?
   altText         String?
   focusKeywords   String?
+  // ── SEO ADDITIONS (new fields only) ───────────────────────────────────────
+  canonicalUrl    String?   // self-referencing canonical, e.g. https://site.com/logos/{slug}/
+  ogImageUrl      String?   // 1200x630 OG preview image URL (generated separately)
+  schemaMarkup    String?   @db.Text  // full JSON-LD string, server-rendered in <head>
+  relatedSlugs    Json      @default("[]")  // e.g. ["samsung-logo","huawei-logo"] for internal linking
 
   // ── Publishing ─────────────────────────────────────────────────────────────
   publishStatus String @default("Draft")

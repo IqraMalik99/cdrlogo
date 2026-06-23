@@ -127,7 +127,7 @@ function EditModal({ logo, dark, onClose, onSave, categories = [] }) {
       const res = await fetch(`/api/logo/admin`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: logo.id, ...form }),
+        body: JSON.stringify({ id: logo._id, ...form }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const updated = await res.json();

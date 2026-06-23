@@ -60,6 +60,9 @@ export type LogoMinAggregateOutputType = {
   metaDescription: string | null
   altText: string | null
   focusKeywords: string | null
+  canonicalUrl: string | null
+  ogImageUrl: string | null
+  schemaMarkup: string | null
   publishStatus: string | null
   downloadCount: string | null
   downloadedNumberByPeople: number | null
@@ -93,6 +96,9 @@ export type LogoMaxAggregateOutputType = {
   metaDescription: string | null
   altText: string | null
   focusKeywords: string | null
+  canonicalUrl: string | null
+  ogImageUrl: string | null
+  schemaMarkup: string | null
   publishStatus: string | null
   downloadCount: string | null
   downloadedNumberByPeople: number | null
@@ -128,6 +134,10 @@ export type LogoCountAggregateOutputType = {
   metaDescription: number
   altText: number
   focusKeywords: number
+  canonicalUrl: number
+  ogImageUrl: number
+  schemaMarkup: number
+  relatedSlugs: number
   publishStatus: number
   downloadCount: number
   downloadedNumberByPeople: number
@@ -171,6 +181,9 @@ export type LogoMinAggregateInputType = {
   metaDescription?: true
   altText?: true
   focusKeywords?: true
+  canonicalUrl?: true
+  ogImageUrl?: true
+  schemaMarkup?: true
   publishStatus?: true
   downloadCount?: true
   downloadedNumberByPeople?: true
@@ -204,6 +217,9 @@ export type LogoMaxAggregateInputType = {
   metaDescription?: true
   altText?: true
   focusKeywords?: true
+  canonicalUrl?: true
+  ogImageUrl?: true
+  schemaMarkup?: true
   publishStatus?: true
   downloadCount?: true
   downloadedNumberByPeople?: true
@@ -239,6 +255,10 @@ export type LogoCountAggregateInputType = {
   metaDescription?: true
   altText?: true
   focusKeywords?: true
+  canonicalUrl?: true
+  ogImageUrl?: true
+  schemaMarkup?: true
+  relatedSlugs?: true
   publishStatus?: true
   downloadCount?: true
   downloadedNumberByPeople?: true
@@ -361,6 +381,10 @@ export type LogoGroupByOutputType = {
   metaDescription: string | null
   altText: string | null
   focusKeywords: string | null
+  canonicalUrl: string | null
+  ogImageUrl: string | null
+  schemaMarkup: string | null
+  relatedSlugs: runtime.JsonValue
   publishStatus: string
   downloadCount: string
   downloadedNumberByPeople: number
@@ -419,6 +443,10 @@ export type LogoWhereInput = {
   metaDescription?: Prisma.StringNullableFilter<"Logo"> | string | null
   altText?: Prisma.StringNullableFilter<"Logo"> | string | null
   focusKeywords?: Prisma.StringNullableFilter<"Logo"> | string | null
+  canonicalUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  ogImageUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  schemaMarkup?: Prisma.StringNullableFilter<"Logo"> | string | null
+  relatedSlugs?: Prisma.JsonFilter<"Logo">
   publishStatus?: Prisma.StringFilter<"Logo"> | string
   downloadCount?: Prisma.StringFilter<"Logo"> | string
   downloadedNumberByPeople?: Prisma.IntFilter<"Logo"> | number
@@ -455,6 +483,10 @@ export type LogoOrderByWithRelationInput = {
   metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   altText?: Prisma.SortOrderInput | Prisma.SortOrder
   focusKeywords?: Prisma.SortOrderInput | Prisma.SortOrder
+  canonicalUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  ogImageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  schemaMarkup?: Prisma.SortOrderInput | Prisma.SortOrder
+  relatedSlugs?: Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
   downloadCount?: Prisma.SortOrder
   downloadedNumberByPeople?: Prisma.SortOrder
@@ -494,6 +526,10 @@ export type LogoWhereUniqueInput = Prisma.AtLeast<{
   metaDescription?: Prisma.StringNullableFilter<"Logo"> | string | null
   altText?: Prisma.StringNullableFilter<"Logo"> | string | null
   focusKeywords?: Prisma.StringNullableFilter<"Logo"> | string | null
+  canonicalUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  ogImageUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  schemaMarkup?: Prisma.StringNullableFilter<"Logo"> | string | null
+  relatedSlugs?: Prisma.JsonFilter<"Logo">
   publishStatus?: Prisma.StringFilter<"Logo"> | string
   downloadCount?: Prisma.StringFilter<"Logo"> | string
   downloadedNumberByPeople?: Prisma.IntFilter<"Logo"> | number
@@ -530,6 +566,10 @@ export type LogoOrderByWithAggregationInput = {
   metaDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   altText?: Prisma.SortOrderInput | Prisma.SortOrder
   focusKeywords?: Prisma.SortOrderInput | Prisma.SortOrder
+  canonicalUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  ogImageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  schemaMarkup?: Prisma.SortOrderInput | Prisma.SortOrder
+  relatedSlugs?: Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
   downloadCount?: Prisma.SortOrder
   downloadedNumberByPeople?: Prisma.SortOrder
@@ -573,6 +613,10 @@ export type LogoScalarWhereWithAggregatesInput = {
   metaDescription?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   altText?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   focusKeywords?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  canonicalUrl?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  ogImageUrl?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  schemaMarkup?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  relatedSlugs?: Prisma.JsonWithAggregatesFilter<"Logo">
   publishStatus?: Prisma.StringWithAggregatesFilter<"Logo"> | string
   downloadCount?: Prisma.StringWithAggregatesFilter<"Logo"> | string
   downloadedNumberByPeople?: Prisma.IntWithAggregatesFilter<"Logo"> | number
@@ -608,6 +652,10 @@ export type LogoCreateInput = {
   metaDescription?: string | null
   altText?: string | null
   focusKeywords?: string | null
+  canonicalUrl?: string | null
+  ogImageUrl?: string | null
+  schemaMarkup?: string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: string
   downloadCount?: string
   downloadedNumberByPeople?: number
@@ -644,6 +692,10 @@ export type LogoUncheckedCreateInput = {
   metaDescription?: string | null
   altText?: string | null
   focusKeywords?: string | null
+  canonicalUrl?: string | null
+  ogImageUrl?: string | null
+  schemaMarkup?: string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: string
   downloadCount?: string
   downloadedNumberByPeople?: number
@@ -680,6 +732,10 @@ export type LogoUpdateInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   altText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focusKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaMarkup?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCount?: Prisma.StringFieldUpdateOperationsInput | string
   downloadedNumberByPeople?: Prisma.IntFieldUpdateOperationsInput | number
@@ -716,6 +772,10 @@ export type LogoUncheckedUpdateInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   altText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focusKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaMarkup?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCount?: Prisma.StringFieldUpdateOperationsInput | string
   downloadedNumberByPeople?: Prisma.IntFieldUpdateOperationsInput | number
@@ -752,6 +812,10 @@ export type LogoCreateManyInput = {
   metaDescription?: string | null
   altText?: string | null
   focusKeywords?: string | null
+  canonicalUrl?: string | null
+  ogImageUrl?: string | null
+  schemaMarkup?: string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: string
   downloadCount?: string
   downloadedNumberByPeople?: number
@@ -787,6 +851,10 @@ export type LogoUpdateManyMutationInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   altText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focusKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaMarkup?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCount?: Prisma.StringFieldUpdateOperationsInput | string
   downloadedNumberByPeople?: Prisma.IntFieldUpdateOperationsInput | number
@@ -822,6 +890,10 @@ export type LogoUncheckedUpdateManyInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   altText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focusKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaMarkup?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCount?: Prisma.StringFieldUpdateOperationsInput | string
   downloadedNumberByPeople?: Prisma.IntFieldUpdateOperationsInput | number
@@ -857,6 +929,10 @@ export type LogoCountOrderByAggregateInput = {
   metaDescription?: Prisma.SortOrder
   altText?: Prisma.SortOrder
   focusKeywords?: Prisma.SortOrder
+  canonicalUrl?: Prisma.SortOrder
+  ogImageUrl?: Prisma.SortOrder
+  schemaMarkup?: Prisma.SortOrder
+  relatedSlugs?: Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
   downloadCount?: Prisma.SortOrder
   downloadedNumberByPeople?: Prisma.SortOrder
@@ -894,6 +970,9 @@ export type LogoMaxOrderByAggregateInput = {
   metaDescription?: Prisma.SortOrder
   altText?: Prisma.SortOrder
   focusKeywords?: Prisma.SortOrder
+  canonicalUrl?: Prisma.SortOrder
+  ogImageUrl?: Prisma.SortOrder
+  schemaMarkup?: Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
   downloadCount?: Prisma.SortOrder
   downloadedNumberByPeople?: Prisma.SortOrder
@@ -927,6 +1006,9 @@ export type LogoMinOrderByAggregateInput = {
   metaDescription?: Prisma.SortOrder
   altText?: Prisma.SortOrder
   focusKeywords?: Prisma.SortOrder
+  canonicalUrl?: Prisma.SortOrder
+  ogImageUrl?: Prisma.SortOrder
+  schemaMarkup?: Prisma.SortOrder
   publishStatus?: Prisma.SortOrder
   downloadCount?: Prisma.SortOrder
   downloadedNumberByPeople?: Prisma.SortOrder
@@ -1034,6 +1116,10 @@ export type LogoCreateWithoutFavoritedByInput = {
   metaDescription?: string | null
   altText?: string | null
   focusKeywords?: string | null
+  canonicalUrl?: string | null
+  ogImageUrl?: string | null
+  schemaMarkup?: string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: string
   downloadCount?: string
   downloadedNumberByPeople?: number
@@ -1069,6 +1155,10 @@ export type LogoUncheckedCreateWithoutFavoritedByInput = {
   metaDescription?: string | null
   altText?: string | null
   focusKeywords?: string | null
+  canonicalUrl?: string | null
+  ogImageUrl?: string | null
+  schemaMarkup?: string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: string
   downloadCount?: string
   downloadedNumberByPeople?: number
@@ -1128,6 +1218,10 @@ export type LogoScalarWhereInput = {
   metaDescription?: Prisma.StringNullableFilter<"Logo"> | string | null
   altText?: Prisma.StringNullableFilter<"Logo"> | string | null
   focusKeywords?: Prisma.StringNullableFilter<"Logo"> | string | null
+  canonicalUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  ogImageUrl?: Prisma.StringNullableFilter<"Logo"> | string | null
+  schemaMarkup?: Prisma.StringNullableFilter<"Logo"> | string | null
+  relatedSlugs?: Prisma.JsonFilter<"Logo">
   publishStatus?: Prisma.StringFilter<"Logo"> | string
   downloadCount?: Prisma.StringFilter<"Logo"> | string
   downloadedNumberByPeople?: Prisma.IntFilter<"Logo"> | number
@@ -1163,6 +1257,10 @@ export type LogoUpdateWithoutFavoritedByInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   altText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focusKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaMarkup?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCount?: Prisma.StringFieldUpdateOperationsInput | string
   downloadedNumberByPeople?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1198,6 +1296,10 @@ export type LogoUncheckedUpdateWithoutFavoritedByInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   altText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focusKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaMarkup?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCount?: Prisma.StringFieldUpdateOperationsInput | string
   downloadedNumberByPeople?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1233,6 +1335,10 @@ export type LogoUncheckedUpdateManyWithoutFavoritedByInput = {
   metaDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   altText?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   focusKeywords?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ogImageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  schemaMarkup?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  relatedSlugs?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   publishStatus?: Prisma.StringFieldUpdateOperationsInput | string
   downloadCount?: Prisma.StringFieldUpdateOperationsInput | string
   downloadedNumberByPeople?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1299,6 +1405,10 @@ export type LogoSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   metaDescription?: boolean
   altText?: boolean
   focusKeywords?: boolean
+  canonicalUrl?: boolean
+  ogImageUrl?: boolean
+  schemaMarkup?: boolean
+  relatedSlugs?: boolean
   publishStatus?: boolean
   downloadCount?: boolean
   downloadedNumberByPeople?: boolean
@@ -1336,6 +1446,10 @@ export type LogoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   metaDescription?: boolean
   altText?: boolean
   focusKeywords?: boolean
+  canonicalUrl?: boolean
+  ogImageUrl?: boolean
+  schemaMarkup?: boolean
+  relatedSlugs?: boolean
   publishStatus?: boolean
   downloadCount?: boolean
   downloadedNumberByPeople?: boolean
@@ -1371,6 +1485,10 @@ export type LogoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   metaDescription?: boolean
   altText?: boolean
   focusKeywords?: boolean
+  canonicalUrl?: boolean
+  ogImageUrl?: boolean
+  schemaMarkup?: boolean
+  relatedSlugs?: boolean
   publishStatus?: boolean
   downloadCount?: boolean
   downloadedNumberByPeople?: boolean
@@ -1406,6 +1524,10 @@ export type LogoSelectScalar = {
   metaDescription?: boolean
   altText?: boolean
   focusKeywords?: boolean
+  canonicalUrl?: boolean
+  ogImageUrl?: boolean
+  schemaMarkup?: boolean
+  relatedSlugs?: boolean
   publishStatus?: boolean
   downloadCount?: boolean
   downloadedNumberByPeople?: boolean
@@ -1413,7 +1535,7 @@ export type LogoSelectScalar = {
   updatedAt?: boolean
 }
 
-export type LogoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logoName" | "slug" | "brand" | "website" | "category" | "industry" | "country" | "license" | "description" | "history" | "tags" | "brandColors" | "webpUrl" | "svgUrl" | "pngUrl" | "aiUrl" | "cdrUrl" | "svgfilesize" | "pngfilesize" | "aifilesize" | "cdrfilesize" | "svgContent" | "metaTitle" | "metaDescription" | "altText" | "focusKeywords" | "publishStatus" | "downloadCount" | "downloadedNumberByPeople" | "createdAt" | "updatedAt", ExtArgs["result"]["logo"]>
+export type LogoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logoName" | "slug" | "brand" | "website" | "category" | "industry" | "country" | "license" | "description" | "history" | "tags" | "brandColors" | "webpUrl" | "svgUrl" | "pngUrl" | "aiUrl" | "cdrUrl" | "svgfilesize" | "pngfilesize" | "aifilesize" | "cdrfilesize" | "svgContent" | "metaTitle" | "metaDescription" | "altText" | "focusKeywords" | "canonicalUrl" | "ogImageUrl" | "schemaMarkup" | "relatedSlugs" | "publishStatus" | "downloadCount" | "downloadedNumberByPeople" | "createdAt" | "updatedAt", ExtArgs["result"]["logo"]>
 export type LogoInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   favoritedBy?: boolean | Prisma.Logo$favoritedByArgs<ExtArgs>
   _count?: boolean | Prisma.LogoCountOutputTypeDefaultArgs<ExtArgs>
@@ -1454,6 +1576,10 @@ export type $LogoPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     metaDescription: string | null
     altText: string | null
     focusKeywords: string | null
+    canonicalUrl: string | null
+    ogImageUrl: string | null
+    schemaMarkup: string | null
+    relatedSlugs: runtime.JsonValue
     publishStatus: string
     downloadCount: string
     downloadedNumberByPeople: number
@@ -1910,6 +2036,10 @@ export interface LogoFieldRefs {
   readonly metaDescription: Prisma.FieldRef<"Logo", 'String'>
   readonly altText: Prisma.FieldRef<"Logo", 'String'>
   readonly focusKeywords: Prisma.FieldRef<"Logo", 'String'>
+  readonly canonicalUrl: Prisma.FieldRef<"Logo", 'String'>
+  readonly ogImageUrl: Prisma.FieldRef<"Logo", 'String'>
+  readonly schemaMarkup: Prisma.FieldRef<"Logo", 'String'>
+  readonly relatedSlugs: Prisma.FieldRef<"Logo", 'Json'>
   readonly publishStatus: Prisma.FieldRef<"Logo", 'String'>
   readonly downloadCount: Prisma.FieldRef<"Logo", 'String'>
   readonly downloadedNumberByPeople: Prisma.FieldRef<"Logo", 'Int'>

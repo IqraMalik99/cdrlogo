@@ -193,6 +193,8 @@ async function findRelatedLogos(logoName) {
       website: true,
       country: true,
       industry: true,
+      // needed to build relatedSlugs, matching single-upload behavior
+      slug: true,
     },
     orderBy: { createdAt: "desc" },
     take: 20,
@@ -246,7 +248,10 @@ async function callOpenAIWithRetry(params, retries = 1) {
 // ── AI content generation ─────────────────────────────────────────────────────
 // Generates: category, brand, website, country, industry + SEO fields.
 // Category is fetched from DB (Website.categories) and AI must pick from that list.
-// brand/website/country/industry are confidence-gated: empty string if not sure.
+// brand/country/industry are FORCED — the model must always decide a real
+// value (falling back to cdrlogo.com-style defaults only as an absolute last
+// resort), matching single-upload behavior. website remains confidence-gated:
+// it is only filled when the model is genuinely sure, otherwise left empty.
 async function generateAIContent({
   logoName,
   userCategory,        // uploader's hint (may be "")
@@ -265,11 +270,17 @@ async function generateAIContent({
         .join("\n\n")
     : "";
 
+  const usedOpeners = isVariant
+    ? relatedLogos
+        .map((r) => (r.description || "").split(/[.!?]/)[0].trim())
+        .filter(Boolean)
+    : [];
+
   const hasCategoryList = availableCategories.length > 0;
 
-  const systemPrompt = `You are an expert SEO copywriter and data classifier specializing in logo and branding content for a logo download website. You write factual, unique, non-generic content grounded in real brand history and industry context. You never invent or guess visual details (colors, shapes) you cannot verify. You are conservative about claiming a brand/company identity, official website, country, or industry — you only assert these when you are genuinely confident, because incorrect brand attribution is worse than leaving it blank. You always respond with valid JSON only, no markdown formatting, no code fences.`;
+  const systemPrompt = `You are a senior SEO specialist for a professional logo download website (cdrlogo.com). Your job is to write SEO content that ranks for queries like "Nike logo PNG download", "Apple logo SVG vector free", "brand logo transparent background", AND to classify each logo's category, brand, country, and industry. If the brand/company is not explicitly given to you, you must infer/decide the most likely real-world brand from the logo name yourself — never invent a placeholder brand and never leave it blank. You must also determine the brand's real industry/sector and home country based on what you actually know about that brand — never leave these as vague placeholders if a real brand was identified. You are only conservative about the brand's official WEBSITE URL specifically: only fill it in if you are genuinely confident, otherwise leave it as an empty string — getting a wrong domain is worse than no domain. Every other field you return must always be filled — no empty strings, no "N/A". If, after your best effort, no real brand can be identified at all, use "cdrlogo.com" as the brand, "Logo Design & Graphics" as the industry, and "Worldwide" as the country — and leave website empty. You always return valid JSON only — no markdown, no code fences, no commentary.`;
 
-  const userPrompt = `Generate SEO content and metadata for the following logo entry.
+  const userPrompt = `Generate SEO content and metadata for the following logo entry on cdrlogo.com.
 
 Logo Name: ${logoName}
 Uploader-selected category (hint, may be wrong or missing): ${userCategory || "(none provided)"}
@@ -280,21 +291,39 @@ ${
 }
 ${
   isVariant
-    ? `\nThis is a variant/new version of an existing logo. Below are the previous version(s) already published. Write NEW, DIFFERENT content for THIS version — do not repeat the same wording. Focus on what makes this version distinct: its era, any known rebranding events, market context, and how the brand identity evolved.\n\n${relatedContext}`
+    ? `\nThis is a variant/new version of an existing logo. Below are the previous version(s) already published. Write NEW, DIFFERENT content for THIS version — do not repeat the same wording. Focus on what makes this version distinct: its era, any known rebranding events, market context, and how the brand identity evolved.\n\n${relatedContext}\n\nPreviously used description openers (DO NOT reuse any): ${usedOpeners.length ? usedOpeners.map((o) => `"${o}"`).join(", ") : "none"}`
     : "\nThis is a new logo with no prior versions in the database."
 }
 
 Requirements:
 - category: ${hasCategoryList ? "Pick the single best-fitting category from the provided list above, copied exactly. If the uploader's hint matches one of the list items, prefer it unless another item in the list is clearly a better fit for this specific logo." : "Best classification as described above."}
-- brand: The real, identifiable company/brand/organization name this logo belongs to. ONLY fill this if you are highly confident (e.g. well-known company, sports team, public organization). If you are not confident, return an empty string "".
-- website: The brand's real official website domain (e.g. "nike.com"). ONLY fill this if you are highly confident AND you filled in "brand". If brand is empty OR you are not fully confident about the official site, return an empty string "".
-- country: The country the brand/organization is primarily associated with or headquartered in (e.g. "United States", "Indonesia", "United Kingdom"). Use the brand's real home country — do not guess from visual style, language, or filename alone. ONLY fill this if you are highly confident AND you filled in "brand". If brand is empty OR you are not fully confident about the country, return an empty string "".
-- industry: The primary industry or sector this brand operates in (e.g. "Sports", "Technology", "Finance", "Automotive", "Fashion", "Food & Beverage", "Media & Entertainment", "Healthcare", "Education", "Retail"). Use a short, clean industry label. ONLY fill this if you filled in "brand" and are confident about their sector. If brand is empty, return an empty string "".
-- main_description: 100-150 words. Write factual, SEO-friendly content about the brand's identity, history, industry relevance, and what era or version this logo represents. Do NOT invent or describe visual details (colors, shapes, typography) — focus only on verifiable brand context, market position, and historical significance.
-- history: 40-60 words. A short factual paragraph about the brand's founding, key milestones, and how this logo fits into their timeline. Omit if the brand is not well-known.
-- meta_title: Under 60 characters, SEO-optimized, include brand name and relevant keywords.
-- meta_description: Under 160 characters, SEO-optimized, compelling and specific to this logo version.
-- tags: 10-15 highly relevant SEO keywords as an array (brand name, industry terms, logo type, version/year identifiers, format keywords like "vector", "SVG").
+- brand: The real-world brand/company/organization this logo belongs to. Infer/decide this yourself from the logo name whenever it isn't obvious — never leave it blank. Only use "cdrlogo.com" if you genuinely cannot identify any real brand at all.
+- website: The brand's real official website domain (e.g. "nike.com"). ONLY fill this if you are highly confident. If you are not fully confident about the exact official site, return an empty string "" — do not guess.
+- country: The country the brand/organization is primarily associated with or headquartered in (e.g. "United States", "Indonesia", "United Kingdom"). Use the brand's real home country, decided yourself from your knowledge of the brand — do not guess from visual style, language, or filename alone. Always provide your best real answer; only use "Worldwide" if you genuinely could not identify any real brand at all.
+- industry: The primary industry or sector this brand operates in. Be specific (e.g. "Sportswear & Athletic Apparel", "Fast Food", "Automotive Manufacturing"), not a vague placeholder like "General" or "Retail". Decide this yourself based on what the brand actually does. Only use "Logo Design & Graphics" if you genuinely could not identify any real brand.
+meta_description (STRICT: 140-155 chars):
+  • Must read like a download CTA, NOT a blog intro
+  • Must contain: brand/logo name + at least 3 of: free download, PNG, SVG, vector, transparent, high quality, AI, EPS
+  • Structure: "Download [Brand] logo in [formats]. [one benefit sentence]. Available at cdrlogo.com."
+  • NEVER use blog phrases: "In this article", "We explore", "This post", "Learn about"
+  • NEVER leave empty
+
+main_description (100-150 words):
+  • Write this one like an informative, blog-style paragraph about the brand/logo — natural, editorial tone, not a stiff product-page listing
+  • Opening sentence MUST still mention downloading the logo + at least one format (PNG/SVG/vector) before moving into the informative content
+  • Cover: what the logo is, what brand it represents, what industry/sector, brief relevant brand context, download formats available (PNG, SVG, AI, EPS, CDR), use cases (websites, presentations, print, apps)
+  • Include naturally: "free download", "vector format", "transparent background", "high resolution"
+  • Do NOT describe colors, shapes, or visual design — only brand context and download utility
+  • NEVER leave empty
+  * 120–155 characters
+* Mention logo name naturally
+* Mention available formats naturally
+* Mention educational or design reference use
+* Include natural download intent
+* Do not repeat the title exactly
+- history: 40-60 words. A short factual paragraph about the brand's founding, key milestones, and how this logo fits into their timeline. If the brand is unknown or very obscure, instead write: "Download the ${logoName} logo from cdrlogo.com. Available in PNG, SVG, AI, EPS and CDR vector formats for commercial and personal use." NEVER leave empty.
+- meta_title: STRICT 50-60 characters, NEVER exceed 60. Format: "{Brand} Logo PNG SVG Vector Free Download | cdrlogo.com". Always include the brand name + at least TWO of: PNG, SVG, Vector, Download, Free. End with "| cdrlogo.com" (counts toward the 60-char limit, so keep the brand part short). NEVER leave empty.
+- tags: 12-15 items as an array. Must include: brand/logo name, "PNG", "SVG", "vector", "free download", "transparent", an industry term, "logo download", "cdrlogo.com". Add format variants ("AI file", "EPS", "CDR") where relevant. NEVER return an empty array.
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -312,7 +341,7 @@ Respond ONLY with valid JSON in this exact format:
 
   const completion = await callOpenAIWithRetry({
     model: "gpt-4o-mini",
-    temperature: 0.4,
+    temperature: 0.6,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -329,6 +358,7 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   // ── Resolve category: must be one of availableCategories if that list exists ──
+  // (unchanged — this DB-driven category logic stays exactly as before)
   let resolvedCategory = String(parsed.category || "").trim();
   if (hasCategoryList) {
     const match = availableCategories.find(
@@ -348,21 +378,15 @@ Respond ONLY with valid JSON in this exact format:
     resolvedCategory = userCategory || "";
   }
 
-  // ── Resolve brand/website/country/industry with confidence gating ──────────
-  const brand = String(parsed.brand || "").trim();
-  let website  = String(parsed.website  || "").trim();
-  let country  = String(parsed.country  || "").trim();
-  let industry = String(parsed.industry || "").trim();
+  // ── Resolve brand/country/industry — FORCED, never empty (matches single-upload) ──
+  // Only website remains confidence-gated and may legitimately stay empty.
+  const brand    = (parsed.brand    && String(parsed.brand).trim())    || "cdrlogo.com";
+  const country  = (parsed.country  && String(parsed.country).trim())  || "Worldwide";
+  const industry = (parsed.industry && String(parsed.industry).trim()) || "Logo Design & Graphics";
 
-  // Never trust website / country / industry without a confident brand attached.
-  if (!brand) {
-    website  = "";
-    country  = "";
-    industry = "";
-  }
-  if (!website) {
-    website = DEFAULT_WEBSITE;
-  }
+  // Website stays confidence-gated: empty string if the model wasn't sure.
+  // Do NOT default this to cdrlogo.com — leaving it blank is intentional here.
+  const website = (parsed.website && String(parsed.website).trim()) || "";
 
   return {
     category: resolvedCategory,
@@ -370,12 +394,13 @@ Respond ONLY with valid JSON in this exact format:
     website,
     country,
     industry,
-    metaTitle: parsed.meta_title || "",
-    metaDescription: parsed.meta_description || "",
-    description: parsed.main_description || "",
-    history: parsed.history || "",
-    tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+    metaTitle:       parsed.meta_title        || `${logoName} Logo PNG SVG Vector Free Download | cdrlogo.com`,
+    metaDescription: parsed.meta_description  || `Download ${logoName} logo in PNG, SVG and vector formats for free. Transparent background, high resolution. Available at cdrlogo.com.`,
+    description:     parsed.main_description  || `Download the ${logoName} logo from cdrlogo.com in PNG, SVG, AI, EPS and CDR vector formats. Suitable for websites, presentations, print and apps. High resolution, transparent background available for free.`,
+    history:         parsed.history           || `Download the ${logoName} logo from cdrlogo.com. Available in PNG, SVG, AI, EPS and CDR vector formats for commercial and personal use.`,
+    tags:            Array.isArray(parsed.tags) && parsed.tags.length ? parsed.tags : [logoName, "logo", "PNG", "SVG", "vector", "free download", "transparent", "cdrlogo.com"],
     isVariant,
+    relatedSlugs:    relatedLogos.map((r) => r.slug).filter(Boolean),
   };
 }
 
@@ -405,9 +430,13 @@ async function processOneLogoFolder({
     const finalSlug = generateSlugFromName(finalLogoName);
     console.log(`  [slug] ${finalSlug}`);
 
+    // canonicalUrl is always cdrlogo.com, matching single-upload behavior.
+    const canonicalUrl = `https://cdrlogo.com/logos/${finalSlug}/`;
+
     // ── Step B: AI content generation ────────────────────────────────────────
     // Category is fetched from DB via sharedFields.availableCategories.
-    // brand, website, country, industry are all LLM-generated + confidence-gated.
+    // brand, country, industry are LLM-generated and forced (never empty).
+    // website remains confidence-gated and may legitimately be empty.
     const aiContent = await generateAIContent({
       logoName: finalLogoName,
       userCategory: sharedFields.category,
@@ -415,7 +444,7 @@ async function processOneLogoFolder({
       relatedLogos: related,
     });
     console.log(
-      `  [ai] category: "${aiContent.category}" | brand: "${aiContent.brand || "(none)"}" | website: "${aiContent.website}" | country: "${aiContent.country || "(none)"}" | industry: "${aiContent.industry || "(none)"}" | metaTitle: "${aiContent.metaTitle}" | tags: ${aiContent.tags.length}`
+      `  [ai] category: "${aiContent.category}" | brand: "${aiContent.brand}" | website: "${aiContent.website || "(none)"}" | country: "${aiContent.country || "(none)"}" | industry: "${aiContent.industry}" | metaTitle: "${aiContent.metaTitle}" | tags: ${aiContent.tags.length}`
     );
 
     // ── Step C: classify & process files ──────────────────────────────────────
@@ -513,6 +542,18 @@ async function processOneLogoFolder({
     const aiUrl   = findUrl((f) => f.key.endsWith(".ai"));
     const cdrUrl  = findUrl((f) => f.key.endsWith(".cdr"));
 
+    // ── schemaMarkup: same ImageObject JSON-LD shape as single-upload ─────────
+    const schemaMarkup = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ImageObject",
+      "name": finalLogoName,
+      "contentUrl": svgUrl || webpUrl || "",
+      "encodingFormat": svgUrl ? "image/svg+xml" : "image/webp",
+      "description": aiContent.description,
+      "thumbnailUrl": webpUrl || "",
+      "acquireLicensePage": canonicalUrl,
+    });
+
     // ── Step E: save to DB ────────────────────────────────────────────────────
     const logo = await prisma.logo.create({
       data: {
@@ -539,6 +580,10 @@ async function processOneLogoFolder({
         pngfilesize: formatSize(fileSizes.png),
         aifilesize: formatSize(fileSizes.ai),
         cdrfilesize: formatSize(fileSizes.cdr),
+        // new SEO fields, matching single-upload:
+        canonicalUrl,
+        relatedSlugs: aiContent.relatedSlugs,
+        schemaMarkup,
       },
     });
 
@@ -555,6 +600,7 @@ async function processOneLogoFolder({
       website:  aiContent.website,
       country:  aiContent.country,
       industry: aiContent.industry,
+      canonicalUrl,
       id: logo.id,
     };
   } catch (err) {
@@ -675,7 +721,7 @@ export async function POST(req) {
         data: {
           who: "api:bulk-upload-logo",
           content: result.success
-            ? `Bulk upload ✓ "${result.logoName}" (slug: ${result.slug}, category: ${result.category}, brand: ${result.brand || "—"}, website: ${result.website}, country: ${result.country || "—"}, industry: ${result.industry || "—"})${result.versioned ? ` [auto-versioned from "${result.originalName}"]` : ""}`
+            ? `Bulk upload ✓ "${result.logoName}" (slug: ${result.slug}, category: ${result.category}, brand: ${result.brand || "—"}, website: ${result.website || "—"}, country: ${result.country || "—"}, industry: ${result.industry || "—"})${result.versioned ? ` [auto-versioned from "${result.originalName}"]` : ""}`
             : `Bulk upload ❌ "${result.logoName}": ${result.error}`,
         },
       });

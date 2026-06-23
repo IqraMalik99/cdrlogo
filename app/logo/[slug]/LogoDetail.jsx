@@ -205,19 +205,17 @@ export default function LogoDetail() {
     };
 
     const parsedColors = (() => {
-  if (!logo?.id) return [];
-  let seed = 0;
-  for (const ch of String(logo.id)) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
-
-  const shuffled = [...PANTONE_COLORS];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    seed = (seed * 1103515245 + 12345) >>> 0;
-    const j = seed % (i + 1);
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-
-  return shuffled; // ✅ saare 50 colors, slice nahi
-})();
+        if (!logo?.id) return [];
+        let seed = 0;
+        for (const ch of String(logo.id)) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+        const shuffled = [...PANTONE_COLORS];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            seed = (seed * 1103515245 + 12345) >>> 0;
+            const j = seed % (i + 1);
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    })();
 
     const hexToRgb = (hex) => {
         const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
@@ -242,6 +240,9 @@ export default function LogoDetail() {
     if (loading) return <LoadingSkeleton dark={dark} />;
     if (error) return <ErrorState dark={dark} message={error} onBack={() => router.back()} />;
     if (!logo) return null;
+
+    // ── parse tags safely ─────────────────────────────────────────────────────
+    const logoTags = Array.isArray(logo.tags) ? logo.tags : [];
 
     return (
         <>
@@ -435,30 +436,12 @@ export default function LogoDetail() {
   .copy-svg-btn:hover { background:rgba(7,166,38,.1); border-color:rgba(7,166,38,.3); color:#07A626; }
   .copy-svg-btn.copied { color:#22c55e; border-color:rgba(34,197,94,.4); background:rgba(34,197,94,.08); }
   .svg-code { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:10px; font-family:'Courier New',monospace; color:var(--muted); line-height:1.6; max-height:90px; overflow:hidden; white-space:pre-wrap; word-break:break-all; }
-.colors-card {
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:16px;
-  max-height: 360px;        /* ✅ fixed height */
-  overflow-y: auto;          /* ✅ scroll enable */
-}
 
-.colors-header {
-  display:flex; align-items:center; gap:6px;
-  font-size:12px; font-weight:700; color:var(--heading);
-  margin-bottom:12px;
-  position: sticky;          /* ✅ header scroll pe upar chipka rahe */
-  top: 0;
-  background: var(--surface);
-  padding-bottom: 4px;
-  z-index: 1;
-}
-
-/* Optional: thin custom scrollbar */
-.colors-card::-webkit-scrollbar { width: 5px; }
-.colors-card::-webkit-scrollbar-track { background: transparent; }
-.colors-card::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+  .colors-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; max-height:360px; overflow-y:auto; }
+  .colors-header { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--heading); margin-bottom:12px; position:sticky; top:0; background:var(--surface); padding-bottom:4px; z-index:1; }
+  .colors-card::-webkit-scrollbar { width:5px; }
+  .colors-card::-webkit-scrollbar-track { background:transparent; }
+  .colors-card::-webkit-scrollbar-thumb { background:var(--border2); border-radius:10px; }
   .colors-dot { width:7px; height:7px; border-radius:50%; background:#3b82f6; }
   .color-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); margin-bottom:6px; background:var(--surface2); transition:border-color .2s; }
   .color-row:last-child { margin-bottom:0; }
@@ -478,6 +461,22 @@ export default function LogoDetail() {
   [data-theme="light"] .fav-btn { background:rgba(255,255,255,0.75); border-color:rgba(0,0,0,0.1); }
   .fav-btn:hover { transform:scale(1.15); }
   .fav-btn.active { background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); }
+
+  /* ── SEO ADDITION: Clickable Tags Section ─────────────────────────────── */
+  .tags-section { position:relative; z-index:1; max-width:1100px; margin:32px auto 0; padding:0 24px; }
+  .tags-header { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .tags-grid { display:flex; flex-wrap:wrap; gap:8px; }
+  .tag-pill {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:6px 13px; border-radius:100px;
+    background:var(--surface); border:1px solid var(--border);
+    font-size:11px; font-weight:600; color:var(--body);
+    font-family:'DM Sans',sans-serif;
+    text-decoration:none; transition:border-color .2s,color .2s,background .2s;
+    white-space:nowrap;
+  }
+  .tag-pill:hover { border-color:rgba(7,166,38,.45); color:#07A626; background:rgba(7,166,38,.06); }
+  .tag-hash { color:var(--muted); font-size:10px; }
 
   .related-section { position:relative; z-index:1; max-width:1100px; margin:40px auto 0; padding:0 24px; }
   .related-header { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
@@ -515,6 +514,7 @@ export default function LogoDetail() {
     .meta-item { min-width:0; flex:1; border-right:1px solid var(--border); border-bottom:none; }
     .meta-item:last-child { border-right:none; }
     .related-section { padding:0 16px; }
+    .tags-section { padding:0 16px; }
     .related-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
   }
   @media (max-width:480px) {
@@ -536,7 +536,7 @@ export default function LogoDetail() {
                 <div className="page">
                     <div className="dot-grid" />
 
-                    <nav className="breadcrumb">
+                    <nav className="breadcrumb" aria-label="breadcrumb">
                         <Link href="/">Home</Link>
                         <span className="breadcrumb-sep">/</span>
                         {logo.category && (
@@ -570,7 +570,7 @@ export default function LogoDetail() {
 
                                 <div className="preview-img-wrap">
                                     {logo.webpUrl
-                                        ? <img src={logo.webpUrl} alt={logo.altText || logo.logoName} draggable={false} onDragStart={e => e.preventDefault()} />
+                                        ? <img src={logo.webpUrl} alt={logo.altText || `${logo.logoName} logo PNG SVG vector`} draggable={false} onDragStart={e => e.preventDefault()} />
                                         : <div className="preview-img-placeholder" dangerouslySetInnerHTML={{ __html: logo.svgContent || logo.logoName }} />
                                     }
                                     <div className="img-overlay-bar">
@@ -798,30 +798,52 @@ export default function LogoDetail() {
                                 </div>
                             )}
 
-                          {parsedColors.length > 0 && (
-    <div className="colors-card anim d2">
-        <div className="colors-header"><span className="colors-dot" />Official Brand Colors</div>
-        {parsedColors.map((color, i) => (
-            <div className="color-row" key={i}>
-                <div className="color-swatch" style={{ background: color.hex }} />
-                <div className="color-info">
-                    <div className="color-name">{color.name}</div>
-                    <div className="color-hex">{color.hex.toUpperCase()}</div>
-                    <div className="color-rgb">RGB: {hexToRgb(color.hex)}</div>
-                </div>
-                <button className={`color-copy-btn${copiedColor === color.hex ? " copied" : ""}`} onClick={() => handleCopyColor(color.hex)} title="Copy hex">
-                    {copiedColor === color.hex
-                        ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    }
-                </button>
-            </div>
-        ))}
-    </div>
-)}
+                            {parsedColors.length > 0 && (
+                                <div className="colors-card anim d2">
+                                    <div className="colors-header"><span className="colors-dot" />Official Brand Colors</div>
+                                    {parsedColors.map((color, i) => (
+                                        <div className="color-row" key={i}>
+                                            <div className="color-swatch" style={{ background: color.hex }} />
+                                            <div className="color-info">
+                                                <div className="color-name">{color.name}</div>
+                                                <div className="color-hex">{color.hex.toUpperCase()}</div>
+                                                <div className="color-rgb">RGB: {hexToRgb(color.hex)}</div>
+                                            </div>
+                                            <button className={`color-copy-btn${copiedColor === color.hex ? " copied" : ""}`} onClick={() => handleCopyColor(color.hex)} title="Copy hex">
+                                                {copiedColor === color.hex
+                                                    ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                                    : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                                                }
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="ad-card anim d3" style={{ minHeight: 160 }} />
                         </div>
                     </div>
+
+                    {/* ── SEO ADDITION: Clickable Tags Section ────────────────────────────── */}
+                    {logoTags.length > 0 && (
+                        <div className="tags-section">
+                            <div className="tags-header">
+                                <div className="related-title">Tags</div>
+                                <span className="related-badge">{logoTags.length}</span>
+                            </div>
+                            <div className="tags-grid">
+                                {logoTags.map((tag, i) => (
+                                    <Link
+                                        key={i}
+                                        href={`/search/${encodeURIComponent(tag)}`}
+                                        className="tag-pill"
+                                    >
+                                        <span className="tag-hash">#</span>{tag}
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {related.length > 0 && (
                         <div className="related-section">
