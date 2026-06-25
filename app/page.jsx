@@ -59,17 +59,7 @@ export async function generateMetadata() {
     return {
       title,
       description,
-      // ✅ NO keywords field
       alternates: { canonical: baseUrl },
-
-      // ✅ Bing + Yandex verification
-      verification: {
-        other: {
-          "msvalidate.01": "YOUR_BING_VERIFICATION_CODE",
-          "yandex-verification": "YOUR_YANDEX_VERIFICATION_CODE",
-        },
-      },
-
       openGraph: {
         title,
         description,
@@ -89,17 +79,7 @@ export async function generateMetadata() {
     return {
       title: "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo",
       description: "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.",
-      // ✅ NO keywords field
       alternates: { canonical: "https://cdrlogo.com" },
-
-      // ✅ Bing + Yandex verification in fallback too
-      verification: {
-        other: {
-          "msvalidate.01": "YOUR_BING_VERIFICATION_CODE",
-          "yandex-verification": "YOUR_YANDEX_VERIFICATION_CODE",
-        },
-      },
-
       openGraph: {
         title: "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo",
         description: "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.",

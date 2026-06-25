@@ -14,11 +14,9 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        {/* ✅ Bing Webmaster Verification */}
-        <meta name="msvalidate.01" content="YOUR_BING_VERIFICATION_CODE" />
-
-        {/* ✅ Yandex Webmaster Verification */}
-        <meta name="yandex-verification" content="YOUR_YANDEX_VERIFICATION_CODE" />
+        {/* ✅ Bing + Yandex — ENV se aayega, Git mein visible nahi hoga */}
+        <meta name="msvalidate.01" content={process.env.BING_VERIFICATION_CODE} />
+        <meta name="yandex-verification" content={process.env.YANDEX_VERIFICATION_CODE} />
       </head>
       <body className="min-h-full flex flex-col">
         <Providers>
