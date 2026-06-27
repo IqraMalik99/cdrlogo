@@ -1,43 +1,235 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🚀 CDRLOGO
 
-## Getting Started
+<p align="center">
+  <b>Modern Next.js Logo Marketplace & E-commerce Platform</b>  
+</p>
 
-First, run the development server:
+<p align="center">
+  Upload • Sell • Buy • Manage • Ship • Automate
+</p>
+
+---
+
+## 📌 About
+
+**CDRLOGO** is a full-stack **Next.js e-commerce platform** built for managing and selling logo design files.
+
+It includes:
+
+* User authentication
+* File upload system
+* AI-generated SEO metadata
+* Payment processing
+* Shipping automation
+* Email notifications
+* Admin dashboard
+* Automated cron jobs
+
+---
+
+## ⚡ Tech Stack
+
+| Technology            | Usage              |
+| --------------------- | ------------------ |
+| Next.js               | Frontend + Backend |
+| React                 | UI Components      |
+| Prisma                | Database ORM       |
+| PostgreSQL / Supabase | Database           |
+| Stripe                | Payments           |
+| FedEx API             | Shipping           |
+| OpenAI API            | SEO Generation     |
+| Cloudflare R2         | File Storage       |
+| Nodemailer            | Emails             |
+
+---
+
+## 📂 Project Structure
+
+```bash
+app/
+│
+├── api/                # All backend APIs
+│   ├── auth/
+│   ├── payment/
+│   ├── fedex/
+│   ├── upload/
+│   ├── orders/
+│   └── cron/
+│
+├── components/         # Reusable components
+├── dashboard/          # User dashboard
+├── admin/             # Admin panel
+├── page.js            # Homepage
+│
+lib/                   # Utility functions
+prisma/                # Prisma schema
+public/                # Static assets
+```
+
+---
+
+## 🛠 Installation
+
+Clone repository
+
+```bash
+git clone <your-repository-url>
+```
+
+Move into project
+
+```bash
+cd app
+```
+
+Install dependencies
+
+```bash
+npm install
+```
+
+Run development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open in browser
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```bash
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🔌 API Structure
 
-To learn more about Next.js, take a look at the following resources:
+All APIs are located inside:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+/app/api
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Example routes:
 
-## Deploy on Vercel
+```bash
+/app/api/auth
+/app/api/payment
+/app/api/fedex
+/app/api/upload
+/app/api/orders
+/app/api/test-cron
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔐 Environment Variables
 
+Create:
 
+```bash
+.env.local
+```
 
+Add variables:
 
-NEXT_PUBLIC_NODE_ENV=development
-DATABASE_URL=postgresql://neondb_owner:npg_baPy0ACq7jkr@ep-hidden-mud-an4mdyu0.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-DATABASE_URL_UNPOOLED=postgresql://neondb_owner:npg_baPy0ACq7jkr@ep-hidden-mud-an4mdyu0-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+```env
+DATABASE_URL=
+
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
+
+OPENAI_API_KEY=
+
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+
+SUPABASE_URL=
+SUPABASE_KEY=
+
+EMAIL_USER=
+EMAIL_PASS=
+
+FEDEX_CLIENT_ID=
+FEDEX_CLIENT_SECRET=
+
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+```
+
+---
+
+## ✨ Features
+
+✅ User Authentication
+✅ Logo Upload System
+✅ AI SEO Metadata Generation
+✅ Stripe Payment Integration
+✅ FedEx Shipping Integration
+✅ Email Notifications
+✅ Admin Dashboard
+✅ Seller Onboarding
+✅ Order Management
+✅ Automated Cron Jobs
+✅ Cloud Storage with R2
+
+---
+
+## 🚀 Scripts
+
+Development
+
+```bash
+npm run dev
+```
+
+Build
+
+```bash
+npm run build
+```
+
+Production
+
+```bash
+npm start
+```
+
+---
+
+## 📦 Deployment
+
+Recommended deployment:
+
+* Vercel
+* Supabase
+* Cloudflare R2
+
+Deploy easily with:
+
+```bash
+git push origin main
+```
+
+---
+
+## 📝 Notes
+
+* Built using **Next.js App Router**
+* All backend APIs are inside **/app/api**
+* Uses **Prisma ORM** for database management
+* Environment variables required before running
+
+---
+
+## 👨‍💻 Developer
+
+Built with Next.js ecosystem.
+
+---
+
+## 📄 License
+
+Private Project
+All Rights Reserved
