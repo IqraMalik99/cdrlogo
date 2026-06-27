@@ -311,12 +311,16 @@ function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, descr
 }
 
 function buildFaqSchema(faqPairs) {
-  if (!Array.isArray(faqPairs) || !faqPairs.length) return [];
-  return faqPairs.slice(0, 3).map((qa) => ({
-    "@type": "Question",
-    "name": qa.question || qa.q || "",
-    "acceptedAnswer": { "@type": "Answer", "text": qa.answer || qa.a || "" },
-  }));
+  if (!Array.isArray(faqPairs) || !faqPairs.length) return {};  // {} not []
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqPairs.slice(0, 3).map((qa) => ({
+      "@type": "Question",
+      "name": qa.question || qa.q || "",
+      "acceptedAnswer": { "@type": "Answer", "text": qa.answer || qa.a || "" },
+    })),
+  };
 }
 
 // ── DB: find related / exact matches ─────────────────────────────────────────
@@ -811,7 +815,7 @@ ONLY the corrected JSON object, with the same structure as before.`;
   }
 
   // ── Resolve brand / country / industry / website ──────────────────────────
-  const brand    = (parsed.brand_used    && String(parsed.brand_used).trim())    || "cdrlogo.com";
+  const brand    = (parsed.brand_used    && String(parsed.brand_used).trim())    || "";
   const country  = (parsed.country_used  && String(parsed.country_used).trim())  || "Worldwide";
   const industry = (parsed.industry_used && String(parsed.industry_used).trim()) || "Logo Design & Graphics";
   const website  = (parsed.website_used  && String(parsed.website_used).trim())  || "";

@@ -395,15 +395,16 @@ function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, descr
 
 // ── Build FAQ schema from LLM-generated Q&A pairs ────────────────────────────
 function buildFaqSchema(faqPairs) {
-  if (!Array.isArray(faqPairs) || !faqPairs.length) return [];
-  return faqPairs.slice(0, 3).map(qa => ({
-    "@type": "Question",
-    "name": qa.question || qa.q || "",
-    "acceptedAnswer": {
-      "@type": "Answer",
-      "text": qa.answer || qa.a || "",
-    },
-  }));
+  if (!Array.isArray(faqPairs) || !faqPairs.length) return {};  // {} not []
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqPairs.slice(0, 3).map((qa) => ({
+      "@type": "Question",
+      "name": qa.question || qa.q || "",
+      "acceptedAnswer": { "@type": "Answer", "text": qa.answer || qa.a || "" },
+    })),
+  };
 }
 
 // ── OpenAI: generate SEO content + tags + full OG/Twitter fields ─────────────
@@ -474,7 +475,7 @@ BRAND IDENTIFICATION RULES
 
 1. Identify the real-world brand from logo name when confidence is HIGH.
 
-2. Identify official website ONLY if highly confident.
+2. Identify official website ONLY if highly confident otherwise blank .
 
 3. Identify real specific industry.
 
@@ -1252,9 +1253,9 @@ ONLY the corrected JSON object, with the same structure as before.`;
   // NOTE: these fallback strings only fire if the LLM call/parse fails
   // entirely (e.g. JSON.parse threw and parsed === {}). They must themselves
   // be banned-word-free, since they can end up shipped as-is.
-  let resolvedBrand = (parsed.brand_used && String(parsed.brand_used).trim()) || providedBrand || "cdrlogo.com";
-  let resolvedWebsite = (parsed.website_used && String(parsed.website_used).trim()) || providedWebsite || "https://cdrlogo.com";
-  let resolvedIndustry = (parsed.industry_used && String(parsed.industry_used).trim()) || providedIndustry || "Logo Design & Graphics";
+  let resolvedBrand = (parsed.brand_used && String(parsed.brand_used).trim()) || providedBrand || "";
+  let resolvedWebsite = (parsed.website_used && String(parsed.website_used).trim()) || providedWebsite || "";
+  let resolvedIndustry = (parsed.industry_used && String(parsed.industry_used).trim()) || providedIndustry || "";
 
   return {
     brandUsed: resolvedBrand,
@@ -1473,7 +1474,7 @@ export async function POST(req) {
         });
         console.log("[4] ⚠ Falling back to manually entered fields");
         if (!brand || !brand.trim()) brand = "cdrlogo.com";
-        if (!website || !website.trim()) website = "https://cdrlogo.com";
+        if (!website || !website.trim()) website = "";
         if (!industry || !industry.trim()) industry = "Logo Design & Graphics";
         try { tags = JSON.parse(formData.get("tags") || "[]"); } catch { }
         // OG/Twitter fallbacks — simple, compliant with banned-word rules
@@ -1488,7 +1489,7 @@ export async function POST(req) {
     } else {
       console.log("[4] AI DISABLED - Using manual fields only");
       if (!brand || !brand.trim()) brand = "cdrlogo.com";
-      if (!website || !website.trim()) website = "https://cdrlogo.com";
+      if (!website || !website.trim()) website = "";
       if (!industry || !industry.trim()) industry = "Logo Design & Graphics";
       try { tags = JSON.parse(formData.get("tags") || "[]"); } catch { }
       // Manual-mode OG/Twitter: derive from whatever meta fields were submitted
