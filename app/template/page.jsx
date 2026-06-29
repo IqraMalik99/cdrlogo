@@ -47,7 +47,7 @@ export default function TemplatesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/catageory/nav-brand-temp", {
+      const res = await fetch("/api/catageory/nav-temp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

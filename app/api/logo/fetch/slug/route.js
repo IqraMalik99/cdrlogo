@@ -1,4 +1,3 @@
-
 // ─────────────────────────────────────────────────────────────────────────────
 // app/api/logo/fetch/slug/route.js
 // Returns the full logo record (all schema fields) + up-to-5 related logos.
@@ -8,7 +7,9 @@ import { prisma } from "../../../../lib/prisma";
 export async function POST(req) {
   try {
     const { slug } = await req.json();
-    if (!slug) return new Response("Slug is required", { status: 400 });
+    if (!slug) {
+      return Response.json({ success: false, error: "Slug is required" }, { status: 400 });
+    }
 
     const logo = await prisma.logo.findUnique({
       where: { slug },
@@ -71,10 +72,9 @@ export async function POST(req) {
         downloadCount: true,
         downloadedNumberByPeople: true,
 
-
-        imageObjectSchema:true,
+        imageObjectSchema: true,
         breadcrumbSchema: true,
-  faqSchema: true,
+        faqSchema: true,
 
         // ── Timestamps ──────────────────────────────────────────────────────
         createdAt: true,
@@ -82,7 +82,9 @@ export async function POST(req) {
       },
     });
 
-    if (!logo) return new Response("Logo not found", { status: 404 });
+    if (!logo) {
+      return Response.json({ success: false, error: "Logo not found" }, { status: 404 });
+    }
 
     const published = { in: ["published", "Published"] };
     const logoTags = Array.isArray(logo.tags) ? logo.tags : [];
@@ -103,11 +105,13 @@ export async function POST(req) {
     const usedSlugs = new Set(byName.map(l => l.slug));
 
     // ── Related: 2. same category ────────────────────────────────────────────
+    //    category is Prisma String[] — equals here matches the exact same
+    //    array (same elements, same order) as the original logo's category.
     const rem1 = 5 - byName.length;
     const byCategory = rem1 > 0
       ? await prisma.logo.findMany({
         where: {
-          category: logo.category,
+          category: { equals: logo.category },
           slug: { not: slug },
           publishStatus: published,
           NOT: { slug: { in: [...usedSlugs] } },
@@ -152,6 +156,9 @@ export async function POST(req) {
 
   } catch (err) {
     console.error("[fetch/slug]", err);
-    return new Response("Server error", { status: 500 });
+    return Response.json(
+      { success: false, error: "Server error", message: err.message },
+      { status: 500 }
+    );
   }
 }

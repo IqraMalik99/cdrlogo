@@ -1015,6 +1015,10 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
 
     console.log(`  [schema] imageObject: ${Object.keys(imageObjectSchema).length ? "built" : "empty"} | breadcrumb: built | faq: ${faqSchema.length} question(s)`);
 
+
+    // if catageory is
+     if(category.toLowerCase().trim()=="template"){
+     }
     // ── Step F: save to DB ────────────────────────────────────────────────────
     const logo = await prisma.logo.create({
       data: {
@@ -1022,7 +1026,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         slug: finalSlug,
         brand: aiContent.brand,
         website: aiContent.website,
-        category: aiContent.category,
+        category: catagory.toLowerCase().trim()=="template"? "template" : aiContent.category,
         industry: aiContent.industry,
         country: aiContent.country,
         license: sharedFields.license,
@@ -1104,6 +1108,8 @@ export async function POST(req) {
     const license = formData.get("license") || "";
     const publishStatus = formData.get("publishStatus") || "Draft";
     const downloadCount = formData.get("downloadCount") || "unlimited";
+
+   
 
     let brandColors = [];
     try { brandColors = JSON.parse(formData.get("brandColors") || "[]"); } catch { }

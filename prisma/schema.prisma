@@ -17,7 +17,7 @@ model Logo {
   website     String?
 
   // ── Classification ─────────────────────────────────────────────────────────
-  category String
+  category String[]
   industry String?
   country  String?
   license  String?

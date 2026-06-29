@@ -2,18 +2,29 @@
 import LogoDetail from "./LogoDetail";
 
 async function fetchLogo(slug) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/logo/fetch/slug`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug }),
-      next: { revalidate: 3600 },
-    }
-  );
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/logo/fetch/slug`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+        next: { revalidate: 3600 },
+      }
+    );
 
-  const json = await res.json();
-  return json.data || json;
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const logo = json.data || json;
+
+    // If API returned an error object, return null
+    if (!logo || logo.error || !logo.slug) return null;
+
+    return logo;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }) {
@@ -56,7 +67,6 @@ export async function generateMetadata({ params }) {
     return {
       title:       metaTitle,
       description: metaDescription,
-      // ✅ keywords removed — <meta name="keywords"> no longer emitted
 
       alternates: { canonical: canonicalUrl },
       robots,
@@ -100,18 +110,20 @@ export default async function Page({ params }) {
   try {
     const logo = await fetchLogo(slug);
 
-    if (logo?.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
-      imageObjectSchema = logo.imageObjectSchema;
-    }
-    if (logo?.breadcrumbSchema && Object.keys(logo.breadcrumbSchema).length) {
-      breadcrumbSchema = logo.breadcrumbSchema;
-    }
-    if (Array.isArray(logo?.faqSchema) && logo.faqSchema.length) {
-      faqSchema = {
-        "@context":   "https://schema.org",
-        "@type":      "FAQPage",
-        mainEntity:   logo.faqSchema,
-      };
+    if (logo) {
+      if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
+        imageObjectSchema = logo.imageObjectSchema;
+      }
+      if (logo.breadcrumbSchema && Object.keys(logo.breadcrumbSchema).length) {
+        breadcrumbSchema = logo.breadcrumbSchema;
+      }
+      if (Array.isArray(logo.faqSchema) && logo.faqSchema.length) {
+        faqSchema = {
+          "@context":   "https://schema.org",
+          "@type":      "FAQPage",
+          mainEntity:   logo.faqSchema,
+        };
+      }
     }
   } catch (err) {
     console.error("[Page schema fetch]", err);

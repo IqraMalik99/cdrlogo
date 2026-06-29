@@ -1,15 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef ,useEffect } from "react";
 import { Upload, X, BarChart2, Globe, CheckCircle, XCircle, Loader2, Package } from "lucide-react";
 
 const COLORS_INIT = ["#3B82F6", "#1E3A5F", "#FBFAFC"];
 
-const CATEGORIES = [
-  "Technology", "Social Media", "Sports", "Automotive",
-  "Food & Beverage", "Fashion", "Finance", "Entertainment",
-  "Gaming", "Airline", "E-commerce",
-];
 
 export default function BulkUploadLogo({ dark }) {
   const fileInputRef = useRef(null);
@@ -25,7 +20,31 @@ export default function BulkUploadLogo({ dark }) {
   const [colors,        setColors]        = useState(COLORS_INIT);
 
   const [submitting,   setSubmitting]   = useState(false);
-  const [submitResult, setSubmitResult] = useState(null); // { ok, message, results, successCount, failCount, total }
+  const [submitResult, setSubmitResult] = useState(null); 
+  // { ok, message, results, successCount, failCount, total }
+
+  // ── Categories (live from API) ────────────────────────────────
+  const [categories, setCategories] = useState([]);
+  const [isTemplate, setIsTemplate] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/catageory/home");
+        const data = await res.json();
+        if (data?.success) {
+          setCategories([...data.data]);
+        }
+      } catch (err) {
+        console.error("Failed to load categories", err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    setCategory(isTemplate ? "template" : "");
+  }, [isTemplate]);
 
   // ── theme tokens ─────────────────────────────────────────────────
   const bg       = dark ? "#0f1117" : "#FFFFFF";
@@ -119,8 +138,9 @@ export default function BulkUploadLogo({ dark }) {
           results: data.results || [],
           successCount: data.successCount,
           failCount: data.failCount,
-          total: data.total,
+          total: data.total      
         });
+          setIsTemplate(false);
         setWrapperFile(null);
       } else {
         setSubmitResult({ ok: false, message: data.error || "Bulk upload failed." });
@@ -257,13 +277,53 @@ export default function BulkUploadLogo({ dark }) {
 
             {/* Category + License */}
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 180 }}>
-                <label style={labelStyle}>Category <span style={{ color: green }}>*</span></label>
-                <select style={{ ...inputStyle, appearance: "none" }} value={category} onChange={e => setCategory(e.target.value)}>
-                  <option value="">Select category</option>
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
+<div style={{ flex: 1, minWidth: 180 }}>
+  <label style={labelStyle}>Category <span style={{ color: green }}>*</span></label>
+  <select
+    style={{
+      ...inputStyle,
+      appearance: "none",
+      background: isTemplate ? (dark ? "#0a0d12" : "#e8ecf0") : inputBg,
+      color: isTemplate ? muted : text,
+      cursor: isTemplate ? "not-allowed" : "pointer",
+    }}
+    value={category}
+    onChange={e => setCategory(e.target.value)}
+    disabled={isTemplate}
+  >
+    <option value="">Select category</option>
+    {categories.map(c => <option key={c}>{c}</option>)}
+  </select>
+
+  <div style={{ marginTop: 8 }}>
+    <button
+      type="button"
+      onClick={() => setIsTemplate(p => !p)}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        padding: "5px 12px", borderRadius: 99,
+        border: `1px solid ${isTemplate ? "#a855f7" + "66" : border}`,
+        background: isTemplate ? "rgba(168,85,247,0.12)" : "transparent",
+        color: isTemplate ? "#a855f7" : muted,
+        fontSize: 12, fontWeight: 700,
+        cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+        transition: "all 0.15s",
+      }}
+    >
+      {isTemplate && (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M2 5l2.5 2.5L8 3" stroke="#a855f7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+      Template
+    </button>
+    {isTemplate && (
+      <span style={{ marginLeft: 8, fontSize: 11, color: muted }}>
+        Category set to <strong style={{ color: text }}>template</strong>
+      </span>
+    )}
+  </div>
+</div>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <label style={labelStyle}>License</label>
                 <select style={{ ...inputStyle, appearance: "none" }} value={license} onChange={e => setLicense(e.target.value)}>

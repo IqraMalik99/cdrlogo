@@ -1317,6 +1317,7 @@ export async function POST(req) {
     let brand = formData.get("brand") || "";
     let website = formData.get("website") || "";
     let category = formData.get("category") || "";
+    category = category.toLowerCase().trim() === "template" ? "template" : category;
     let industry = formData.get("industry") || "";
     let country = formData.get("country") || "";
     let license = formData.get("license") || "";

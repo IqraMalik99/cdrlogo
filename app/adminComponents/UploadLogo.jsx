@@ -5,11 +5,7 @@ import { Upload, Plus, X, Globe, BarChart2, RefreshCw, Tag, Loader2 } from "luci
 
 const COLORS_INIT = ["#3B82F6", "#1E3A5F", "#FBFAFC"];
 
-const CATEGORIES = [
-  "Technology", "Social Media", "Sports", "Automotive",
-  "Food & Beverage", "Fashion", "Finance", "Entertainment",
-  "Gaming", "Airline", "E-commerce",
-];
+
 
 function toSlug(str) {
   return str
@@ -59,10 +55,37 @@ export default function UploadLogo({ dark }) {
   const [dlCount, setDlCount] = useState(100);
   const [dlUnlimited, setDlUnlimited] = useState(false);
 
+  const [isTemplate, setIsTemplate] = useState(false);
+
   // ── Logo name AI suggestion ─────────────────────────────────────
   const [nameSuggestion, setNameSuggestion] = useState(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
 
+
+  const [categories, setCategories] = useState([]);
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/catageory/home");
+        const data = await res.json();
+
+        if (data?.success) {
+          setCategories([...data.data]);
+        }
+      } catch (err) {
+        console.error("Failed to load categories", err);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+  useEffect(() => {
+    if (isTemplate) {
+      setForm(prev => ({ ...prev, category: "template" }));
+    } else {
+      setForm(prev => ({ ...prev, category: "" }));
+    }
+  }, [isTemplate]);
   const [form, setForm] = useState({
     logoName: "", slug: "", brand: "", website: "",
     category: "", industry: "", country: "",
@@ -125,18 +148,19 @@ export default function UploadLogo({ dark }) {
   }, [form.logoName]);
 
   // ── theme tokens ─────────────────────────────────────────────────
-  const bg       = dark ? "#0f1117" : "#FFFFFF";
-  const card     = dark ? "#131720" : "#ffffff";
-  const border   = dark ? "#1e2535" : "#e2e8f0";
-  const text     = dark ? "#e2e8f0" : "#1e293b";
-  const muted    = dark ? "#64748b" : "#94a3b8";
-  const inputBg  = dark ? "#0d1117" : "#FFFFFF";
+  const bg = dark ? "#0f1117" : "#FFFFFF";
+  const card = dark ? "#131720" : "#ffffff";
+  const border = dark ? "#1e2535" : "#e2e8f0";
+  const text = dark ? "#e2e8f0" : "#1e293b";
+  const muted = dark ? "#64748b" : "#94a3b8";
+  const inputBg = dark ? "#0d1117" : "#FFFFFF";
   const inputBdr = dark ? "#1e2535" : "#e2e8f0";
   const labelClr = dark ? "#94a3b8" : "#475569";
-  const green    = "#22c55e";
+  const green = "#22c55e";
   const greenDim = dark ? "rgba(34,197,94,0.12)" : "rgba(22,163,74,0.08)";
-  const tagBg    = dark ? "#1a2235" : "#f1f5f9";
-  const tagBdr   = dark ? "#263047" : "#e2e8f0";
+  const tagBg = dark ? "#1a2235" : "#f1f5f9";
+  const tagBdr = dark ? "#263047" : "#e2e8f0";
+
 
   const inputStyle = {
     width: "100%", padding: "9px 12px",
@@ -265,10 +289,10 @@ export default function UploadLogo({ dark }) {
 
   // ── submit ────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!form.logoName.trim())    return setSubmitResult({ ok: false, message: "Logo Name is required." });
-    if (!form.slug.trim())        return setSubmitResult({ ok: false, message: "Slug is required." });
-    if (!form.category)           return setSubmitResult({ ok: false, message: "Category is required." });
-    if (files.length === 0)       return setSubmitResult({ ok: false, message: "Please upload at least one ZIP file." });
+    if (!form.logoName.trim()) return setSubmitResult({ ok: false, message: "Logo Name is required." });
+    if (!form.slug.trim()) return setSubmitResult({ ok: false, message: "Slug is required." });
+    if (!form.category) return setSubmitResult({ ok: false, message: "Category is required." });
+    if (files.length === 0) return setSubmitResult({ ok: false, message: "Please upload at least one ZIP file." });
 
     setSubmitting(true);
     setSubmitResult(null);
@@ -276,24 +300,24 @@ export default function UploadLogo({ dark }) {
     try {
       const fd = new FormData();
       files.forEach(({ file }) => fd.append("files", file));
-      fd.append("logoName",        form.logoName.trim());
-      fd.append("slug",            form.slug.trim());
-      fd.append("brand",           form.brand);
-      fd.append("website",         form.website);
-      fd.append("category",        form.category);
-      fd.append("industry",        form.industry);
-      fd.append("country",         form.country);
-      fd.append("license",         form.license);
-      fd.append("description",     form.description);
-      fd.append("history",         form.history);
-      fd.append("tags",            JSON.stringify(selectedTags));
-      fd.append("brandColors",     JSON.stringify(colors));
-      fd.append("metaTitle",       form.metaTitle);
+      fd.append("logoName", form.logoName.trim());
+      fd.append("slug", form.slug.trim());
+      fd.append("brand", form.brand);
+      fd.append("website", form.website);
+      fd.append("category", form.category);
+      fd.append("industry", form.industry);
+      fd.append("country", form.country);
+      fd.append("license", form.license);
+      fd.append("description", form.description);
+      fd.append("history", form.history);
+      fd.append("tags", JSON.stringify(selectedTags));
+      fd.append("brandColors", JSON.stringify(colors));
+      fd.append("metaTitle", form.metaTitle);
       fd.append("metaDescription", form.metaDescription);
-      fd.append("publishStatus",   publishStatus);
-      fd.append("downloadCount",   dlUnlimited ? "unlimited" : String(dlCount));
+      fd.append("publishStatus", publishStatus);
+      fd.append("downloadCount", dlUnlimited ? "unlimited" : String(dlCount));
 
-      const res  = await fetch("/api/logo/upload/single", { method: "POST", body: fd });
+      const res = await fetch("/api/logo/upload/single", { method: "POST", body: fd });
       const data = await res.json();
 
       if (res.ok) {
@@ -312,6 +336,7 @@ export default function UploadLogo({ dark }) {
         setDlCount(0);
         setDlUnlimited(false);
         setNameSuggestion(null);
+        setIsTemplate(false);
       } else {
         setSubmitResult({ ok: false, message: data.error || "Upload failed." });
       }
@@ -407,7 +432,7 @@ export default function UploadLogo({ dark }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
             <div style={rowStyle}>
-              <div style={colStyle}>
+               <div style={colStyle}>
                 <label style={labelStyle}>Logo Name <span style={{ color: green }}>*</span></label>
                 <input style={inputStyle} placeholder="e.g. Nike" value={form.logoName} onChange={setField("logoName")} />
 
@@ -432,6 +457,55 @@ export default function UploadLogo({ dark }) {
                      Use "{nameSuggestion}"
                   </button>
                 )}
+              </div>
+              <div style={colStyle}>
+                <label style={labelStyle}>Category <span style={{ color: green }}>*</span></label>
+                <select
+                  style={{
+                    ...inputStyle,
+                    appearance: "none",
+                    background: isTemplate ? (dark ? "#0a0d12" : "#e8ecf0") : inputBg,
+                    color: isTemplate ? muted : text,
+                    cursor: isTemplate ? "not-allowed" : "pointer",
+                  }}
+                  value={form.category}
+                  onChange={setField("category")}
+                  disabled={isTemplate}
+                >
+                  <option value="">Select category</option>
+                  {categories.map(c => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsTemplate(p => !p)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "5px 12px", borderRadius: 99,
+                      border: `1px solid ${isTemplate ? "#a855f7" + "66" : border}`,
+                      background: isTemplate ? "rgba(168,85,247,0.12)" : "transparent",
+                      color: isTemplate ? "#a855f7" : muted,
+                      fontSize: 12, fontWeight: 700,
+                      cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {isTemplate && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5l2.5 2.5L8 3" stroke="#a855f7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    Template
+                  </button>
+                  {isTemplate && (
+                    <span style={{ marginLeft: 8, fontSize: 11, color: muted }}>
+                      Category set to <strong style={{ color: text }}>template</strong>
+                    </span>
+                  )}
+                </div>
               </div>
               <div style={colStyle}>
                 <label style={labelStyle}>
@@ -460,13 +534,7 @@ export default function UploadLogo({ dark }) {
             </div>
 
             <div style={rowStyle}>
-              <div style={colStyle}>
-                <label style={labelStyle}>Category <span style={{ color: green }}>*</span></label>
-                <select style={{ ...inputStyle, appearance: "none" }} value={form.category} onChange={setField("category")}>
-                  <option value="">Select category</option>
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
+             
               <div style={colStyle}>
                 <label style={labelStyle}>Industry</label>
                 <input style={inputStyle} placeholder="e.g. Software, Banking" value={form.industry} onChange={setField("industry")} />
@@ -702,7 +770,7 @@ export default function UploadLogo({ dark }) {
                   >
                     {active && (
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2.5 2.5L8 3" stroke="#22c55e" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M2 5l2.5 2.5L8 3" stroke="#22c55e" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                     {tag}
@@ -758,10 +826,10 @@ export default function UploadLogo({ dark }) {
               <textarea style={{ ...inputStyle, minHeight: 72, resize: "vertical" }} placeholder="Free download TechNova logo vector..." value={form.metaDescription} onChange={setField("metaDescription")} />
               <p style={{ margin: "4px 0 0", fontSize: 11, color: muted }}>Recommended: 150–160 characters</p>
             </div>
-            
-            
+
+
           </div>
-        </div>            
+        </div>
 
         {/* ── Publish Status ── */}
         <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 20 }}>

@@ -47,7 +47,7 @@ export default function BrandsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/catageory/nav-brand-temp", {
+      const res = await fetch("/api/catageory/nav-brand", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

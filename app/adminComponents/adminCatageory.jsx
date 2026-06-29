@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 
-const TABS = ["Main Categories", "Brand Categories", "Template Categories"];
+const TABS = ["Main Categories", "Brand Categories"
+  // , "Template Categories"
+
+];
 
 export default function AdminCategories({ dark = true }) {
   // ── Theme tokens ───────────────────────────────────────────────────────
@@ -58,17 +61,17 @@ export default function AdminCategories({ dark = true }) {
   const filtered = allCats.filter(c => {
     if (activeTab === "Main Categories")     return true;
     if (activeTab === "Brand Categories")    return c.type === "brand";
-    if (activeTab === "Template Categories") return c.type === "template";
+    // if (activeTab === "Template Categories") return c.type === "template";
     return true;
   });
 
   const brandCount    = allCats.filter(c => c.type === "brand").length;
-  const templateCount = allCats.filter(c => c.type === "template").length;
+  // const templateCount = allCats.filter(c => c.type === "template").length;
 
   const tabCounts = {
     "Main Categories":     allCats.length,
     "Brand Categories":    brandCount,
-    "Template Categories": templateCount,
+    // "Template Categories": templateCount,
   };
 
   // ── Modal helpers ──────────────────────────────────────────────────────
@@ -183,7 +186,8 @@ export default function AdminCategories({ dark = true }) {
               Categories
             </h1>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: muted }}>
-              {allCats.length} total · {brandCount} brand · {templateCount} template
+              {allCats.length} total · {brandCount} brand · 
+              {/* {templateCount} template */}
             </p>
           </div>
           <button className="ac-new" onClick={openNew} style={{
@@ -332,7 +336,9 @@ export default function AdminCategories({ dark = true }) {
             <div style={{ marginBottom: 14 }}>
               <span style={lbl}>Type</span>
               <div style={{ display: "flex", gap: 8 }}>
-                {["brand", "template"].map(t => (
+                {["brand"
+                // , "template"
+              ].map(t => (
                   <button key={t} onClick={() => setForm(f => ({ ...f, type: t }))} style={{
                     flex: 1, padding: "9px 0", borderRadius: 8,
                     fontSize: 12, fontWeight: 700, fontFamily: "'DM Sans',sans-serif",

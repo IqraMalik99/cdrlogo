@@ -156,23 +156,23 @@ export default function LogosPage() {
   // Reset to page 1 when sort changes (don't refetch — data already in memory)
   useEffect(() => { setPage(1); }, [sort]);
 
-const [categories, setCategories] = useState(["All"]);
-useEffect(() => {
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch("/api/catageory/home");
-      const data = await res.json();
+// const [categories, setCategories] = useState(["All"]);
+// useEffect(() => {
+//   const fetchCategories = async () => {
+//     try {
+//       const res = await fetch("/api/catageory/home");
+//       const data = await res.json();
 
-      if (data?.success) {
-        setCategories(["All", ...data.data]);
-      }
-    } catch (err) {
-      console.error("Failed to load categories", err);
-    }
-  };
+//       if (data?.success) {
+//         setCategories(["All", ...data.data]);
+//       }
+//     } catch (err) {
+//       console.error("Failed to load categories", err);
+//     }
+//   };
 
-  fetchCategories();
-}, []);
+//   fetchCategories();
+// }, []);
 
   return (<>
     <style>{`
@@ -410,13 +410,13 @@ useEffect(() => {
           ))}
         </div>
 
-        <div className="cat-row">
+        {/* <div className="cat-row">
           {categories.map(c => (
             <button key={c}
               className={`cat-btn${activeCategory === c ? " active" : ""}`}
               onClick={() => setActiveCat(c)}>{c}</button>
           ))}
-        </div>
+        </div> */}
 
         {error ? (
           <div className="error-state">

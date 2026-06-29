@@ -10,6 +10,7 @@ import Footer from "../../components/Footer";
 
 export default function LogoDetail() {
     const { slug } = useParams();
+    console.log("slug",slug)
     const router = useRouter();
     const { dark } = useTheme();
     const { data: session, status } = useSession();
@@ -122,6 +123,7 @@ export default function LogoDetail() {
                     body: JSON.stringify({ slug }),
                 });
                 const data = await res.json();
+                console.log("data",data);
                 setLogo(data.data || data);
                 setRelated(data.related || []);
             } catch (e) { setError(e.message); }
@@ -243,6 +245,15 @@ export default function LogoDetail() {
 
     // ── parse tags safely ─────────────────────────────────────────────────────
     const logoTags = Array.isArray(logo.tags) ? logo.tags : [];
+
+
+
+    // ── parse category safely (string or array) ────────────────────────────────
+    const logoCategories = Array.isArray(logo.category)
+        ? logo.category.filter(Boolean)
+        : (logo.category ? [logo.category] : []);
+    const primaryCategory = logoCategories[0] || "";
+    const categoryDisplay = logoCategories.join(", ");
 
     return (
         <>
@@ -539,9 +550,9 @@ export default function LogoDetail() {
                     <nav className="breadcrumb" aria-label="breadcrumb">
                         <Link href="/">Home</Link>
                         <span className="breadcrumb-sep">/</span>
-                        {logo.category && (
+                        {primaryCategory && (
                             <>
-                                <Link href={`/search/${logo.category}`}>{logo.category}</Link>
+                                <Link href={`/search/${encodeURIComponent(primaryCategory)}`}>{primaryCategory}</Link>
                                 <span className="breadcrumb-sep">/</span>
                             </>
                         )}
@@ -641,7 +652,7 @@ export default function LogoDetail() {
                                         { icon: "🏷️", label: "Brand", value: logo.brand },
                                         { icon: "⚙️", label: "Industry", value: logo.industry },
                                         { icon: "🌍", label: "Country", value: logo.country },
-                                        { icon: "📁", label: "Category", value: logo.category },
+                                        { icon: "📁", label: "Category", value: categoryDisplay },
                                     ]
                                         .filter(item => item.value && item.value.trim() !== "")
                                         .map(item => (
