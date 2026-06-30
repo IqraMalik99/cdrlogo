@@ -114,7 +114,7 @@ export default function BulkUploadLogo({ dark }) {
   // ── submit ────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!wrapperFile) return setSubmitResult({ ok: false, message: "Please upload a wrapper ZIP file." });
-    if (!category)    return setSubmitResult({ ok: false, message: "Category is required." });
+ 
 
     setSubmitting(true);
     setSubmitResult(null);

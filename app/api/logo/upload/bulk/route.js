@@ -487,7 +487,7 @@ BRAND IDENTIFICATION RULES
 
 5. If confidence is LOW (<90%):
 
-brand = "cdrlogo.com"
+brand = ""
 website = ""
 industry = "Logo Design & Graphics"
 country = "Worldwide"
@@ -577,9 +577,9 @@ Logo Name     : ${logoName}
 Canonical URL : ${canonicalUrl}
 
 ${hasCategoryList
-  ? `Category: Pick EXACTLY ONE from this list based on the logo's brand/industry. Copy verbatim:\n${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
-  : `Category: Use your best classification for this logo's industry.`
-}
+      ? `Category: Pick 5 categories from this list based on the logo's brand/industry name relavancy . Copy verbatim:\n${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
+      : `Category: Use your best classification for this logo's industry.`
+    }
 
 Brand   : UNKNOWN — infer real brand if confidently identifiable
 Website : UNKNOWN
@@ -735,7 +735,7 @@ twitter_description / main_description — REGENERATE internally.
 Return ONLY VALID JSON:
 
 {
-  "category": "...",
+  "category": ["...", "...", "...", "...", "..."],
   "brand_used": "...",
   "website_used": "...",
   "country_used": "...",
@@ -817,17 +817,25 @@ ONLY the corrected JSON object, with the same structure as before.`;
   }
 
   // ── Resolve category ──────────────────────────────────────────────────────
-let resolvedCategory = String(parsed.category || "").trim();
+let rawCategories = parsed.category;
+if (typeof rawCategories === "string") rawCategories = [rawCategories];
+if (!Array.isArray(rawCategories)) rawCategories = [];
 
+let resolvedCategories = [];
 if (hasCategoryList) {
-  const match = availableCategories.find(
-    (c) => c.name.toLowerCase() === resolvedCategory.toLowerCase()
-  );
-  // LLM pick wins, fallback to first DB category — no frontend influence
-  resolvedCategory = match?.name || availableCategories[0]?.name || "";
+  for (const cat of rawCategories) {
+    const match = availableCategories.find(
+      (c) => c.name.toLowerCase() === String(cat).trim().toLowerCase()
+    );
+    if (match) resolvedCategories.push(match.name);
+  }
+  resolvedCategories = resolvedCategories.slice(0, 5);
 } else {
-  resolvedCategory = resolvedCategory || "";
+  resolvedCategories = rawCategories.slice(0, 5).map(String).filter(Boolean);
 }
+
+// ...
+
 
   // ── Resolve brand / country / industry / website ──────────────────────────
   const brand = (parsed.brand_used && String(parsed.brand_used).trim()) || "";
@@ -860,8 +868,10 @@ if (hasCategoryList) {
     `${logoName} logo image on cdrlogo.com`;
   const faqPairs = Array.isArray(parsed.faq) ? parsed.faq : [];
 
-  return {
-    category: resolvedCategory,
+
+    
+return {
+  category: resolvedCategories,
     brand,
     website,
     country,
@@ -1015,10 +1025,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
 
     console.log(`  [schema] imageObject: ${Object.keys(imageObjectSchema).length ? "built" : "empty"} | breadcrumb: built | faq: ${faqSchema.length} question(s)`);
 
-
-    // if catageory is
-     if(category.toLowerCase().trim()=="template"){
-     }
     // ── Step F: save to DB ────────────────────────────────────────────────────
     const logo = await prisma.logo.create({
       data: {
@@ -1026,7 +1032,11 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         slug: finalSlug,
         brand: aiContent.brand,
         website: aiContent.website,
-        category: catagory.toLowerCase().trim()=="template"? "template" : aiContent.category,
+        category: sharedFields.category.toLowerCase().trim() === "template"
+          ? ["template"]
+          : Array.isArray(aiContent.category) && aiContent.category.length > 0
+            ? aiContent.category
+            : [],
         industry: aiContent.industry,
         country: aiContent.country,
         license: sharedFields.license,
@@ -1109,8 +1119,6 @@ export async function POST(req) {
     const publishStatus = formData.get("publishStatus") || "Draft";
     const downloadCount = formData.get("downloadCount") || "unlimited";
 
-   
-
     let brandColors = [];
     try { brandColors = JSON.parse(formData.get("brandColors") || "[]"); } catch { }
 
@@ -1161,10 +1169,12 @@ export async function POST(req) {
     // ── Fetch website settings: watermark + category list ─────────────────────
     const websiteRecord = await prisma.website.findFirst();
     const watermark = websiteRecord?.watermark ?? null;
-const availableCategories = extractCategoryNames(websiteRecord?.categories);
+    const availableCategories = category.toLowerCase().trim() === "template"
+      ? []
+      : extractCategoryNames(websiteRecord?.categories);
 
     console.log(`[3] Watermark: ${watermark?.enabled ? "ENABLED" : "DISABLED"}`);
-   console.log(`[3] Site categories (from DB): ${availableCategories.length ? availableCategories.map(c => c.name).join(", ") : "(none configured)"}`);
+    console.log(`[3] Site categories (from DB): ${availableCategories.length ? availableCategories.map(c => c.name).join(", ") : "(none configured)"}`);
 
     const sharedFields = {
       category,

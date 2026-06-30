@@ -1316,8 +1316,8 @@ export async function POST(req) {
     let logoName = formData.get("logoName")?.trim();
     let brand = formData.get("brand") || "";
     let website = formData.get("website") || "";
-    let category = formData.get("category") || "";
-    category = category.toLowerCase().trim() === "template" ? "template" : category;
+    let categoryRaw = formData.get("category") || "";
+    let category = categoryRaw.toLowerCase().trim() === "template" ? ["template"] : [categoryRaw];
     let industry = formData.get("industry") || "";
     let country = formData.get("country") || "";
     let license = formData.get("license") || "";
@@ -1429,7 +1429,7 @@ export async function POST(req) {
           logoName: finalLogoName,
           brand,
           website,
-          category,
+          category: categoryRaw,
           industry,
           country,
           relatedLogos: related,
