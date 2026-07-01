@@ -423,6 +423,10 @@ async function generateAIContent({
 }) {
   const isVariant = relatedLogos.length > 0;
 
+  const STYLE_LETTERS = ["A", "B", "C", "D"];
+  const forcedStyle = STYLE_LETTERS[Math.floor(Math.random() * 4)];
+  console.log(`  [style] Forced style for this logo: STYLE ${forcedStyle}`);
+
   const relatedContext = isVariant
     ? relatedLogos
       .slice(0, 5)
@@ -731,49 +735,54 @@ brand_used, website_used, industry_used, country_used
 ===========================================
 Important instructions:
 
-You MUST NOT use a repeated sentence template across different
-logos. Before writing main_description, internally choose ONE
-of these 4 opening styles, rotating so the SAME style is never
-used twice in a row:
+==================================================
+STYLE ASSIGNMENT FOR THIS LOGO — MANDATORY
+==================================================
 
-STYLE A — Format-first (use for ANY logo including unknown brands):
+This logo has been externally assigned: STYLE ${forcedStyle}
+
+This assignment is NOT your choice — it was randomly generated in code to
+guarantee stylistic variation across the entire site. You MUST write
+main_description using STYLE ${forcedStyle} below. Do NOT use any other
+style. Do NOT blend multiple styles together. Do NOT default to the style
+that "feels most natural" — use STYLE ${forcedStyle}, exactly as described.
+
+STYLE A — Format-first:
 Start with the file formats as the subject.
 Example: "PNG, SVG, AI, and CDR files of the [Logo Name]
 are archived here as scalable vector assets for reference use."
 
-STYLE B — Brand-first (use ONLY when brand, industry, AND country
-are all confirmed — never when any field is unknown/empty):
+STYLE B — Brand-first (requires confirmed brand, industry, AND country):
 Start with the brand as the subject.
 Example: "[Brand], a [industry] company from [country],
 is represented here through its [Logo Name], archived
 in PNG, SVG, AI, and CDR scalable vector formats."
 
-STYLE C — Archive-purpose-first (use for ANY logo):
+STYLE C — Archive-purpose-first:
 Start with the archive purpose as the subject.
 Example: "This entry documents the [Logo Name] for
 research and educational reference, available in PNG,
 SVG, AI, and CDR vector file formats."
 
-STYLE D — Industry-context-first (use ONLY when industry
-AND country are both confirmed — never when unknown/empty):
+STYLE D — Industry-context-first (requires confirmed industry AND country):
 Start with the industry as the subject.
 Example: "Within the [industry] sector, the [Logo Name]
 is preserved here as scalable vector artwork in PNG,
 SVG, AI, and CDR formats for educational study."
 
-STYLE SELECTION RULES:
+FALLBACK RULE (applies ONLY if the assigned style is STYLE B or STYLE D):
+STYLE B and STYLE D require a confidently identified brand, industry, AND
+country for THIS specific logo. If you cannot confidently identify these,
+fall back to STYLE A instead. Do NOT fabricate brand, industry, or country
+details just to force-fit STYLE ${forcedStyle}.
 
-1. If brand/industry/country are unknown or empty:
-   → Use ONLY Style A or Style C.
-2. If all brand details are confirmed:
-   → Rotate across all 4 styles.
-3. Never reuse the same paragraph structure or sentence
-   order across different logos — even with different brands.
-4. Do not swap synonyms (presented/features/offers/provides)
-   while keeping the same sentence skeleton. This is a
-   violation of this rule.
-5. Vary WHERE brand context, format list, and educational
-   phrase appear — not always in the same order.
+REGARDLESS OF STYLE:
+1. Never reuse the same paragraph structure or sentence order as any
+   previous page for this logo (see PREVIOUS PAGES above, if applicable).
+2. Do not swap synonyms (presented/features/offers/provides) while keeping
+   the same sentence skeleton — that still counts as a repeated template.
+3. Vary WHERE brand context, format list, and educational phrase appear
+   within the sentence.
 
 STRICTLY FORBIDDEN in main_description:
 Free Download, High Quality, High Resolution, Best Logo,
@@ -1191,6 +1200,8 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     };
   }
 }
+
+
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req) {
