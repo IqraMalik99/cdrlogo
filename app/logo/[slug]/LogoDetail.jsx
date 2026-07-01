@@ -10,7 +10,6 @@ import Footer from "../../components/Footer";
 
 export default function LogoDetail() {
     const { slug } = useParams();
-    console.log("slug",slug)
     const router = useRouter();
     const { dark } = useTheme();
     const { data: session, status } = useSession();
@@ -123,7 +122,6 @@ export default function LogoDetail() {
                     body: JSON.stringify({ slug }),
                 });
                 const data = await res.json();
-                console.log("data",data);
                 setLogo(data.data || data);
                 setRelated(data.related || []);
             } catch (e) { setError(e.message); }

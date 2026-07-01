@@ -46,45 +46,45 @@ export async function generateMetadata({ params }) {
       (logo.description || "").slice(0, 160);
 
     // ── 3. Open Graph ────────────────────────────────────────────────────────
-    const ogTitle       = logo.ogTitle       || metaTitle;
+    const ogTitle = logo.ogTitle || metaTitle;
     const ogDescription = logo.ogDescription || metaDescription;
-    const ogType        = logo.ogType        || "website";
-    const ogImage       = logo.ogImageUrl    || logo.webpUrl || null;
+    const ogType = logo.ogType || "website";
+    const ogImage = logo.ogImageUrl || logo.webpUrl || null;
 
     // ── 4. Twitter / X card ──────────────────────────────────────────────────
-    const twitterCard        = logo.twitterCardType    || "summary_large_image";
-    const twitterTitle       = logo.twitterTitle       || ogTitle;
+    const twitterCard = logo.twitterCardType || "summary_large_image";
+    const twitterTitle = logo.twitterTitle || ogTitle;
     const twitterDescription = logo.twitterDescription || ogDescription;
-    const twitterImage       = logo.twitterImage       || ogImage;
+    const twitterImage = logo.twitterImage || ogImage;
 
     // ── 5. Robots / indexing ─────────────────────────────────────────────────
     const isPublished = logo.publishStatus === "Published";
     const robots = isPublished
-      ? { index: true,  follow: true,  googleBot: { index: true,  follow: true  } }
+      ? { index: true, follow: true, googleBot: { index: true, follow: true } }
       : { index: false, follow: false, googleBot: { index: false, follow: false } };
 
     // ── 6. Assemble — NO keywords ─────────────────────────────────────────────
     return {
-      title:       metaTitle,
+      title: metaTitle,
       description: metaDescription,
 
       alternates: { canonical: canonicalUrl },
       robots,
 
       openGraph: {
-        title:       ogTitle,
+        title: ogTitle,
         description: ogDescription,
-        url:         canonicalUrl,
-        type:        ogType,
-        siteName:    "cdrlogo.com",
+        url: canonicalUrl,
+        type: ogType,
+        siteName: "cdrlogo.com",
         ...(ogImage
           ? { images: [{ url: ogImage, width: 1200, height: 630, alt: logo.altText || ogTitle }] }
           : {}),
       },
 
       twitter: {
-        card:        twitterCard,
-        title:       twitterTitle,
+        card: twitterCard,
+        title: twitterTitle,
         description: twitterDescription,
         ...(twitterImage ? { images: [twitterImage] } : {}),
       },
@@ -93,7 +93,7 @@ export async function generateMetadata({ params }) {
   } catch (err) {
     console.error("[generateMetadata]", err);
     return {
-      title:       "Logo – Download",
+      title: "Logo – Download",
       description: "Download vector logos in SVG, PNG, AI, CDR formats.",
       robots: { index: false, follow: false },
     };
@@ -104,12 +104,11 @@ export default async function Page({ params }) {
   const { slug } = await params;
 
   let imageObjectSchema = null;
-  let breadcrumbSchema  = null;
-  let faqSchema         = null;
+  let breadcrumbSchema = null;
+  let faqSchema = null;
 
   try {
     const logo = await fetchLogo(slug);
-
     if (logo) {
       if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
         imageObjectSchema = logo.imageObjectSchema;
@@ -117,12 +116,8 @@ export default async function Page({ params }) {
       if (logo.breadcrumbSchema && Object.keys(logo.breadcrumbSchema).length) {
         breadcrumbSchema = logo.breadcrumbSchema;
       }
-      if (Array.isArray(logo.faqSchema) && logo.faqSchema.length) {
-        faqSchema = {
-          "@context":   "https://schema.org",
-          "@type":      "FAQPage",
-          mainEntity:   logo.faqSchema,
-        };
+      if (logo.faqSchema && Object.keys(logo.faqSchema).length) {
+        faqSchema = logo.faqSchema;
       }
     }
   } catch (err) {

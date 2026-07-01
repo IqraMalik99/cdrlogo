@@ -577,7 +577,12 @@ Logo Name     : ${logoName}
 Canonical URL : ${canonicalUrl}
 
 ${hasCategoryList
-      ? `Category: Pick 5 categories from this list based on the logo's brand/industry name relavancy . Copy verbatim:\n${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
+      ? `Category: Select UP TO 5 categories from the list below, based strictly on relevancy to this logo's brand/industry name.
+- Try to select exactly 5 if there are 5 genuinely relevant matches.
+- If fewer than 5 are relevant, select only those that are (do NOT force irrelevant categories).
+- If NOT EVEN ONE category from the list is relevant, return exactly ["template"] as the category array.
+- Copy category names verbatim from this list — do not modify or invent names:
+${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
       : `Category: Use your best classification for this logo's industry.`
     }
 
@@ -639,7 +644,7 @@ Must contain AT LEAST ONE EXACT PHRASE:
 STRICTLY FORBIDDEN: commercial projects, business use, branding needs, marketing language
 
 --------------------------------------------------
-main_description (120–155 words)
+main_description (45–100 words)
 --------------------------------------------------
 
 Sentence 1 MUST mention: PNG OR SVG OR Vector.
@@ -723,6 +728,86 @@ FINAL OUTPUT FIELDS
 --------------------------------------------------
 
 brand_used, website_used, industry_used, country_used
+===========================================
+Important instructions:
+
+You MUST NOT use a repeated sentence template across different
+logos. Before writing main_description, internally choose ONE
+of these 4 opening styles, rotating so the SAME style is never
+used twice in a row:
+
+STYLE A — Format-first (use for ANY logo including unknown brands):
+Start with the file formats as the subject.
+Example: "PNG, SVG, AI, and CDR files of the [Logo Name]
+are archived here as scalable vector assets for reference use."
+
+STYLE B — Brand-first (use ONLY when brand, industry, AND country
+are all confirmed — never when any field is unknown/empty):
+Start with the brand as the subject.
+Example: "[Brand], a [industry] company from [country],
+is represented here through its [Logo Name], archived
+in PNG, SVG, AI, and CDR scalable vector formats."
+
+STYLE C — Archive-purpose-first (use for ANY logo):
+Start with the archive purpose as the subject.
+Example: "This entry documents the [Logo Name] for
+research and educational reference, available in PNG,
+SVG, AI, and CDR vector file formats."
+
+STYLE D — Industry-context-first (use ONLY when industry
+AND country are both confirmed — never when unknown/empty):
+Start with the industry as the subject.
+Example: "Within the [industry] sector, the [Logo Name]
+is preserved here as scalable vector artwork in PNG,
+SVG, AI, and CDR formats for educational study."
+
+STYLE SELECTION RULES:
+
+1. If brand/industry/country are unknown or empty:
+   → Use ONLY Style A or Style C.
+2. If all brand details are confirmed:
+   → Rotate across all 4 styles.
+3. Never reuse the same paragraph structure or sentence
+   order across different logos — even with different brands.
+4. Do not swap synonyms (presented/features/offers/provides)
+   while keeping the same sentence skeleton. This is a
+   violation of this rule.
+5. Vary WHERE brand context, format list, and educational
+   phrase appear — not always in the same order.
+
+STRICTLY FORBIDDEN in main_description:
+Free Download, High Quality, High Resolution, Best Logo,
+Premium, Amazing, Beautiful, Professional Design,
+Marketing/promotional language, Modern red/blue/green
+style descriptions, Click here, Download now, 100% free,
+No copyright, HD logo, World best, Top quality,
+color/style descriptions.
+
+Must naturally contain ONE of:
+
+* vector format
+* scalable vector
+* vector artwork
+* vector assets
+* vector files
+
+Must naturally contain ONE of:
+
+* educational use
+* reference use
+* archival reference
+* design study
+* research reference
+
+Cover:
+
+* brand background (if known)
+* industry (if known)
+* available formats (PNG, SVG, AI, CDR)
+
+Word count:
+45–100 words.
+
 
 ==================================================
 FINAL SELF VALIDATION
@@ -817,24 +902,25 @@ ONLY the corrected JSON object, with the same structure as before.`;
   }
 
   // ── Resolve category ──────────────────────────────────────────────────────
-let rawCategories = parsed.category;
-if (typeof rawCategories === "string") rawCategories = [rawCategories];
-if (!Array.isArray(rawCategories)) rawCategories = [];
+  let rawCategories = parsed.category;
+  if (typeof rawCategories === "string") rawCategories = [rawCategories];
+  if (!Array.isArray(rawCategories)) rawCategories = [];
 
-let resolvedCategories = [];
-if (hasCategoryList) {
-  for (const cat of rawCategories) {
-    const match = availableCategories.find(
-      (c) => c.name.toLowerCase() === String(cat).trim().toLowerCase()
-    );
-    if (match) resolvedCategories.push(match.name);
+  let resolvedCategories = [];
+  if (hasCategoryList) {
+    for (const cat of rawCategories) {
+      const match = availableCategories.find(
+        (c) => c.name.toLowerCase() === String(cat).trim().toLowerCase()
+      );
+      if (match) resolvedCategories.push(match.name);
+    }
+    resolvedCategories = resolvedCategories.slice(0, 5);
+    if (resolvedCategories.length === 0) resolvedCategories = ["template"];
+  } else {
+    resolvedCategories = rawCategories.slice(0, 5).map(String).filter(Boolean);
   }
-  resolvedCategories = resolvedCategories.slice(0, 5);
-} else {
-  resolvedCategories = rawCategories.slice(0, 5).map(String).filter(Boolean);
-}
 
-// ...
+  // ...
 
 
   // ── Resolve brand / country / industry / website ──────────────────────────
@@ -869,9 +955,9 @@ if (hasCategoryList) {
   const faqPairs = Array.isArray(parsed.faq) ? parsed.faq : [];
 
 
-    
-return {
-  category: resolvedCategories,
+
+  return {
+    category: resolvedCategories,
     brand,
     website,
     country,
@@ -1036,7 +1122,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
           ? ["template"]
           : Array.isArray(aiContent.category) && aiContent.category.length > 0
             ? aiContent.category
-            : [],
+            : ["template"],
         industry: aiContent.industry,
         country: aiContent.country,
         license: sharedFields.license,
@@ -1115,7 +1201,7 @@ export async function POST(req) {
     const formData = await req.formData();
 
     const category = formData.get("category") || "";
-    const license = formData.get("license") || "";
+    const license = formData.get("license") || "Educational";
     const publishStatus = formData.get("publishStatus") || "Draft";
     const downloadCount = formData.get("downloadCount") || "unlimited";
 

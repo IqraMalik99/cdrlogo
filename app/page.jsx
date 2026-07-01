@@ -23,6 +23,18 @@ const websiteSchema = {
   },
 };
 
+
+
+let OrganizationSchema= {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "CDRLogo",
+    url: "https://www.cdrlogo.com",
+    logo: "https://www.cdrlogo.com/og-image.jpg"  ,
+  };
+
+
+
 const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
