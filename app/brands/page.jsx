@@ -511,9 +511,7 @@ export default function BrandsPage() {
           {/* Pagination */}
           {!loading && !error && totalPages > 1 && (
             <div className="pagination-wrap">
-              <p className="pagination-info">
-                Page {currentPage} of {totalPages} · showing {showingFrom}–{showingTo} of {total}
-              </p>
+             
               <div className="pagination">
                 <button className="pg-btn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} title="First">«</button>
                 <button className="pg-btn" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} title="Previous">‹</button>
@@ -565,7 +563,7 @@ function LogoCard({ logo, index }) {
       </div>
       <div className="card-body">
         <div className="card-name">{logo.logoName}</div>
-        <div className="card-cat">{logo.category}</div>
+        <div className="card-cat">{logo.category[1] ? logo.category[1] : logo.category[0]}</div>
         <div className="card-footer">
           <div className="color-dots">
             {colors.map((c, i) => <div key={i} className="color-dot" style={{ backgroundColor: c }} />)}

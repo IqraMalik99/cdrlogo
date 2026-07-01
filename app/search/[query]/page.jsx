@@ -51,7 +51,7 @@ function LogoCard({ logo }) {
 
             <div className="card-body">
                 <div className="card-name">{logo.brand || logo.logoName}</div>
-                <span className="card-category">{logo.category}</span>
+                <span className="card-category">{logo.category[0]}</span>
 
                 {logo.description && (
                     <p className="card-desc">{logo.description}</p>

@@ -82,7 +82,7 @@ function LogoCard({ logo }) {
 
       <div className="card-body">
         <div className="card-name">{logo.logoName}</div>
-        <span className="card-category">{logo.category}</span>
+        <span className="card-category">{logo.category[1]?logo.category[1]:logo.category[0]}</span>
 
         <div className="card-colors">
           {colors.slice(0, 3).map((c, i) => (

@@ -90,7 +90,7 @@ const { bgFrom, bgTo } = gradientFromColors(logo.brandColors, dark);
         </div>
 
         <div className="tl-meta-row">
-          <span className="tl-category">{logo.category}</span>
+          <span className="tl-category">{logo.category[0]}</span>
           <div className="tl-colors">
             {(Array.isArray(logo.brandColors) ? logo.brandColors : []).slice(0, 4).map((c, i) => (
               <span key={i} className="tl-dot" style={{ background: c }} />

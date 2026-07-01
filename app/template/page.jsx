@@ -563,7 +563,7 @@ function LogoCard({ logo, index }) {
       </div>
       <div className="card-body">
         <div className="card-name">{logo.logoName}</div>
-        <div className="card-cat">{logo.category}</div>
+        <div className="card-cat">{logo.category[0]}</div>
         <div className="card-footer">
           <div className="color-dots">
             {colors.map((c, i) => <div key={i} className="color-dot" style={{ backgroundColor: c }} />)}
