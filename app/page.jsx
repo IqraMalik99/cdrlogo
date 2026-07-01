@@ -63,6 +63,10 @@ export async function generateMetadata() {
       title,
       description,
       alternates: { canonical: baseUrl },
+      robots: {
+        index: true,
+        follow: true,
+      },
       openGraph: {
         title,
         description,
@@ -83,6 +87,10 @@ export async function generateMetadata() {
       title: "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo",
       description: "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.",
       alternates: { canonical: "https://www.cdrlogo.com" },
+      robots: {
+        index: true,
+        follow: true,
+      },
       openGraph: {
         title: "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo",
         description: "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.",

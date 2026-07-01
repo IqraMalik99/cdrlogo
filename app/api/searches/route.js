@@ -113,7 +113,7 @@ export async function POST(req) {
         if (isTagMatch(query, logo.tags)) score += 50;
 
         // low priority: description
-        if (isMatch(query, logo.description)) score += 20;
+        // if (isMatch(query, logo.description)) score += 20;
 
         return { ...logo, score };
       })
