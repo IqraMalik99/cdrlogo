@@ -121,9 +121,9 @@ export default function BlogPage() {
   // Response shape: { success: true, data: ["Technology", "Sports", ...] }
   useEffect(() => {
     setCatLoading(true);
-    fetch("/api/catageory/home")
+    fetch("/api/catageory/home-list")
       .then(r => r.json())
-      .then(d => setCategories(d.data || []))   // ← d.data is the string[]
+      .then(d =>  {console.log(d,"item"); setCategories(d.categories || [])})   // ← d.data is the string[]
       .catch(() => setCategories([]))
       .finally(() => setCatLoading(false));
   }, []);
