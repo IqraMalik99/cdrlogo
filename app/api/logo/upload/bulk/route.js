@@ -1050,9 +1050,9 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     console.log(`  [ai] ogTitle: "${aiContent.ogTitle}" | twitterTitle: "${aiContent.twitterTitle}"`);
     console.log(`  [ai] tags: ${aiContent.tags.length} | faq pairs: ${aiContent.faqPairs.length}`);
 
-    // ── Step C: classify & process files ─────────────────────────────────────
+   // ── Step C: classify & process files ─────────────────────────────────────
     const publicFiles = [];
-    const privateFiles = [];
+    const separateFiles = [];
     let svgContent = null;
     const fileSizes = { svg: 0, png: 0, ai: 0, cdr: 0 };
 
@@ -1069,12 +1069,12 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       console.log(`  [file] ${filename} → ${safeFilename} (${fileSize} KB)`);
 
       if (fileExt === "svg") {
-        privateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
         fileSizes.svg = fileBuffer.length;
         if (!svgContent) svgContent = fileBuffer.toString("utf-8");
 
       } else if (fileExt === "png") {
-        privateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
         fileSizes.png = fileBuffer.length;
 
         const watermarked = await applyWatermark(fileBuffer, watermark);
@@ -1083,22 +1083,22 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         publicFiles.push({ key: `public/${finalSlug}/${webpName}`, buffer: webpBuffer, contentType: "image/webp" });
 
       } else if (fileExt === "ai") {
-        privateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
         fileSizes.ai = fileBuffer.length;
 
       } else if (fileExt === "cdr") {
-        privateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
         fileSizes.cdr = fileBuffer.length;
 
-
       } else {
-        privateFiles.push({ key: `private/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        // koi aur file type ho to bhi "separate" mein hi — koi "private" folder nahi
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
       }
-
     }
 
+
     // ── Step D: upload to R2 ──────────────────────────────────────────────────
-    const allUploads = [...publicFiles, ...privateFiles];
+      const allUploads = [...publicFiles, ...separateFiles]; 
     const uploadResults = await Promise.all(
       allUploads.map(async ({ key, buffer, contentType }) => {
         try {
@@ -1230,15 +1230,17 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
 
 
 
-// ── Route handler ─────────────────────────────────────────────────────────────
+export const maxDuration = 60;
+
 export async function POST(req) {
-   console.log("\n========== BULK-UPLOAD START ==========");
+  console.log("\n========== SINGLE-FOLDER UPLOAD START ==========");
   const startTime = Date.now();
 
   try {
     const body = await req.json();
     const {
       key,
+      folderName,          // ← ab single folder name aayega
       category = "",
       license = "Educational",
       publishStatus = "Draft",
@@ -1246,134 +1248,57 @@ export async function POST(req) {
       brandColors = [],
     } = body;
 
-    if (!key) {
-      return NextResponse.json({ error: "No uploaded ZIP key provided." }, { status: 400 });
+    if (!key || !folderName) {
+      return NextResponse.json({ error: "key and folderName both required." }, { status: 400 });
     }
 
-    console.log(`[1] Fetching wrapper ZIP from R2: ${key}`);
+    console.log(`[1] Fetching wrapper ZIP from R2: ${key}, folder: ${folderName}`);
 
-    const obj = await r2.send(
-      new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: key })
-    );
+    const obj = await r2.send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: key }));
     const wrapperBuffer = Buffer.from(await obj.Body.transformToByteArray());
-
-    // ── everything below is UNCHANGED ───────────────────────
     const wrapperZip = new AdmZip(wrapperBuffer);
     const allEntries = wrapperZip.getEntries();
-  
 
-    // ── Group files by top-level folder ───────────────────────────────────────
-    const folderMap = new Map();
-
+    // ── sirf isi folderName ke files nikalo ──────────────────────
+    const folderFiles = [];
     for (const entry of allEntries) {
       if (entry.isDirectory) continue;
-
       const parts = entry.entryName.split("/").filter(Boolean);
-      if (parts.length < 2) {
-        console.log(`[skip] Root-level file ignored: ${entry.entryName}`);
-        continue;
-      }
-
-      const topFolder = parts[0];
-      if (topFolder.startsWith("__MACOSX") || topFolder.startsWith(".")) continue;
-
+      if (parts.length < 2) continue;
+      if (parts[0] !== folderName) continue;
       const filename = parts[parts.length - 1];
       if (filename.startsWith(".")) continue;
-
-      if (!folderMap.has(topFolder)) folderMap.set(topFolder, []);
-      folderMap.get(topFolder).push({ filename, buffer: entry.getData() });
+      folderFiles.push({ filename, buffer: entry.getData() });
     }
 
-    if (folderMap.size === 0) {
-      return NextResponse.json(
-        { error: "No logo folders found inside the ZIP. Each logo must be in its own sub-folder." },
-        { status: 400 }
-      );
+    if (folderFiles.length === 0) {
+      return NextResponse.json({ error: `No files found in folder "${folderName}".` }, { status: 400 });
     }
 
-    console.log(`[2] Found ${folderMap.size} logo folder(s):`);
-    for (const [name] of folderMap) console.log(`     - ${name}`);
-
-    // ── Fetch website settings: watermark + category list ─────────────────────
     const websiteRecord = await prisma.website.findFirst();
     const watermark = websiteRecord?.watermark ?? null;
     const availableCategories = category.toLowerCase().trim() === "template"
       ? []
       : extractCategoryNames(websiteRecord?.categories);
 
-    console.log(`[3] Watermark: ${watermark?.enabled ? "ENABLED" : "DISABLED"}`);
-    console.log(`[3] Site categories (from DB): ${availableCategories.length ? availableCategories.map(c => c.name).join(", ") : "(none configured)"}`);
+    const sharedFields = { category, license, publishStatus, downloadCount, brandColors, availableCategories };
 
-    const sharedFields = {
-      category,
-      license,
-      publishStatus,
-      downloadCount,
-      brandColors,
-      availableCategories,
-    };
-
-    // ── Process each folder sequentially ──────────────────────────────────────
-    const results = [];
-    let successCount = 0;
-    let failCount = 0;
-    let idx = 0;
-
-    for (const [folderName, folderFiles] of folderMap) {
-      idx++;
-      console.log(`\n[${idx}/${folderMap.size}] Folder: "${folderName}" (${folderFiles.length} file(s))`);
-
-      const result = await processOneLogoFolder({
-        folderName,
-        folderFiles,
-        sharedFields,
-        watermark,
-      });
-
-      results.push(result);
-      if (result.success) successCount++;
-      else failCount++;
-
-      // ── Audit log ─────────────────────────────────────────────────────────
-      await prisma.log.create({
-        data: {
-          who: "api:bulk-upload-logo",
-          content: result.success
-            ? `Bulk upload ✓ "${result.logoName}" (slug: ${result.slug}, category: ${result.category}, brand: ${result.brand || "—"}, website: ${result.website || "—"}, country: ${result.country || "—"}, industry: ${result.industry || "—"}, ogImageUrl: ${result.ogImageUrl || "—"})${result.versioned ? ` [auto-versioned from "${result.originalName}"]` : ""}`
-            : `Bulk upload ❌ "${result.logoName}": ${result.error}`,
-        },
-      });
-    }
-
-    const duration = Date.now() - startTime;
-    console.log(`\n========== BULK-UPLOAD DONE ==========`);
-    console.log(`Total: ${folderMap.size} | Success: ${successCount} | Failed: ${failCount}`);
-    console.log(`Time: ${duration}ms`);
-    console.log(`======================================\n`);
-
-    return NextResponse.json({
-      message: `Bulk upload complete. ${successCount} succeeded, ${failCount} failed.`,
-      total: folderMap.size,
-      successCount,
-      failCount,
-      results,
-    });
-
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`\n========== BULK-UPLOAD ERROR ==========`);
-    console.error(`Time elapsed : ${duration}ms`);
-    console.error(`Error        : ${error.message}`);
-    console.error(`Stack        : ${error.stack}`);
-    console.error(`=======================================\n`);
+    const result = await processOneLogoFolder({ folderName, folderFiles, sharedFields, watermark });
 
     await prisma.log.create({
       data: {
         who: "api:bulk-upload-logo",
-        content: `Bulk upload fatal error: ${error?.message}`,
+        content: result.success
+          ? `Bulk upload ✓ "${result.logoName}" (slug: ${result.slug})`
+          : `Bulk upload ❌ "${result.logoName}": ${result.error}`,
       },
     });
 
+    console.log(`Duration: ${Date.now() - startTime}ms`);
+    return NextResponse.json(result);
+
+  } catch (error) {
+    console.error("Error:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

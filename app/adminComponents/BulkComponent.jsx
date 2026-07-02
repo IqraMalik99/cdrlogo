@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef ,useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, X, BarChart2, Globe, CheckCircle, XCircle, Loader2, Package } from "lucide-react";
 
 const COLORS_INIT = ["#3B82F6", "#1E3A5F", "#FBFAFC"];
@@ -9,18 +9,18 @@ const COLORS_INIT = ["#3B82F6", "#1E3A5F", "#FBFAFC"];
 export default function BulkUploadLogo({ dark }) {
   const fileInputRef = useRef(null);
 
-  const [dragging, setDragging]     = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [wrapperFile, setWrapperFile] = useState(null);
 
-  const [category,      setCategory]      = useState("");
-  const [license,       setLicense]       = useState("");
+  const [category, setCategory] = useState("");
+  const [license, setLicense] = useState("");
   const [publishStatus, setPublishStatus] = useState("Draft");
-  const [dlCount,       setDlCount]       = useState(100);
-  const [dlUnlimited,   setDlUnlimited]   = useState(false);
-  const [colors,        setColors]        = useState(COLORS_INIT);
+  const [dlCount, setDlCount] = useState(100);
+  const [dlUnlimited, setDlUnlimited] = useState(false);
+  const [colors, setColors] = useState(COLORS_INIT);
 
-  const [submitting,   setSubmitting]   = useState(false);
-  const [submitResult, setSubmitResult] = useState(null); 
+  const [submitting, setSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState(null);
   // { ok, message, results, successCount, failCount, total }
 
   // ── Categories (live from API) ────────────────────────────────
@@ -47,15 +47,15 @@ export default function BulkUploadLogo({ dark }) {
   }, [isTemplate]);
 
   // ── theme tokens ─────────────────────────────────────────────────
-  const bg       = dark ? "#0f1117" : "#FFFFFF";
-  const card     = dark ? "#131720" : "#ffffff";
-  const border   = dark ? "#1e2535" : "#e2e8f0";
-  const text     = dark ? "#e2e8f0" : "#1e293b";
-  const muted    = dark ? "#64748b" : "#94a3b8";
-  const inputBg  = dark ? "#0d1117" : "#FFFFFF";
+  const bg = dark ? "#0f1117" : "#FFFFFF";
+  const card = dark ? "#131720" : "#ffffff";
+  const border = dark ? "#1e2535" : "#e2e8f0";
+  const text = dark ? "#e2e8f0" : "#1e293b";
+  const muted = dark ? "#64748b" : "#94a3b8";
+  const inputBg = dark ? "#0d1117" : "#FFFFFF";
   const inputBdr = dark ? "#1e2535" : "#e2e8f0";
   const labelClr = dark ? "#94a3b8" : "#475569";
-  const green    = "#22c55e";
+  const green = "#22c55e";
   const greenDim = dark ? "rgba(34,197,94,0.12)" : "rgba(22,163,74,0.08)";
 
   const inputStyle = {
@@ -112,84 +112,104 @@ export default function BulkUploadLogo({ dark }) {
   const handleBrowse = (e) => { handleFile(e.target.files[0]); e.target.value = ""; };
 
   // ── submit ────────────────────────────────────────────────────────
-const handleSubmit = async () => {
-  if (!wrapperFile) return setSubmitResult({ ok: false, message: "Please upload a wrapper ZIP file." });
+  const handleSubmit = async () => {
+    if (!wrapperFile) return setSubmitResult({ ok: false, message: "Please upload a wrapper ZIP file." });
 
-  setSubmitting(true);
-  setSubmitResult(null);
+    setSubmitting(true);
+    setSubmitResult(null);
 
-  try {
-    console.log("STEP 1: requesting presigned URL...");
-    const presignRes = await fetch("/api/logo/upload/presign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: wrapperFile.name }),
-    });
+    try {
+      // Step 1: presigned URL
+      const presignRes = await fetch("/api/logo/upload/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: wrapperFile.name }),
+      });
+      const { url, key } = await presignRes.json();
+      if (!url) throw new Error("Failed to get upload URL.");
 
-    console.log("STEP 1 response status:", presignRes.status);
-    const presignData = await presignRes.json();
-    console.log("STEP 1 response body:", presignData);
+      // Step 2: poora zip ek hi baar R2 pe (direct, Vercel ko touch nahi karta)
+      const putRes = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/zip" },
+        body: wrapperFile,
+      });
+      if (!putRes.ok) throw new Error("Direct upload to storage failed.");
 
-    const { url, key } = presignData;
-    if (!url) throw new Error("Failed to get upload URL. Response was: " + JSON.stringify(presignData));
+      // Step 3: folder list nikalo
+      const listRes = await fetch("/api/logo/upload/bulk/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      const listData = await listRes.json();
+      const folders = listData.folders || [];
+      if (folders.length === 0) throw new Error("No logo folders found in ZIP.");
 
-    console.log("STEP 2: uploading zip directly to R2...");
-    console.log("STEP 2 target URL:", url);
+      // Step 4: ek-ek folder process karo — turant screen update
+      const allResults = [];
+      let successCount = 0, failCount = 0;
 
-    const putRes = await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/zip" },
-      body: wrapperFile,
-    });
+      for (let i = 0; i < folders.length; i++) {
+        const folderName = folders[i];
 
-    console.log("STEP 2 response status:", putRes.status);
-    if (!putRes.ok) {
-      const errText = await putRes.text().catch(() => "(no body)");
-      console.log("STEP 2 error body:", errText);
-      throw new Error(`Direct upload to storage failed. Status: ${putRes.status}`);
-    }
+        setSubmitResult({
+          ok: true,
+          message: `Processing ${i + 1}/${folders.length}: ${folderName}...`,
+          results: [...allResults],
+          successCount,
+          failCount,
+          total: folders.length,
+        });
 
-    console.log("STEP 2 success! Uploaded with key:", key);
+        const res = await fetch("/api/logo/upload/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key,
+            folderName,
+            category,
+            license,
+            publishStatus,
+            downloadCount: dlUnlimited ? "unlimited" : String(dlCount),
+            brandColors: colors,
+          }),
+        });
+        const data = await res.json();
 
-    console.log("STEP 3: triggering bulk processing...");
-    const res = await fetch("/api/logo/upload/bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        key,
-        category,
-        license,
-        publishStatus,
-        downloadCount: dlUnlimited ? "unlimited" : String(dlCount),
-        brandColors: colors,
-      }),
-    });
+        if (res.ok && data.success) successCount++;
+        else failCount++;
 
-    console.log("STEP 3 response status:", res.status);
-    const data = await res.json();
-    console.log("STEP 3 response body:", data);
+        allResults.push(data);
 
-    if (res.ok) {
+        // is folder ke result ke saath turant screen update
+        setSubmitResult({
+          ok: true,
+          message: `Processing ${i + 1}/${folders.length}: ${folderName}... done`,
+          results: [...allResults],
+          successCount,
+          failCount,
+          total: folders.length,
+        });
+      }
+
       setSubmitResult({
         ok: true,
-        message: data.message,
-        results: data.results || [],
-        successCount: data.successCount,
-        failCount: data.failCount,
-        total: data.total,
+        message: `Bulk upload complete. ${successCount} succeeded, ${failCount} failed.`,
+        results: allResults,
+        successCount,
+        failCount,
+        total: folders.length,
       });
       setIsTemplate(false);
       setWrapperFile(null);
-    } else {
-      setSubmitResult({ ok: false, message: data.error || "Bulk upload failed." });
+
+    } catch (err) {
+      setSubmitResult({ ok: false, message: "Error: " + err.message });
+    } finally {
+      setSubmitting(false);
     }
-  } catch (err) {
-    console.error("CAUGHT ERROR:", err);
-    setSubmitResult({ ok: false, message: "Error: " + err.message });
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   return (
     <div style={{ background: bg, minHeight: "100vh", padding: "28px 24px", fontFamily: "'DM Sans', sans-serif" }}>
@@ -217,7 +237,7 @@ const handleSubmit = async () => {
         }}>
           {[
             { step: "1", label: "Wrapper ZIP", desc: "One ZIP containing all your logo ZIPs" },
-            { step: "2", label: "Inner Folder",  desc: "Each Folder = one logo (name from filename)" },
+            { step: "2", label: "Inner Folder", desc: "Each Folder = one logo (name from filename)" },
             { step: "3", label: "AI generates", desc: "Slug, meta title, description, tags — auto" },
           ].map(({ step, label, desc }) => (
             <div key={step} style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: "1 1 160px" }}>
@@ -316,53 +336,53 @@ const handleSubmit = async () => {
 
             {/* Category + License */}
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-<div style={{ flex: 1, minWidth: 180 }}>
-  <label style={labelStyle}>Category <span style={{ color: green }}>*</span></label>
-  <select
-    style={{
-      ...inputStyle,
-      appearance: "none",
-      background: isTemplate ? (dark ? "#0a0d12" : "#e8ecf0") : inputBg,
-      color: isTemplate ? muted : text,
-      cursor: isTemplate ? "not-allowed" : "pointer",
-    }}
-    value={category}
-    onChange={e => setCategory(e.target.value)}
-    disabled={isTemplate}
-  >
-    <option value="">Select category</option>
-    {categories.map(c => <option key={c}>{c}</option>)}
-  </select>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <label style={labelStyle}>Category <span style={{ color: green }}>*</span></label>
+                <select
+                  style={{
+                    ...inputStyle,
+                    appearance: "none",
+                    background: isTemplate ? (dark ? "#0a0d12" : "#e8ecf0") : inputBg,
+                    color: isTemplate ? muted : text,
+                    cursor: isTemplate ? "not-allowed" : "pointer",
+                  }}
+                  value={category}
+                  onChange={e => setCategory(e.target.value)}
+                  disabled={isTemplate}
+                >
+                  <option value="">Select category</option>
+                  {categories.map(c => <option key={c}>{c}</option>)}
+                </select>
 
-  <div style={{ marginTop: 8 }}>
-    <button
-      type="button"
-      onClick={() => setIsTemplate(p => !p)}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 6,
-        padding: "5px 12px", borderRadius: 99,
-        border: `1px solid ${isTemplate ? "#a855f7" + "66" : border}`,
-        background: isTemplate ? "rgba(168,85,247,0.12)" : "transparent",
-        color: isTemplate ? "#a855f7" : muted,
-        fontSize: 12, fontWeight: 700,
-        cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-        transition: "all 0.15s",
-      }}
-    >
-      {isTemplate && (
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M2 5l2.5 2.5L8 3" stroke="#a855f7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      )}
-      Template
-    </button>
-    {isTemplate && (
-      <span style={{ marginLeft: 8, fontSize: 11, color: muted }}>
-        Category set to <strong style={{ color: text }}>template</strong>
-      </span>
-    )}
-  </div>
-</div>
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsTemplate(p => !p)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "5px 12px", borderRadius: 99,
+                      border: `1px solid ${isTemplate ? "#a855f7" + "66" : border}`,
+                      background: isTemplate ? "rgba(168,85,247,0.12)" : "transparent",
+                      color: isTemplate ? "#a855f7" : muted,
+                      fontSize: 12, fontWeight: 700,
+                      cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {isTemplate && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5l2.5 2.5L8 3" stroke="#a855f7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    Template
+                  </button>
+                  {isTemplate && (
+                    <span style={{ marginLeft: 8, fontSize: 11, color: muted }}>
+                      Category set to <strong style={{ color: text }}>template</strong>
+                    </span>
+                  )}
+                </div>
+              </div>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <label style={labelStyle}>License</label>
                 <select style={{ ...inputStyle, appearance: "none" }} value={license} onChange={e => setLicense(e.target.value)}>
