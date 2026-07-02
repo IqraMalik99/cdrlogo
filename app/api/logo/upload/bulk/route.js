@@ -4,6 +4,8 @@ import sharp from "sharp";
 import OpenAI from "openai";
 import { uploadToR2 } from "../../../../lib/uploadToR2";
 import { prisma } from "../../../../lib/prisma";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { r2 } from "../../../../lib/r2";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -828,7 +830,7 @@ faq (EXACTLY 3 Q&A PAIRS)
 --------------------------------------------------
 
 Allowed question topics ONLY:
-- What formats is this logo available in?
+- What formats is this logo available in
 - Can I use this logo for educational purposes?
 - Is this logo available in vector format?
 
@@ -1230,31 +1232,35 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req) {
-  console.log("\n========== BULK-UPLOAD START ==========");
+   console.log("\n========== BULK-UPLOAD START ==========");
   const startTime = Date.now();
 
   try {
-    const formData = await req.formData();
+    const body = await req.json();
+    const {
+      key,
+      category = "",
+      license = "Educational",
+      publishStatus = "Draft",
+      downloadCount = "unlimited",
+      brandColors = [],
+    } = body;
 
-    const category = formData.get("category") || "";
-    const license = formData.get("license") || "Educational";
-    const publishStatus = formData.get("publishStatus") || "Draft";
-    const downloadCount = formData.get("downloadCount") || "unlimited";
-
-    let brandColors = [];
-    try { brandColors = JSON.parse(formData.get("brandColors") || "[]"); } catch { }
-
-    // ── Wrapper ZIP ───────────────────────────────────────────────────────────
-    const wrapperFile = formData.get("file");
-    if (!wrapperFile) {
-      return NextResponse.json({ error: "No ZIP file uploaded." }, { status: 400 });
+    if (!key) {
+      return NextResponse.json({ error: "No uploaded ZIP key provided." }, { status: 400 });
     }
 
-    console.log(`[1] Wrapper ZIP received: ${wrapperFile.name}`);
+    console.log(`[1] Fetching wrapper ZIP from R2: ${key}`);
 
-    const wrapperBuffer = Buffer.from(await wrapperFile.arrayBuffer());
+    const obj = await r2.send(
+      new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: key })
+    );
+    const wrapperBuffer = Buffer.from(await obj.Body.transformToByteArray());
+
+    // ── everything below is UNCHANGED ───────────────────────
     const wrapperZip = new AdmZip(wrapperBuffer);
     const allEntries = wrapperZip.getEntries();
+  
 
     // ── Group files by top-level folder ───────────────────────────────────────
     const folderMap = new Map();

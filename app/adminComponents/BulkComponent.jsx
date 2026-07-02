@@ -112,45 +112,84 @@ export default function BulkUploadLogo({ dark }) {
   const handleBrowse = (e) => { handleFile(e.target.files[0]); e.target.value = ""; };
 
   // ── submit ────────────────────────────────────────────────────────
-  const handleSubmit = async () => {
-    if (!wrapperFile) return setSubmitResult({ ok: false, message: "Please upload a wrapper ZIP file." });
- 
+const handleSubmit = async () => {
+  if (!wrapperFile) return setSubmitResult({ ok: false, message: "Please upload a wrapper ZIP file." });
 
-    setSubmitting(true);
-    setSubmitResult(null);
+  setSubmitting(true);
+  setSubmitResult(null);
 
-    try {
-      const fd = new FormData();
-      fd.append("file",          wrapperFile);
-      fd.append("category",      category);
-      fd.append("license",       license);
-      fd.append("publishStatus", publishStatus);
-      fd.append("downloadCount", dlUnlimited ? "unlimited" : String(dlCount));
-      fd.append("brandColors",   JSON.stringify(colors));
+  try {
+    console.log("STEP 1: requesting presigned URL...");
+    const presignRes = await fetch("/api/logo/upload/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: wrapperFile.name }),
+    });
 
-      const res  = await fetch("/api/logo/upload/bulk", { method: "POST", body: fd });
-      const data = await res.json();
+    console.log("STEP 1 response status:", presignRes.status);
+    const presignData = await presignRes.json();
+    console.log("STEP 1 response body:", presignData);
 
-      if (res.ok) {
-        setSubmitResult({
-          ok: true,
-          message: data.message,
-          results: data.results || [],
-          successCount: data.successCount,
-          failCount: data.failCount,
-          total: data.total      
-        });
-          setIsTemplate(false);
-        setWrapperFile(null);
-      } else {
-        setSubmitResult({ ok: false, message: data.error || "Bulk upload failed." });
-      }
-    } catch (err) {
-      setSubmitResult({ ok: false, message: "Network error: " + err.message });
-    } finally {
-      setSubmitting(false);
+    const { url, key } = presignData;
+    if (!url) throw new Error("Failed to get upload URL. Response was: " + JSON.stringify(presignData));
+
+    console.log("STEP 2: uploading zip directly to R2...");
+    console.log("STEP 2 target URL:", url);
+
+    const putRes = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/zip" },
+      body: wrapperFile,
+    });
+
+    console.log("STEP 2 response status:", putRes.status);
+    if (!putRes.ok) {
+      const errText = await putRes.text().catch(() => "(no body)");
+      console.log("STEP 2 error body:", errText);
+      throw new Error(`Direct upload to storage failed. Status: ${putRes.status}`);
     }
-  };
+
+    console.log("STEP 2 success! Uploaded with key:", key);
+
+    console.log("STEP 3: triggering bulk processing...");
+    const res = await fetch("/api/logo/upload/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key,
+        category,
+        license,
+        publishStatus,
+        downloadCount: dlUnlimited ? "unlimited" : String(dlCount),
+        brandColors: colors,
+      }),
+    });
+
+    console.log("STEP 3 response status:", res.status);
+    const data = await res.json();
+    console.log("STEP 3 response body:", data);
+
+    if (res.ok) {
+      setSubmitResult({
+        ok: true,
+        message: data.message,
+        results: data.results || [],
+        successCount: data.successCount,
+        failCount: data.failCount,
+        total: data.total,
+      });
+      setIsTemplate(false);
+      setWrapperFile(null);
+    } else {
+      setSubmitResult({ ok: false, message: data.error || "Bulk upload failed." });
+    }
+  } catch (err) {
+    console.error("CAUGHT ERROR:", err);
+    setSubmitResult({ ok: false, message: "Error: " + err.message });
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   return (
     <div style={{ background: bg, minHeight: "100vh", padding: "28px 24px", fontFamily: "'DM Sans', sans-serif" }}>

@@ -134,11 +134,11 @@ export async function POST(req) {
       }),
       userRecord
         ? prisma.user.update({
-            where: { id: userRecord.id },
-            data: {
-             downloadCountUsed: { increment: 1 },
-            },
-          })
+          where: { id: userRecord.id },
+          data: {
+            downloadCountUsed: { increment: 1 },
+          },
+        })
         : Promise.resolve(),
     ]);
 
@@ -150,21 +150,21 @@ export async function POST(req) {
       },
     });
 
-            // ── SEND CONFIRMATION EMAIL (only for logged-in users) ────
-if (userRecord) {
-  sendEmailByTemplate({
-    to: userinfo.email,
-    templateKey: "download_confirmation",
-    variables: {
-      name: userinfo.name,              // {{name}}
-      logoName: logo.name || logo.slug, // {{logoName}}
-      format: format.toUpperCase(),     // {{format}}
-      email: userinfo.email,            // {{email}}
-    },
-  }).catch((err) => {
-    console.error("[download] Email send failed:", err.message);
-  });
-}
+    // ── SEND CONFIRMATION EMAIL (only for logged-in users) ────
+    // if (userRecord) {
+    //   sendEmailByTemplate({
+    //     to: userinfo.email,
+    //     templateKey: "download_confirmation",
+    //     variables: {
+    //       name: userinfo.name,              // {{name}}
+    //       logoName: logo.name || logo.slug, // {{logoName}}
+    //       format: format.toUpperCase(),     // {{format}}
+    //       email: userinfo.email,            // {{email}}
+    //     },
+    //   }).catch((err) => {
+    //     console.error("[download] Email send failed:", err.message);
+    //   });
+    // }
 
     // ── RETURN FILE ──────────────────────────────────────────
     return new Response(upstream.body, {

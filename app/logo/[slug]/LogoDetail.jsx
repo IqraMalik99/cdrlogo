@@ -156,7 +156,8 @@ export default function LogoDetail() {
             });
             if (!res.ok) {
                 const errData = await res.json();
-                alert(res.status === 403 ? "⚠️ Download limit reached." : res.status === 404 ? `❌ File not available in ${selectedFormat.toUpperCase()}.` : `❌ ${errData?.error || "Unknown error"}`);
+               alert("Try again later");
+               console.error("Download failed:", errData?.error || "Unknown error");
                 return;
             }
             if ((res.headers.get("Content-Type") || "").includes("application/json")) {
