@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 
+const PAGE_SIZE = 12;
+
 export async function POST(req) {
   try {
     const body = await req.json();
 
     let letter   = body.letter?.toLowerCase()?.trim();
     let category = body.category?.toLowerCase()?.trim();
+    let page     = Math.max(1, Number(body.page) || 1);
 
     const where = { publishStatus: "Published" };
 
@@ -17,32 +20,71 @@ export async function POST(req) {
       };
     }
 
-    let logos = await prisma.logo.findMany({
+    const isNumericLetter = letter === "0-9";
+
+    if (!isNumericLetter && (!category || category === "all")) {
+      // ── fast path: DB does filtering + pagination, no JS post-filter needed ──
+      const [logos, totalCount] = await Promise.all([
+        prisma.logo.findMany({
+          where,
+          orderBy: { id: "desc" },
+          skip: (page - 1) * PAGE_SIZE,
+          take: PAGE_SIZE,
+          select: {
+            id: true,
+            logoName: true,
+            category: true,
+            brandColors: true,
+            webpUrl: true,
+            slug: true,
+          },
+        }),
+        prisma.logo.count({ where }),
+      ]);
+
+      return NextResponse.json({
+        logos,
+        totalCount,
+        totalPages: Math.max(1, Math.ceil(totalCount / PAGE_SIZE)),
+        page,
+      });
+    }
+
+    // ── slow path: 0-9 letter and/or category need JS filtering,
+    // so fetch all matches first, then paginate manually ──
+    let all = await prisma.logo.findMany({
       where,
+      orderBy: { id: "desc" },
       select: {
-        id:          true,
-        logoName:    true,
-        category:    true, // String[]
+        id: true,
+        logoName: true,
+        category: true,
         brandColors: true,
-        webpUrl:     true,
-        slug:        true,
+        webpUrl: true,
+        slug: true,
       },
     });
 
-    // 0-9 filter (can't do in Prisma startsWith)
-    if (letter === "0-9") {
-      logos = logos.filter(l => /^[0-9]/.test(l.logoName));
+    if (isNumericLetter) {
+      all = all.filter(l => /^[0-9]/.test(l.logoName));
     }
 
-    // category is a String[], so filter case-insensitively in JS
     if (category && category !== "all") {
-      logos = logos.filter(l =>
+      all = all.filter(l =>
         Array.isArray(l.category) &&
         l.category.some(c => c.toLowerCase().trim() === category)
       );
     }
 
-    return NextResponse.json({ logos });
+    const totalCount = all.length;
+    const logos = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+    return NextResponse.json({
+      logos,
+      totalCount,
+      totalPages: Math.max(1, Math.ceil(totalCount / PAGE_SIZE)),
+      page,
+    });
 
   } catch (error) {
     console.error(error);

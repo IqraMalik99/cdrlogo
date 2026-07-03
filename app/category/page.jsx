@@ -86,7 +86,7 @@ export default function Categories() {
 
     const handleCategoryClick = (cat) => {
         // cat is { name, slug } — use slug directly from API
-        router.push(`/search/${encodeURIComponent(cat.slug)}`);
+        router.push(`/category/${encodeURIComponent(cat.slug)}`);
     };
 
     const handleLetterClick = (l) => {
@@ -100,7 +100,7 @@ export default function Categories() {
         const q = searchValue.trim().toLowerCase();
         if (!q) return;
         const slug = q.replace(/\s+/g, "-");
-        router.push(`/search/${encodeURIComponent(slug)}`);
+        router.push(`/category/${encodeURIComponent(slug)}`);
     };
 
     const handleKeyDown = (e) => {
@@ -376,7 +376,7 @@ export default function Categories() {
 
                         {/* Header */}
                         <div className="anim d0" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <h1 className="cat-heading">Browse Design Categories <span class="accent">&</span> Visual Archives</h1>
+                            <h1 className="cat-heading">Browse Design Categories <span className="accent">&</span> Visual Archives</h1>
                             <p className="cat-sub">
                                 Explore an independent educational reference library organized by 0–9 and A–Z. Browse logo categories, 
 original design concepts, and visual resources for research, learning, and creative inspiration.

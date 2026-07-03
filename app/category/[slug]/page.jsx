@@ -1,21 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback, useRef } from "react";
-
-const ALPHABET = ["All", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0-9"];
-
-
-
-const SORT_OPTIONS = [
-  { key: "newest", label: "Newest", icon: "🕐" },
-  { key: "popular", label: "Popular", icon: "🔥" },
-  { key: "az", label: "A–Z", icon: "↕" },
-];
+import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import Navbar from "../../components/Navbar";
 
 const PAGE_SIZE = 12;
-
 
 function SkeletonCard() {
   return (
@@ -24,7 +13,6 @@ function SkeletonCard() {
       <div className="card-body">
         <div className="skeleton-line w60" />
         <div className="skeleton-line w40 mt4" />
-
         <div className="card-formats" style={{ marginTop: 8 }}>
           {[1, 2, 3].map(i => <div key={i} className="skeleton-badge" />)}
         </div>
@@ -36,9 +24,8 @@ function SkeletonCard() {
 function LogoCard({ logo }) {
   const [imgErr, setImgErr] = useState(false);
   const router = useRouter();
-  // backend returns brandColors (array) and webpUrl
   const colors = Array.isArray(logo.brandColors) ? logo.brandColors : [];
-  const formats = ["SVG", "PNG", "AI", "CDR"]; // static — backend doesn't return formats
+  const formats = ["SVG", "PNG", "AI", "CDR"];
 
   return (
     <div className="logo-card" onClick={(e) => {
@@ -62,7 +49,6 @@ function LogoCard({ logo }) {
             onError={() => setImgErr(true)} className="card-img"
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
-
           />
         ) : (
           <span className="card-initials">{logo.logoName?.slice(0, 2).toUpperCase()}</span>
@@ -71,7 +57,9 @@ function LogoCard({ logo }) {
 
       <div className="card-body">
         <div className="card-name">{logo.logoName}</div>
-        <span className="card-category">{logo.category[1] ? logo.category[1] : logo.category[0]}</span>
+        <span className="card-category">
+          {logo.category?.[1] ? logo.category[1] : logo.category?.[0]}
+        </span>
 
         <div className="card-colors">
           {colors.slice(0, 3).map((c, i) => (
@@ -89,50 +77,38 @@ function LogoCard({ logo }) {
   );
 }
 
-export default function LogosPage() {
+export default function CategoryPage() {
+  const params = useParams();
+  const slug = params?.slug;
 
   const [logos, setLogos] = useState([]);
+  const [categoryName, setCategoryName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [activeLetter, setActiveLetter] = useState("All");
-  const [activeCategory, setActiveCat] = useState("All");
-  const [sort, setSort] = useState("newest");
-
 
   const fetchLogos = useCallback(async () => {
+    if (!slug) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/logo/fetch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          letter: activeLetter,
-          category: activeCategory,
-          page,
-        }),
-      });
+      const res = await fetch(`/api/catageory/${encodeURIComponent(slug)}?page=${page}`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       setLogos(data.logos ?? []);
       setTotalPages(data.totalPages ?? 1);
+      setCategoryName(data.categoryName ?? slug);
     } catch (err) {
       setError(err.message);
       setLogos([]);
     } finally {
       setLoading(false);
     }
-  }, [activeLetter, activeCategory, sort, page]);
+  }, [slug, page]);
 
-  // fetch whenever page changes (also fires on mount)
-  useEffect(() => {
-    fetchLogos();
-  }, [fetchLogos]);
-
-  // reset to page 1 when filters/sort change (not when page itself changes)
-  useEffect(() => { setPage(1); }, [activeLetter, activeCategory, sort]);
+  useEffect(() => { fetchLogos(); }, [fetchLogos]);
+  useEffect(() => { setPage(1); }, [slug]);
 
   return (<>
     <style>{`
@@ -155,11 +131,6 @@ export default function LogosPage() {
           --pill-active-bg:     rgba(7,166,38,0.18);
           --pill-active-border: rgba(7,166,38,0.45);
           --pill-active-color:  #4ade80;
-          --sort-bg:        rgba(255,255,255,0.05);
-          --sort-border:    rgba(255,255,255,0.08);
-          --sort-color:     rgba(255,255,255,0.5);
-          --sort-active-bg: rgba(255,255,255,0.1);
-          --sort-active-color: #fff;
           --card-img-bg:    #1a1a24;
           --skeleton:       rgba(255,255,255,0.06);
           --page-btn-bg:    rgba(255,255,255,0.06);
@@ -185,11 +156,6 @@ export default function LogosPage() {
           --pill-active-bg:     rgba(7,166,38,0.1);
           --pill-active-border: rgba(7,166,38,0.35);
           --pill-active-color:  #15803d;
-          --sort-bg:        rgba(0,0,0,0.04);
-          --sort-border:    rgba(0,0,0,0.08);
-          --sort-color:     rgba(0,0,0,0.5);
-          --sort-active-bg: rgba(0,0,0,0.08);
-          --sort-active-color: #0a0a14;
           --card-img-bg:    #f0f0f5;
           --skeleton:       rgba(0,0,0,0.06);
           --page-btn-bg:    rgba(0,0,0,0.05);
@@ -201,94 +167,35 @@ export default function LogosPage() {
           --error-color:    #dc2626;
         }
 
-        .logos-page {
-          min-height: 100vh;
-          background: var(--page-bg);
-          font-family: 'Sora', sans-serif;
-          padding: 0px 0 60px;
-          transition: background 0.35s;
-        }
+        .logos-page { min-height: 100vh; background: var(--page-bg); font-family: 'Sora', sans-serif; padding: 0px 0 60px; transition: background 0.35s; }
         .logos-container { max-width: 1200px; margin: 0 auto; padding: 24px 24px 0; }
 
-        .page-header {
-          display: flex; align-items: flex-start;
-          justify-content: space-between;
-          gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+        .page-header { margin-bottom: 20px; }
+        .back-link {
+          display: inline-flex; align-items: center; gap: 6px;
+          font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600;
+          color: var(--text-secondary); text-decoration: none; cursor: pointer;
+          margin-bottom: 10px; border: none; background: none; padding: 0;
         }
-        .page-title { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1; transition: color 0.3s; }
-        .page-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 4px; transition: color 0.3s; }
-
-        .sort-group {
-          display: flex; align-items: center; gap: 6px;
-          background: var(--sort-bg); border: 1px solid var(--sort-border);
-          border-radius: 10px; padding: 4px;
-          transition: background 0.3s, border-color 0.3s;
-        }
-        .sort-btn {
-          display: flex; align-items: center; gap: 5px;
-          padding: 5px 12px; border: none; border-radius: 7px;
-          background: transparent; font-family: 'Sora', sans-serif;
-          font-size: 12px; font-weight: 600; color: var(--sort-color);
-          cursor: pointer; transition: background 0.2s, color 0.2s; white-space: nowrap;
-        }
-        .sort-btn.active { background: var(--sort-active-bg); color: var(--sort-active-color); }
-
-        .alpha-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-        .alpha-btn {
-          min-width: 32px; height: 32px; padding: 0 8px;
-          border-radius: 8px; border: 1px solid var(--pill-border);
-          background: var(--pill-bg); font-family: 'Sora', sans-serif;
-          font-size: 12px; font-weight: 600; color: var(--pill-color);
-          cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
-        }
-        .alpha-btn:hover:not(.active), .alpha-btn.active {
-          background: var(--pill-active-bg); border-color: var(--pill-active-border); color: var(--pill-active-color);
-        }
-
-        .cat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
-        .cat-btn {
-          padding: 5px 14px; border-radius: 100px;
-          border: 1px solid var(--pill-border); background: var(--pill-bg);
-          font-family: 'Sora', sans-serif; font-size: 12.5px; font-weight: 500;
-          color: var(--pill-color); cursor: pointer;
-          transition: background 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap;
-        }
-        .cat-btn:hover:not(.active), .cat-btn.active {
-          background: var(--pill-active-bg); border-color: var(--pill-active-border); color: var(--pill-active-color);
-        }
+        .back-link:hover { color: #4ade80; }
+        .page-title { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1; text-transform: capitalize; }
+        .page-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
 
         .logos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 36px; }
 
-        .logo-card {
-          background: var(--surface); border: 1px solid var(--border);
-          border-radius: 14px; overflow: hidden; cursor: pointer; position: relative;
-          transition: background 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-        }
-        .logo-card:hover {
-          background: var(--surface-hover); border-color: var(--border-hover);
-          transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.15);
-        }
+        .logo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; cursor: pointer; position: relative; transition: background 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s; }
+        .logo-card:hover { background: var(--surface-hover); border-color: var(--border-hover); transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.15); }
         [data-theme="dark"] .logo-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
 
-        .trending-badge {
-          position: absolute; top: 10px; left: 10px; z-index: 2;
-          display: inline-flex; align-items: center; gap: 4px;
-          padding: 3px 8px; background: rgba(7,166,38,0.85);
-          border-radius: 6px; font-size: 9px; font-weight: 700;
-          letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px);
-        }
+        .trending-badge { position: absolute; top: 10px; left: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(7,166,38,0.85); border-radius: 6px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px); }
 
-        .card-image {
-          width: 100%; height: 130px; background: var(--card-img-bg);
-          display: flex; align-items: center; justify-content: center;
-          overflow: hidden; transition: background 0.3s;
-        }
+        .card-image { width: 100%; height: 130px; background: var(--card-img-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .card-img { width: 100%; height: 100%; object-fit: contain; padding: 16px; }
-        .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; font-family: 'Sora', sans-serif; }
+        .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; }
 
         .card-body { padding: 10px 12px 12px; }
-        .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s; }
-        .card-category { font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px; transition: color 0.3s; }
+        .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-category { font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px; }
         .card-colors { display: flex; gap: 4px; margin-bottom: 8px; }
         .color-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); }
         [data-theme="light"] .color-dot { border-color: rgba(0,0,0,0.1); }
@@ -324,61 +231,29 @@ export default function LogosPage() {
         @media (max-width:640px) {
           .logos-page { padding: 12px 0 40px; }
           .logos-container { padding: 14px 12px 0; }
-          .page-header { flex-direction: column; gap: 10px; margin-bottom: 14px; }
           .page-title { font-size: 20px; }
-          .sort-group { align-self: stretch; justify-content: stretch; }
-          .sort-btn { flex: 1; justify-content: center; font-size: 11px; padding: 6px 8px; }
-          .alpha-row { flex-wrap: nowrap; overflow-x: auto; gap: 4px; margin-bottom: 8px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-          .alpha-row::-webkit-scrollbar { display: none; }
-          .alpha-btn { min-width: 30px; height: 30px; flex-shrink: 0; font-size: 11px; }
-          .cat-row { flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-bottom: 14px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-          .cat-row::-webkit-scrollbar { display: none; }
-          .cat-btn { flex-shrink: 0; font-size: 11.5px; padding: 4px 12px; }
           .logos-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
           .card-image { height: 105px; }
           .card-name { font-size: 13px; }
-          .card-formats { gap: 3px; }
           .pagination { gap: 4px; }
           .page-btn { min-width: 32px; height: 32px; font-size: 12px; }
         }
       `}</style>
 
+    
+
     <div className="logos-page">
       <div className="logos-container">
 
         <div className="page-header">
-          <div>
-            <h1 className="page-title">All Logos</h1>
-            <p className="page-subtitle">Browse our educational reference catalog</p>
-          </div>
-          {/* <div className="sort-group">
-              {SORT_OPTIONS.map(s => (
-                <button key={s.key}
-                  className={`sort-btn${sort === s.key ? " active" : ""}`}
-                  onClick={() => setSort(s.key)}>
-                  {s.icon} {s.label}
-                </button>
-              ))}
-            </div> */}
+        <Navbar />
+        <div className="h-20"></div>
+          <button className="back-link" onClick={() => history.back()}>
+            ← Back to categories
+          </button>
+          <h1 className="page-title">{categoryName || slug}</h1>
+          <p className="page-subtitle">Browse logos in this category</p>
         </div>
-
-        <div className="alpha-row">
-          {ALPHABET.map(l => (
-            <button key={l}
-              className={`alpha-btn${activeLetter === l ? " active" : ""}`}
-              onClick={() => setActiveLetter(l)}>{l}</button>
-          ))}
-        </div>
-
-        {/* <div className="cat-row">
-          {categories.map(c => (
-            <button key={c}
-              className={`cat-btn${activeCategory === c ? " active" : ""}`}
-              onClick={() => setActiveCat(c)}>
-              {c === "All" ? "All" : c.charAt(0).toUpperCase() + c.slice(1)}
-            </button>
-          ))}
-        </div> */}
 
         {error ? (
           <div className="error-state">
@@ -390,7 +265,7 @@ export default function LogosPage() {
             {loading
               ? Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)
               : logos.length === 0
-                ? <div className="empty-state">No logos found for this filter.</div>
+                ? <div className="empty-state">No logos found in this category.</div>
                 : logos.map(logo => <LogoCard key={logo.id} logo={logo} />)
             }
           </div>

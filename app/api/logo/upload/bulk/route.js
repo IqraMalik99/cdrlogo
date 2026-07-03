@@ -895,50 +895,50 @@ Return ONLY VALID JSON:
   try { parsed = JSON.parse(raw); } catch { parsed = {}; }
 
 
-  
+
 
   // ── Server-side compliance check ──────────────────────────────────────────
-//   const usedTitles = relatedLogos.map((r) => r.metaTitle).filter(Boolean);
-//   const violations = validateAIContent(parsed, { usedTitles, usedOpeners });
+  //   const usedTitles = relatedLogos.map((r) => r.metaTitle).filter(Boolean);
+  //   const violations = validateAIContent(parsed, { usedTitles, usedOpeners });
 
-//   if (violations.length) {
-//     console.warn(`  [AI Validation] ${violations.length} violation(s) found, re-calling OpenAI once:`);
-//     violations.forEach((v) => console.warn(`       - ${v}`));
+  //   if (violations.length) {
+  //     console.warn(`  [AI Validation] ${violations.length} violation(s) found, re-calling OpenAI once:`);
+  //     violations.forEach((v) => console.warn(`       - ${v}`));
 
-//     const correctionPrompt = `Your previous JSON response violated these rules:
+  //     const correctionPrompt = `Your previous JSON response violated these rules:
 
-// ${violations.map((v) => `- ${v}`).join("\n")}
+  // ${violations.map((v) => `- ${v}`).join("\n")}
 
-// Regenerate the COMPLETE JSON response, fixing every violation above. Do not
-// repeat the same mistakes. Re-check every field against the banned-words list
-// and the educational/reference phrase requirement before returning. Return
-// ONLY the corrected JSON object, with the same structure as before.`;
+  // Regenerate the COMPLETE JSON response, fixing every violation above. Do not
+  // repeat the same mistakes. Re-check every field against the banned-words list
+  // and the educational/reference phrase requirement before returning. Return
+  // ONLY the corrected JSON object, with the same structure as before.`;
 
-//     const retryCompletion = await callOpenAIWithRetry({
-//       model: "gpt-4.1-mini",
-//       temperature: 0.5,
-//       messages: [
-//         ...messages,
-//         { role: "assistant", content: raw },
-//         { role: "user", content: correctionPrompt },
-//       ],
-//       response_format: { type: "json_object" },
-//     });
+  //     const retryCompletion = await callOpenAIWithRetry({
+  //       model: "gpt-4.1-mini",
+  //       temperature: 0.5,
+  //       messages: [
+  //         ...messages,
+  //         { role: "assistant", content: raw },
+  //         { role: "user", content: correctionPrompt },
+  //       ],
+  //       response_format: { type: "json_object" },
+  //     });
 
-//     const retryRaw = retryCompletion.choices[0]?.message?.content || "{}";
-//     let retryParsed;
-//     try { retryParsed = JSON.parse(retryRaw); } catch { retryParsed = null; }
+  //     const retryRaw = retryCompletion.choices[0]?.message?.content || "{}";
+  //     let retryParsed;
+  //     try { retryParsed = JSON.parse(retryRaw); } catch { retryParsed = null; }
 
-//     if (retryParsed) {
-//       const retryViolations = validateAIContent(retryParsed, { usedTitles, usedOpeners });
-//       console.log(`  [AI Validation] Retry result: ${retryViolations.length ? `${retryViolations.length} violation(s) remain` : "clean"}`);
-//       parsed = retryParsed;
-//     } else {
-//       console.warn("  [AI Validation] Retry response failed to parse — keeping original");
-//     }
-//   } else {
-//     console.log("  [AI Validation] ✓ No violations found on first attempt");
-//   }
+  //     if (retryParsed) {
+  //       const retryViolations = validateAIContent(retryParsed, { usedTitles, usedOpeners });
+  //       console.log(`  [AI Validation] Retry result: ${retryViolations.length ? `${retryViolations.length} violation(s) remain` : "clean"}`);
+  //       parsed = retryParsed;
+  //     } else {
+  //       console.warn("  [AI Validation] Retry response failed to parse — keeping original");
+  //     }
+  //   } else {
+  //     console.log("  [AI Validation] ✓ No violations found on first attempt");
+  //   }
 
 
 
@@ -1056,7 +1056,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     console.log(`  [ai] ogTitle: "${aiContent.ogTitle}" | twitterTitle: "${aiContent.twitterTitle}"`);
     console.log(`  [ai] tags: ${aiContent.tags.length} | faq pairs: ${aiContent.faqPairs.length}`);
 
-   // ── Step C: classify & process files ─────────────────────────────────────
+    // ── Step C: classify & process files ─────────────────────────────────────
     const publicFiles = [];
     const separateFiles = [];
     let svgContent = null;
@@ -1104,7 +1104,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
 
 
     // ── Step D: upload to R2 ──────────────────────────────────────────────────
-      const allUploads = [...publicFiles, ...separateFiles]; 
+    const allUploads = [...publicFiles, ...separateFiles];
     const uploadResults = await Promise.all(
       allUploads.map(async ({ key, buffer, contentType }) => {
         try {
