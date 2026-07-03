@@ -24,7 +24,7 @@ function BrandCard({ cat, index, dark }) {
       onClick={
         () => {
            let query=cat.category.toLowerCase();
-          router.push(`/search/${query}`)
+          router.push(`/category/${query}`)
         }
     }
     >
