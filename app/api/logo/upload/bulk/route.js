@@ -614,7 +614,7 @@ ${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
       : `Category: Use your best classification for this logo's industry.`
     }
 
-Brand   : UNKNOWN — infer real brand if confidently identifiable
+Brand   : UNKNOWN — infer real brand if confidently identifiable donot guess.
 Website : UNKNOWN
 Industry: UNKNOWN — infer specific industry sector
 
@@ -787,7 +787,7 @@ Add 4 context-specific tags based on industry.
 og_title (50–60 chars)
 --------------------------------------------------
 
-Format: "{Logo Name} Logo — PNG & SVG Vector"
+Format: "{Logo Name} — PNG SVG vector file on cdrlogo.com"
 Use the EXACT FULL Logo Name — every distinguishing word MUST appear. No "| cdrlogo.com" suffix.
 STRICTLY FORBIDDEN: Free, Download, marketing phrases.
 
@@ -973,13 +973,13 @@ Return ONLY VALID JSON:
 
   // ── Field fallbacks (educational-tone, banned-word-free) ─────────────────
   const metaTitle = parsed.meta_title ||
-    `${logoName} Logo PNG SVG Vector | cdrlogo.com`;
+    `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const metaDescription = parsed.meta_description ||
     `${logoName} logo available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`;
   const description = parsed.main_description ||
     `The ${logoName} logo is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`;
   const altText = parsed.alt_text ||
-    `${logoName} logo — PNG SVG vector file on cdrlogo.com`;
+    `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const tags = Array.isArray(parsed.tags) && parsed.tags.length
     ? parsed.tags
     : [logoName, "logo", "PNG", "SVG", "vector", "cdrlogo.com"];

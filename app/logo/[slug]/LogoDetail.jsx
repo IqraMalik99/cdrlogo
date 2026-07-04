@@ -122,6 +122,7 @@ export default function LogoDetail() {
                     body: JSON.stringify({ slug }),
                 });
                 const data = await res.json();
+                console.log(data);
                 setLogo(data.data || data);
                 setRelated(data.related || []);
             } catch (e) { setError(e.message); }

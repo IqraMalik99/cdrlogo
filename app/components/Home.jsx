@@ -304,11 +304,28 @@ export default function Home() {
 
           {/* Heading */}
           <div className="anim d1">
-            <h1 className="home-heading">
+            <h1
+              style={{
+                position: "absolute",
+                width: "1px",
+                height: "1px",
+                padding: 0,
+                margin: "-1px",
+                overflow: "hidden",
+                clip: "rect(0, 0, 0, 0)",
+                clipPath: "inset(50%)",
+                whiteSpace: "nowrap",
+                border: 0,
+              }}
+            >
+              Free Vector Logo Downloads — CDR, SVG, AI & PNG Files
+            </h1>
+            <h2 className="home-heading">
               CDRLogo – {" "}
               <span className="accent">Vector Logo </span>
               {" "}Reference Library for Designers  <span className="accent"> &amp;</span> Students
-            </h1>
+            </h2>
+
           </div>
 
           {/* Sub */}

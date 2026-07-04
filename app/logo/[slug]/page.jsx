@@ -78,7 +78,7 @@ export async function generateMetadata({ params }) {
         type: ogType,
         siteName: "cdrlogo.com",
         ...(ogImage
-          ? { images: [{ url: ogImage, width: 1200, height: 630, alt: logo.altText || ogTitle }] }
+          ? { images: [{ url: ogImage, width: 1200, height: 630, alt: `${logo.logoName} — PNG SVG vector file on cdrlogo.com` }] }
           : {}),
       },
 
