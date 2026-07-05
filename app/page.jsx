@@ -25,13 +25,13 @@ const websiteSchema = {
 
 
 
-let OrganizationSchema= {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "CDRLogo",
-    url: "https://www.cdrlogo.com",
-    logo: "https://www.cdrlogo.com/og-image.jpg"  ,
-  };
+let OrganizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "CDRLogo",
+  url: "https://www.cdrlogo.com",
+  logo: "https://www.cdrlogo.com/og-image.jpg",
+};
 
 
 
@@ -79,6 +79,9 @@ export async function generateMetadata() {
         index: true,
         follow: true,
       },
+      verification: {
+        google: "8XIFTI2Ell1-5-651AsIKaLVjgPfSCjLLhHim_LxE1k",   // ← yeh line add karo
+      },
       openGraph: {
         title,
         description,
@@ -99,6 +102,9 @@ export async function generateMetadata() {
       title: "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo",
       description: "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.",
       alternates: { canonical: "https://www.cdrlogo.com" },
+       verification: {
+        google: "8XIFTI2Ell1-5-651AsIKaLVjgPfSCjLLhHim_LxE1k",   // ← yeh line add karo
+      },
       robots: {
         index: true,
         follow: true,
@@ -133,6 +139,22 @@ export default function page() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       <Navbar />
+      <h1
+        style={{
+          position: "absolute",
+          width: "1px",
+          height: "1px",
+          padding: 0,
+          margin: "-1px",
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          clipPath: "inset(50%)",
+          whiteSpace: "nowrap",
+          border: 0,
+        }}
+      >
+        {`Free Vector Logo Downloads — CDR, SVG, AI & PNG Files`}
+      </h1>
       <Home />
       <PantoneColorPicker />
       <LogosPage />

@@ -157,8 +157,8 @@ export default function LogoDetail() {
             });
             if (!res.ok) {
                 const errData = await res.json();
-               alert("Try again later");
-               console.error("Download failed:", errData?.error || "Unknown error");
+                alert("Try again later");
+                console.error("Download failed:", errData?.error || "Unknown error");
                 return;
             }
             if ((res.headers.get("Content-Type") || "").includes("application/json")) {

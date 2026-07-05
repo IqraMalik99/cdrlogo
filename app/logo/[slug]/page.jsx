@@ -33,6 +33,15 @@ export async function generateMetadata({ params }) {
   try {
     const logo = await fetchLogo(slug);
 
+    if (!logo) {
+      return {
+        title: "Logo – Download",
+        description: "Download vector logos in SVG, PNG, AI, CDR formats.",
+        robots: { index: false, follow: false },
+      };
+    }
+
+
     // ── 1. Canonical ─────────────────────────────────────────────────────────
     const canonicalUrl =
       logo.canonicalUrl ||
@@ -102,13 +111,13 @@ export async function generateMetadata({ params }) {
 
 export default async function Page({ params }) {
   const { slug } = await params;
-
+  let logo = null;
   let imageObjectSchema = null;
   let breadcrumbSchema = null;
   let faqSchema = null;
 
   try {
-    const logo = await fetchLogo(slug);
+    logo = await fetchLogo(slug);
     if (logo) {
       if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
         imageObjectSchema = logo.imageObjectSchema;
@@ -144,7 +153,26 @@ export default async function Page({ params }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}
+      {
+        logo && <h1
+          style={{
+            position: "absolute",
+            width: "1px",
+            height: "1px",
+            padding: 0,
+            margin: "-1px",
+            overflow: "hidden",
+            clip: "rect(0, 0, 0, 0)",
+            clipPath: "inset(50%)",
+            whiteSpace: "nowrap",
+            border: 0,
+          }}
+        >
+          {`${logo.logoName} – PNG SVG Vector | cdrlogo.com`}
+        </h1>
+      }
       <LogoDetail />
+
     </>
   );
 }
