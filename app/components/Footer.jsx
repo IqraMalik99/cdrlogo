@@ -32,7 +32,7 @@ const QUICK_LINKS = [
     { label: "Request Logo", href: "/request" },
     { label: "Brands", href: "/brands" },
     { label: "Template", href: "/template" },
-    { label: "Sitemap", href: "https://www.cdrlogo.com/sitemap.xml" },
+    { label: "Sitemap", href: "/sitemap.xml" },
 ];
 
 export default function Footer() {

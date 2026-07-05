@@ -5,85 +5,63 @@ function normalize(str = "") {
   return String(str).toLowerCase().trim();
 }
 
-// split into normalized alphanumeric words
-function toWords(str = "") {
-  return normalize(str)
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-}
-
-// dynamic typo tolerance: stricter for short words, looser for long ones
-function threshold(len) {
-  if (len <= 3) return 0;   // no fuzz on tiny words, avoid false positives
-  if (len <= 5) return 1;
-  return 2;
-}
-
-// lightweight levenshtein (no libs)
+// ── Levenshtein (kept ONLY for category — the lowest priority tier) ──────────
 function levenshtein(a, b) {
   const matrix = Array.from({ length: b.length + 1 }, () => []);
-
   for (let i = 0; i <= b.length; i++) matrix[i][0] = i;
   for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-
   for (let i = 1; i <= b.length; i++) {
     for (let j = 1; j <= a.length; j++) {
-      if (b[i - 1] === a[j - 1]) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j - 1] + 1
-        );
-      }
+      matrix[i][j] = b[i - 1] === a[j - 1]
+        ? matrix[i - 1][j - 1]
+        : Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + 1);
     }
   }
-
   return matrix[b.length][a.length];
 }
 
-// word-level fuzzy match: query word vs single target word
-function wordMatch(q, w) {
-  if (!w) return false;
-  if (w.includes(q) || q.includes(w)) return true;
-  return levenshtein(q, w) <= threshold(Math.max(q.length, w.length));
+// Only used for category fuzz — strict: only long queries (6+ chars) get
+// a tiny amount of typo tolerance, and only against whole-word category values.
+function fuzzyCategoryMatch(query, category) {
+  const q = normalize(query);
+  if (q.length < 6) return false; // short queries never fuzz — avoids false positives
+  const c = normalize(category);
+  if (!c) return false;
+  return levenshtein(q, c) <= 1; // max 1 typo, whole-string compare only
 }
 
-// query can be multi-word ("drgn logo") — every query word must
-// fuzzy-match at least one word in the target
-function isMatch(query, target) {
-  const qWords = toWords(query);
-  const tWords = toWords(target);
-  if (qWords.length === 0 || tWords.length === 0) return false;
-
-  return qWords.every((qw) => tWords.some((tw) => wordMatch(qw, tw)));
+// ── Exact / substring matches (used for title, tags) — NO fuzz, NO tiny-word bugs ──
+function exactMatch(query, target) {
+  return normalize(target) === normalize(query);
 }
 
-// tags is stored as Json, expected shape: ["graphics", "fashion"]
-// guard against null / bad data / non-string entries from older rows
+function substringMatch(query, target) {
+  const q = normalize(query);
+  const t = normalize(target);
+  if (!q || !t) return false;
+  return t.includes(q); // target must contain the FULL query — not the reverse
+}
+
 function toTagArray(tags) {
   if (!Array.isArray(tags)) return [];
   return tags.filter((t) => typeof t === "string");
 }
 
-// true if ANY tag in the array matches the query
-function isTagMatch(query, tags) {
-  return toTagArray(tags).some((tag) => isMatch(query, tag));
+function toCategoryArray(category) {
+  if (!Array.isArray(category)) return [];
+  return category.filter((c) => typeof c === "string");
 }
 
 export async function POST(req) {
   try {
     const { query } = await req.json();
 
-    if (!query) {
+    if (!query || !normalize(query)) {
       return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
 
     const logos = await prisma.logo.findMany({
-      where: {
-        publishStatus: "Published",
-      },
+      where: { publishStatus: "Published" },
       select: {
         id: true,
         logoName: true,
@@ -92,43 +70,47 @@ export async function POST(req) {
         description: true,
         tags: true,
         webpUrl: true,
-        slug: true
+        slug: true,
       },
     });
 
     const scored = logos
       .map((logo) => {
         let score = 0;
+        const name = logo.logoName || "";
+        const tags = toTagArray(logo.tags);
+        const categories = toCategoryArray(logo.category);
 
-        // 🥇 highest priority: name
-        if (isMatch(query, logo.logoName)) score += 100;
-
-        // 🥈 category
-        if (isMatch(query, logo.category)) score += 70;
-
-        // 🥉 brand/company
-        if (isMatch(query, logo.brand)) score += 50;
-
-        // tags — same priority tier as brand
-        if (isTagMatch(query, logo.tags)) score += 50;
-
-        // low priority: description
-        // if (isMatch(query, logo.description)) score += 20;
+        // Priority 1 — exact title match
+        if (exactMatch(query, name)) {
+          score = 1000;
+        }
+        // Priority 2 — partial (substring) title match
+        else if (substringMatch(query, name)) {
+          score = 500;
+        }
+        // Priority 3 — tags match (exact or substring, no fuzz)
+        else if (tags.some((tag) => exactMatch(query, tag) || substringMatch(query, tag))) {
+          score = 200;
+        }
+        // Priority 4 — category match (substring first, tiny fuzz only as last resort)
+        else if (
+          categories.some(
+            (cat) => substringMatch(query, cat) || fuzzyCategoryMatch(query, cat)
+          )
+        ) {
+          score = 50;
+        }
 
         return { ...logo, score };
       })
       .filter((l) => l.score > 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 20); // top results
+      .slice(0, 20);
 
-    return NextResponse.json({
-      results: scored,
-    });
+    return NextResponse.json({ results: scored });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { error: "Search failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }

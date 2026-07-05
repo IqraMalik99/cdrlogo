@@ -117,16 +117,6 @@ export default function BlogPage() {
   const [searchVal, setSearchVal]     = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ── Fetch categories from /api/catageory/home ──
-  // Response shape: { success: true, data: ["Technology", "Sports", ...] }
-  useEffect(() => {
-    setCatLoading(true);
-    fetch("/api/catageory/home-list")
-      .then(r => r.json())
-      .then(d =>  {console.log(d,"item"); setCategories(d.categories || [])})   // ← d.data is the string[]
-      .catch(() => setCategories([]))
-      .finally(() => setCatLoading(false));
-  }, []);
 
   // ── Fetch blogs ──
   const fetchBlogs = useCallback(async () => {
@@ -251,30 +241,7 @@ export default function BlogPage() {
               <button className="s-btn" onClick={handleSearch}>Search</button>
             </div>
 
-            {/* Category tabs — data comes from /api/catageory/home as { success, data: string[] } */}
-            <div className="cat-tabs">
-              <button
-                className={`cat-tab${activeCategory === "All" ? " active" : ""}`}
-                onClick={() => handleCat("All")}
-              >
-                All
-              </button>
-
-              {catLoading
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="skel cat-skel" style={{ width: `${55 + (i % 3) * 18}px` }} />
-                  ))
-                : categories.map(cat => (        // cat is just a string e.g. "Technology"
-                    <button
-                      key={cat}
-                      className={`cat-tab${activeCategory === cat ? " active" : ""}`}
-                      onClick={() => handleCat(cat)}
-                    >
-                      {cat}
-                    </button>
-                  ))
-              }
-            </div>
+          
           </div>
 
           {/* Grid */}

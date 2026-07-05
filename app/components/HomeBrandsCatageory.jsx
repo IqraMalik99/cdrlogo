@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "../context/ThemeContext";
 
-const PER_PAGE = 8; // change to 10 if you prefer
+const PER_PAGE = 10; // change to 10 if you prefer
 
 function BrandCard({ cat, index, dark }) {
   const router  = useRouter();

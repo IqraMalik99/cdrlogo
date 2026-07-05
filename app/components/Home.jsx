@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { useRouter } from "next/navigation";
 
@@ -25,6 +25,8 @@ export default function Home() {
   const { dark } = useTheme();
 
   const router = useRouter();
+  const debounceRef = useRef(null);
+  const isFirstRender = useRef(null);
 
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 60);
@@ -42,9 +44,28 @@ export default function Home() {
   };
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
+      clearTimeout(debounceRef.current);
       handleSearch();
     }
   };
+  useEffect(() => {
+    if (isFirstRender.current === null) {
+      isFirstRender.current = true;
+      return;
+    }
+
+    clearTimeout(debounceRef.current);
+
+    const q = searchValue.trim().toLowerCase();
+    if (!q) return;
+
+    debounceRef.current = setTimeout(() => {
+      const slug = q.replace(/\s+/g, "-");
+      router.push(`/search/${encodeURIComponent(slug)}`);
+    }, 3000);
+
+    return () => clearTimeout(debounceRef.current);
+  }, [searchValue, router]);
   return (
     <>
       <style>{`
@@ -304,7 +325,7 @@ export default function Home() {
 
           {/* Heading */}
           <div className="anim d1">
-           
+
             <h2 className="home-heading">
               CDRLogo – {" "}
               <span className="accent">Vector Logo </span>
@@ -376,7 +397,12 @@ export default function Home() {
                   key={tag}
                   className="popular-tag tag-anim"
                   style={{ transitionDelay: ready ? `${370 + i * 55}ms` : "0ms" }}
-                  onClick={() => setSearchValue(tag)}
+                  onClick={() => {
+                    clearTimeout(debounceRef.current);
+                    setSearchValue(tag);
+                    const slug = tag.trim().toLowerCase().replace(/\s+/g, "-");
+                    router.push(`/search/${encodeURIComponent(slug)}`);
+                  }}
                 >
                   {tag}
                 </button>

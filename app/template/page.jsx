@@ -6,7 +6,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useRouter } from "next/navigation";
 
-const PER_PAGE = 12;
+const PER_PAGE = 10;
 
 const FORMAT_CHIPS = [
   { label: "AI",  cls: "fmt-ai"  },
@@ -477,7 +477,7 @@ export default function TemplatesPage() {
                   </button>
                 ))}
               </div>
-              <span className="results-badge">{total} {total === 1 ? "template" : "templates"}</span>
+              
             </div>
           )}
 
@@ -565,9 +565,7 @@ function LogoCard({ logo, index }) {
         <div className="card-name">{logo.logoName}</div>
         <div className="card-cat">{logo.category[0]}</div>
         <div className="card-footer">
-          <div className="color-dots">
-            {colors.map((c, i) => <div key={i} className="color-dot" style={{ backgroundColor: c }} />)}
-          </div>
+         
           <div className="fmt-chips">
             {FORMAT_CHIPS.map((f) => <span key={f.label} className={`fmt ${f.cls}`}>{f.label}</span>)}
           </div>

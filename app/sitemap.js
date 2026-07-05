@@ -73,8 +73,18 @@ const categories = [
       changeFrequency: "monthly",
       priority: 0.5,
     },
-
-    // 🔥 FORCE IMPORTANT PAGES (EVEN IF DYNAMIC)
+    {
+      url: `${baseUrl}/privacy-policy`,
+      lastModified: new Date(),
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/dmca-copyright-policy`,
+      lastModified: new Date(),
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
     {
       url: `${baseUrl}/about-us`,
       lastModified: new Date(),
@@ -86,7 +96,7 @@ const categories = [
       lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
-    },
+    }
   ];
 
   // -------------------------------
@@ -105,7 +115,7 @@ const categories = [
   const logoRoutes = logos
     .filter(l => typeof l.slug === "string" && l.slug.trim() !== "")
     .map(l => ({
-      url: `${baseUrl}/logo/${l.slug.replace(/^\/+/, "").trim()}`,
+      url: `${baseUrl}/logo/${l.slug.replace(/^\/+/, "").trim()}/`,
       lastModified: l.updatedAt || new Date(),
       changeFrequency: "weekly",
       priority: 0.9,

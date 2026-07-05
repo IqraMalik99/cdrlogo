@@ -323,7 +323,7 @@ function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, descr
     "@type": "ImageObject",
     "contentUrl": imageUrl,
     "url": imageUrl,
-    "name": `${logoName} Logo`,
+    "name": `${logoName}`,
     "description": description || `${logoName} logo image on cdrlogo.com`,
     "representativeOfPage": true,
     ...(brand ? { "creator": { "@type": "Organization", "name": brand } } : {}),
@@ -993,7 +993,7 @@ Return ONLY VALID JSON:
   const twitterDescription = (parsed.twitter_description && String(parsed.twitter_description).trim()) ||
     `${logoName} logo in PNG and SVG vector format for educational reference and research use.`;
   const imageObjectDescription = parsed.image_object_description ||
-    `${logoName} logo image on cdrlogo.com`;
+    `${logoName}  image on cdrlogo.com`;
   const faqPairs = Array.isArray(parsed.faq) ? parsed.faq : [];
 
 

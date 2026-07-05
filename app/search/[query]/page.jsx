@@ -74,7 +74,6 @@ function LogoCard({ logo }) {
         </div>
     );
 }
-
 export default function SearchPage() {
     const params = useParams();
     const router = useRouter();
@@ -89,10 +88,18 @@ export default function SearchPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [lastQuery, setLastQuery] = useState("");
     const inputRef = useRef(null);
+    const debounceRef = useRef(null);          // ← naya: debounce timer
+    const isFirstRender = useRef(true);          // ← naya: mount pe double-fetch rokne ke liye
 
     const doSearch = useCallback(async (q) => {
         const trimmed = q?.trim();
-        if (!trimmed) return;
+        if (!trimmed) {
+            // Query khaali ho gayi — results clear kar do, koi API call nahi
+            setAllLogos([]);
+            setLastQuery("");
+            setError(null);
+            return;
+        }
         setLoading(true);
         setError(null);
         setPage(1);
@@ -105,7 +112,6 @@ export default function SearchPage() {
             });
             if (!res.ok) throw new Error(`Server error ${res.status}`);
             const data = await res.json();
-            console.log("Search results:", data);
             setAllLogos(data.results ?? []);
         } catch (err) {
             setError(err.message);
@@ -115,10 +121,32 @@ export default function SearchPage() {
         }
     }, []);
 
-    // Search on mount from URL param
+    // Search on mount from URL param (ek hi baar, page load pe)
     useEffect(() => {
         if (rawQuery) doSearch(rawQuery);
     }, []);  // eslint-disable-line
+
+useEffect(() => {
+    if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+    }
+
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+        const q = inputVal.trim().toLowerCase();
+        if (q) {
+            const slug = q.replace(/\s+/g, "-");
+            router.replace(`/search/${encodeURIComponent(slug)}`);
+            doSearch(q);
+        } else {
+            setAllLogos([]);
+            setLastQuery("");
+        }
+    }, 2000);   // ← 300 se 3000 (3 second)
+
+    return () => clearTimeout(debounceRef.current);
+}, [inputVal, doSearch, router]);
 
     // Paginate in JS when allLogos or page changes
     useEffect(() => {
@@ -131,17 +159,16 @@ export default function SearchPage() {
         e?.preventDefault();
         const q = inputVal.trim().toLowerCase();
         if (!q) return;
-
-        const slug = q.replace(/\s+/g, "-"); // 👈 space → hyphen
-
+        clearTimeout(debounceRef.current); // manual submit pe pending debounce cancel
+        const slug = q.replace(/\s+/g, "-");
         router.push(`/search/${encodeURIComponent(slug)}`);
         doSearch(q);
     };
 
-
     const handleKeyDown = (e) => {
         if (e.key === "Enter") handleSubmit();
     };
+    
 
     return (
         <>
