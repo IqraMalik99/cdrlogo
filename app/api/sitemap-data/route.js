@@ -1,9 +1,8 @@
-import { prisma } from "./lib/prisma";
+import { NextResponse } from "next/server";
+import { prisma } from "../../lib/prisma";
 
-export const revalidate = 3600;
-
-export default async function sitemap() {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://cdrlogo.com").replace(/\/$/, "");
+export async function GET() {
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com").replace(/\/$/, "");
 
   const [logos, blogs] = await Promise.all([
     prisma.logo.findMany({
@@ -21,86 +20,36 @@ export default async function sitemap() {
   // -------------------------------
   // SAFE CATEGORY EXTRACTION
   // -------------------------------
-const categories = [
-  ...new Set(
-    logos
-      .map(l =>
-        typeof l.category === "string"
-          ? l.category.trim().toLowerCase().replace(/\s+/g, "-")
-          : null
-      )
-      .filter(cat => cat)
-  )
-];
+  const categories = [
+    ...new Set(
+      logos
+        .map(l =>
+          typeof l.category === "string"
+            ? l.category.trim().toLowerCase().replace(/\s+/g, "-")
+            : null
+        )
+        .filter(cat => cat)
+    )
+  ];
 
   // -------------------------------
   // STATIC + IMPORTANT ROUTES
   // -------------------------------
   const staticRoutes = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/brands`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/category`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/contact-us`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.4,
-    },
-    {
-      url: `${baseUrl}/request`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/privacy-policy`,
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/dmca-copyright-policy`,
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/about-us`,
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/terms-of-service`,
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.3,
-    }
+    { url: baseUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1.0 },
+    { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/brands`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/category`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/contact-us`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
+    { url: `${baseUrl}/request`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/privacy-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/dmca-copyright-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/about-us`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.7 },
+    { url: `${baseUrl}/terms-of-service`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
   ];
 
   // -------------------------------
-  // CATEGORY ROUTES (NO /search)
+  // CATEGORY ROUTES
   // -------------------------------
   const categoryRoutes = categories.map(cat => ({
     url: `${baseUrl}/category/${encodeURIComponent(cat.toLowerCase())}`,
@@ -143,5 +92,5 @@ const categories = [
     ...blogRoutes,
   ];
 
-  return allRoutes.filter(r => r.url && typeof r.url === "string");
+  return NextResponse.json(allRoutes.filter(r => r.url && typeof r.url === "string"));
 }
