@@ -78,6 +78,10 @@ export async function generateMetadata() {
       robots: {
         index: true,
         follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+        },
       },
       verification: {
         google: "8XIFTI2Ell1-5-651AsIKaLVjgPfSCjLLhHim_LxE1k",   // ← yeh line add karo

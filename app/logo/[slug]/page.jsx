@@ -57,7 +57,7 @@ export async function generateMetadata({ params }) {
     // ── 3. Open Graph ────────────────────────────────────────────────────────
     const ogTitle = logo.ogTitle || metaTitle;
     const ogDescription = logo.ogDescription || metaDescription;
-    const ogType = logo.ogType || "website";
+    const ogType = "article";
     const ogImage = logo.ogImageUrl || logo.webpUrl || null;
 
     // ── 4. Twitter / X card ──────────────────────────────────────────────────
