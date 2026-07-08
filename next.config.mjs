@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-serverExternalPackages: ["sharp"],
+ serverExternalPackages: ["pdfkit", "svg-to-pdfkit","sharp"],
 };
 
 export default nextConfig;
