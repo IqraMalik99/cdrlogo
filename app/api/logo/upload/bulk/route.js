@@ -975,25 +975,25 @@ Return ONLY VALID JSON:
   const metaTitle = parsed.meta_title ||
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const metaDescription = parsed.meta_description ||
-    `${logoName} logo available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`;
+    `${logoName}  available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`;
   const description = parsed.main_description ||
-    `The ${logoName} logo is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`;
+    `The ${logoName}  is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`;
   const altText = parsed.alt_text ||
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const tags = Array.isArray(parsed.tags) && parsed.tags.length
     ? parsed.tags
-    : [logoName, "logo", "PNG", "SVG", "vector", "cdrlogo.com"];
+    : [logoName,  "PNG", "SVG", "vector", "cdrlogo.com"];
 
   const ogTitle = (parsed.og_title && String(parsed.og_title).trim()) ||
-    `${logoName} Logo — PNG & SVG Vector`;
+    `${logoName} — PNG & SVG Vector`;
   const ogDescription = parsed.og_description ||
-    `${logoName} logo available in PNG and SVG vector format for educational reference and research purposes.`;
+    `${logoName} available in PNG and SVG vector format for educational reference and research purposes.`;
   const twitterTitle = (parsed.twitter_title && String(parsed.twitter_title).trim()) ||
-    `${logoName} Logo — PNG SVG Vector`;
+    `${logoName} — PNG SVG Vector`;
   const twitterDescription = (parsed.twitter_description && String(parsed.twitter_description).trim()) ||
-    `${logoName} logo in PNG and SVG vector format for educational reference and research use.`;
+    `${logoName} in PNG and SVG vector format for educational reference and research use.`;
   const imageObjectDescription = parsed.image_object_description ||
-    `${logoName}  image on cdrlogo.com`;
+    `${logoName} image on cdrlogo.com`;
   const faqPairs = Array.isArray(parsed.faq) ? parsed.faq : [];
 
 
