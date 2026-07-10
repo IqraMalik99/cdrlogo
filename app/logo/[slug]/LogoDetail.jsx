@@ -138,12 +138,28 @@ export default function LogoDetail() {
         }).then(r => r.json()).then(d => setIsFavourited(d.favourited));
     }, [logo?.id, session?.user?.id]);
 
+    useEffect(() => {
+        if (!logo) return;
+        const sizeKeys = { ai: "aifilesize", cdr: "cdrfilesize", svg: "svgfilesize", png: "pngfilesize" };
+        const firstAvailable = Object.entries(sizeKeys).find(([, key]) => {
+            const size = logo?.[key];
+            return typeof size === "string" && size.trim() !== "" && size !== "0 KB";
+        });
+        setSelectedFormat(firstAvailable ? firstAvailable[0] : null);
+    }, [logo]);
+
     const formatBadges = [
         { key: "ai", label: "AI", cls: "fmt-ai", icon: "AI", sizeKey: "aifilesize" },
         { key: "cdr", label: "CDR", cls: "fmt-cdr", icon: "CDR", sizeKey: "cdrfilesize" },
         { key: "svg", label: "SVG", cls: "fmt-svg", icon: "SVG", sizeKey: "svgfilesize" },
         { key: "png", label: "PNG", cls: "fmt-png", icon: "PNG", sizeKey: "pngfilesize" },
     ];
+
+    // Only keep formats that actually exist for this logo (has a real, non-zero file size)
+    const availableFormats = formatBadges.filter((fmt) => {
+        const size = logo?.[fmt.sizeKey];
+        return typeof size === "string" && size.trim() !== "" && size !== "0 KB";
+    });
 
     const handleDownload = async () => {
         if (!agreed || !logo?.id || !selectedFormat) return;
@@ -372,7 +388,7 @@ export default function LogoDetail() {
   .dl-title { font-size:14px; font-weight:800; color:var(--heading); }
   .dl-sub { font-size:11px; color:var(--muted); font-family:'DM Sans',sans-serif; margin-bottom:16px; margin-top:2px; }
 
-  .fmt-select-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:16px; }
+  .fmt-select-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(64px, 1fr)); gap:6px; margin-bottom:16px; }
   .fmt-select-btn { padding:10px 4px 8px; border-radius:10px; border:1.5px solid; display:flex; flex-direction:column; align-items:center; gap:5px; font-family:'Sora',sans-serif; cursor:pointer; transition:transform .15s,box-shadow .15s,opacity .15s; }
   .fmt-select-btn:hover { transform:translateY(-2px); opacity:.9; }
   .fmt-selected { box-shadow:0 0 0 2px #07A626 !important; }
@@ -518,7 +534,6 @@ export default function LogoDetail() {
   @media (max-width:768px) {
     .layout { grid-template-columns:1fr; padding:16px 16px 0; }
     .left { position:static; }
-    .fmt-select-grid { grid-template-columns:repeat(4,1fr); }
     .info-grid { grid-template-columns:1fr 1fr; }
     .meta-strip { flex-direction:row; flex-wrap:wrap; }
     .meta-item { min-width:0; flex:1; border-right:1px solid var(--border); border-bottom:none; }
@@ -529,7 +544,6 @@ export default function LogoDetail() {
   }
   @media (max-width:480px) {
     .preview-img-wrap { padding:16px; }
-    .fmt-select-grid { grid-template-columns:repeat(2,1fr); }
     .info-grid { grid-template-columns:1fr; }
     .meta-strip { flex-direction:column; }
     .meta-item { border-right:none; border-bottom:1px solid var(--border); }
@@ -584,7 +598,11 @@ export default function LogoDetail() {
                                         : <div className="preview-img-placeholder" dangerouslySetInnerHTML={{ __html: logo.svgContent || logo.logoName }} />
                                     }
                                     <div className="img-overlay-bar">
-                                        <span className="img-fmt-pill">{selectedFormat ? selectedFormat.toUpperCase() : "SVG"}</span>
+                                        {(selectedFormat || availableFormats[0]) && (
+                                            <span className="img-fmt-pill">
+                                                {(selectedFormat || availableFormats[0].key).toUpperCase()}
+                                            </span>
+                                        )}
                                         <span className="img-dl-count">
                                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
@@ -682,19 +700,23 @@ export default function LogoDetail() {
                                 </div>
                                 <div className="dl-sub">Choose your preferred format</div>
 
-                                <div className="fmt-select-grid">
-                                    {formatBadges.map(fmt => (
-                                        <button key={fmt.key}
-                                            className={`fmt-select-btn ${fmt.cls}${selectedFormat === fmt.key ? " fmt-selected" : ""}`}
-                                            onClick={() => setSelectedFormat(fmt.key)}>
-                                            <div className="fmt-select-icon">{fmt.icon}</div>
-                                            <div className="fmt-select-ext">.{fmt.key}</div>
-                                            <div className="fmt-select-size">
-                                                {logo?.[fmt.sizeKey] && logo[fmt.sizeKey] !== "0 KB" ? logo[fmt.sizeKey] : "—"}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
+                                {availableFormats.length > 0 ? (
+                                    <div className="fmt-select-grid">
+                                        {availableFormats.map(fmt => (
+                                            <button key={fmt.key}
+                                                className={`fmt-select-btn ${fmt.cls}${selectedFormat === fmt.key ? " fmt-selected" : ""}`}
+                                                onClick={() => setSelectedFormat(fmt.key)}>
+                                                <div className="fmt-select-icon">{fmt.icon}</div>
+                                                <div className="fmt-select-ext">.{fmt.key}</div>
+                                                <div className="fmt-select-size">{logo[fmt.sizeKey]}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="dl-sub" style={{ marginBottom: 16 }}>
+                                        No downloadable files are available for this logo yet.
+                                    </div>
+                                )}
 
                                 <div className="dl-divider" />
 

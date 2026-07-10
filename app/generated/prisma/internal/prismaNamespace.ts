@@ -1194,6 +1194,7 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 
 export const LogoScalarFieldEnum = {
   id: 'id',
+  owner: 'owner',
   logoName: 'logoName',
   slug: 'slug',
   brand: 'brand',

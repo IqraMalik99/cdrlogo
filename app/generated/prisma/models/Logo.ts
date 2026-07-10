@@ -36,6 +36,7 @@ export type LogoSumAggregateOutputType = {
 
 export type LogoMinAggregateOutputType = {
   id: string | null
+  owner: string | null
   logoName: string | null
   slug: string | null
   brand: string | null
@@ -76,6 +77,7 @@ export type LogoMinAggregateOutputType = {
 
 export type LogoMaxAggregateOutputType = {
   id: string | null
+  owner: string | null
   logoName: string | null
   slug: string | null
   brand: string | null
@@ -116,6 +118,7 @@ export type LogoMaxAggregateOutputType = {
 
 export type LogoCountAggregateOutputType = {
   id: number
+  owner: number
   logoName: number
   slug: number
   brand: number
@@ -172,6 +175,7 @@ export type LogoSumAggregateInputType = {
 
 export type LogoMinAggregateInputType = {
   id?: true
+  owner?: true
   logoName?: true
   slug?: true
   brand?: true
@@ -212,6 +216,7 @@ export type LogoMinAggregateInputType = {
 
 export type LogoMaxAggregateInputType = {
   id?: true
+  owner?: true
   logoName?: true
   slug?: true
   brand?: true
@@ -252,6 +257,7 @@ export type LogoMaxAggregateInputType = {
 
 export type LogoCountAggregateInputType = {
   id?: true
+  owner?: true
   logoName?: true
   slug?: true
   brand?: true
@@ -385,6 +391,7 @@ export type LogoGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 
 export type LogoGroupByOutputType = {
   id: string
+  owner: string | null
   logoName: string
   slug: string
   brand: string | null
@@ -454,6 +461,7 @@ export type LogoWhereInput = {
   OR?: Prisma.LogoWhereInput[]
   NOT?: Prisma.LogoWhereInput | Prisma.LogoWhereInput[]
   id?: Prisma.StringFilter<"Logo"> | string
+  owner?: Prisma.StringNullableFilter<"Logo"> | string | null
   logoName?: Prisma.StringFilter<"Logo"> | string
   slug?: Prisma.StringFilter<"Logo"> | string
   brand?: Prisma.StringNullableFilter<"Logo"> | string | null
@@ -501,6 +509,7 @@ export type LogoWhereInput = {
 
 export type LogoOrderByWithRelationInput = {
   id?: Prisma.SortOrder
+  owner?: Prisma.SortOrderInput | Prisma.SortOrder
   logoName?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   brand?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -552,6 +561,7 @@ export type LogoWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.LogoWhereInput | Prisma.LogoWhereInput[]
   OR?: Prisma.LogoWhereInput[]
   NOT?: Prisma.LogoWhereInput | Prisma.LogoWhereInput[]
+  owner?: Prisma.StringNullableFilter<"Logo"> | string | null
   logoName?: Prisma.StringFilter<"Logo"> | string
   brand?: Prisma.StringNullableFilter<"Logo"> | string | null
   website?: Prisma.StringNullableFilter<"Logo"> | string | null
@@ -598,6 +608,7 @@ export type LogoWhereUniqueInput = Prisma.AtLeast<{
 
 export type LogoOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
+  owner?: Prisma.SortOrderInput | Prisma.SortOrder
   logoName?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   brand?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -652,6 +663,7 @@ export type LogoScalarWhereWithAggregatesInput = {
   OR?: Prisma.LogoScalarWhereWithAggregatesInput[]
   NOT?: Prisma.LogoScalarWhereWithAggregatesInput | Prisma.LogoScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Logo"> | string
+  owner?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   logoName?: Prisma.StringWithAggregatesFilter<"Logo"> | string
   slug?: Prisma.StringWithAggregatesFilter<"Logo"> | string
   brand?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
@@ -698,6 +710,7 @@ export type LogoScalarWhereWithAggregatesInput = {
 
 export type LogoCreateInput = {
   id?: string
+  owner?: string | null
   logoName: string
   slug: string
   brand?: string | null
@@ -745,6 +758,7 @@ export type LogoCreateInput = {
 
 export type LogoUncheckedCreateInput = {
   id?: string
+  owner?: string | null
   logoName: string
   slug: string
   brand?: string | null
@@ -792,6 +806,7 @@ export type LogoUncheckedCreateInput = {
 
 export type LogoUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoName?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   brand?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -839,6 +854,7 @@ export type LogoUpdateInput = {
 
 export type LogoUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoName?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   brand?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -886,6 +902,7 @@ export type LogoUncheckedUpdateInput = {
 
 export type LogoCreateManyInput = {
   id?: string
+  owner?: string | null
   logoName: string
   slug: string
   brand?: string | null
@@ -932,6 +949,7 @@ export type LogoCreateManyInput = {
 
 export type LogoUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoName?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   brand?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -978,6 +996,7 @@ export type LogoUpdateManyMutationInput = {
 
 export type LogoUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoName?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   brand?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1032,6 +1051,7 @@ export type StringNullableListFilter<$PrismaModel = never> = {
 
 export type LogoCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  owner?: Prisma.SortOrder
   logoName?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   brand?: Prisma.SortOrder
@@ -1082,6 +1102,7 @@ export type LogoAvgOrderByAggregateInput = {
 
 export type LogoMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  owner?: Prisma.SortOrder
   logoName?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   brand?: Prisma.SortOrder
@@ -1122,6 +1143,7 @@ export type LogoMaxOrderByAggregateInput = {
 
 export type LogoMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  owner?: Prisma.SortOrder
   logoName?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   brand?: Prisma.SortOrder
@@ -1243,6 +1265,7 @@ export type LogoUncheckedUpdateManyWithoutFavoritedByNestedInput = {
 
 export type LogoCreateWithoutFavoritedByInput = {
   id?: string
+  owner?: string | null
   logoName: string
   slug: string
   brand?: string | null
@@ -1289,6 +1312,7 @@ export type LogoCreateWithoutFavoritedByInput = {
 
 export type LogoUncheckedCreateWithoutFavoritedByInput = {
   id?: string
+  owner?: string | null
   logoName: string
   slug: string
   brand?: string | null
@@ -1359,6 +1383,7 @@ export type LogoScalarWhereInput = {
   OR?: Prisma.LogoScalarWhereInput[]
   NOT?: Prisma.LogoScalarWhereInput | Prisma.LogoScalarWhereInput[]
   id?: Prisma.StringFilter<"Logo"> | string
+  owner?: Prisma.StringNullableFilter<"Logo"> | string | null
   logoName?: Prisma.StringFilter<"Logo"> | string
   slug?: Prisma.StringFilter<"Logo"> | string
   brand?: Prisma.StringNullableFilter<"Logo"> | string | null
@@ -1405,6 +1430,7 @@ export type LogoScalarWhereInput = {
 
 export type LogoUpdateWithoutFavoritedByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoName?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   brand?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1451,6 +1477,7 @@ export type LogoUpdateWithoutFavoritedByInput = {
 
 export type LogoUncheckedUpdateWithoutFavoritedByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoName?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   brand?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1497,6 +1524,7 @@ export type LogoUncheckedUpdateWithoutFavoritedByInput = {
 
 export type LogoUncheckedUpdateManyWithoutFavoritedByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   logoName?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   brand?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1574,6 +1602,7 @@ export type LogoCountOutputTypeCountFavoritedByArgs<ExtArgs extends runtime.Type
 
 export type LogoSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  owner?: boolean
   logoName?: boolean
   slug?: boolean
   brand?: boolean
@@ -1622,6 +1651,7 @@ export type LogoSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 
 export type LogoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  owner?: boolean
   logoName?: boolean
   slug?: boolean
   brand?: boolean
@@ -1668,6 +1698,7 @@ export type LogoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 
 export type LogoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  owner?: boolean
   logoName?: boolean
   slug?: boolean
   brand?: boolean
@@ -1714,6 +1745,7 @@ export type LogoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 
 export type LogoSelectScalar = {
   id?: boolean
+  owner?: boolean
   logoName?: boolean
   slug?: boolean
   brand?: boolean
@@ -1758,7 +1790,7 @@ export type LogoSelectScalar = {
   updatedAt?: boolean
 }
 
-export type LogoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "logoName" | "slug" | "brand" | "website" | "category" | "industry" | "country" | "license" | "description" | "history" | "tags" | "brandColors" | "webpUrl" | "svgUrl" | "pngUrl" | "aiUrl" | "cdrUrl" | "svgfilesize" | "pngfilesize" | "aifilesize" | "cdrfilesize" | "svgContent" | "metaTitle" | "metaDescription" | "altText" | "canonicalUrl" | "ogImageUrl" | "ogTitle" | "ogDescription" | "ogType" | "twitterTitle" | "twitterDescription" | "twitterImage" | "twitterCardType" | "imageObjectSchema" | "breadcrumbSchema" | "faqSchema" | "publishStatus" | "downloadCount" | "downloadedNumberByPeople" | "createdAt" | "updatedAt", ExtArgs["result"]["logo"]>
+export type LogoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "owner" | "logoName" | "slug" | "brand" | "website" | "category" | "industry" | "country" | "license" | "description" | "history" | "tags" | "brandColors" | "webpUrl" | "svgUrl" | "pngUrl" | "aiUrl" | "cdrUrl" | "svgfilesize" | "pngfilesize" | "aifilesize" | "cdrfilesize" | "svgContent" | "metaTitle" | "metaDescription" | "altText" | "canonicalUrl" | "ogImageUrl" | "ogTitle" | "ogDescription" | "ogType" | "twitterTitle" | "twitterDescription" | "twitterImage" | "twitterCardType" | "imageObjectSchema" | "breadcrumbSchema" | "faqSchema" | "publishStatus" | "downloadCount" | "downloadedNumberByPeople" | "createdAt" | "updatedAt", ExtArgs["result"]["logo"]>
 export type LogoInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   favoritedBy?: boolean | Prisma.Logo$favoritedByArgs<ExtArgs>
   _count?: boolean | Prisma.LogoCountOutputTypeDefaultArgs<ExtArgs>
@@ -1773,6 +1805,7 @@ export type $LogoPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
+    owner: string | null
     logoName: string
     slug: string
     brand: string | null
@@ -2240,6 +2273,7 @@ export interface Prisma__LogoClient<T, Null = never, ExtArgs extends runtime.Typ
  */
 export interface LogoFieldRefs {
   readonly id: Prisma.FieldRef<"Logo", 'String'>
+  readonly owner: Prisma.FieldRef<"Logo", 'String'>
   readonly logoName: Prisma.FieldRef<"Logo", 'String'>
   readonly slug: Prisma.FieldRef<"Logo", 'String'>
   readonly brand: Prisma.FieldRef<"Logo", 'String'>

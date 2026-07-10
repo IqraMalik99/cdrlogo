@@ -982,7 +982,7 @@ Return ONLY VALID JSON:
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const tags = Array.isArray(parsed.tags) && parsed.tags.length
     ? parsed.tags
-    : [logoName,  "PNG", "SVG", "vector", "cdrlogo.com"];
+    : [logoName, "PNG", "SVG", "vector", "cdrlogo.com"];
 
   const ogTitle = (parsed.og_title && String(parsed.og_title).trim()) ||
     `${logoName} — PNG & SVG Vector`;
@@ -1156,6 +1156,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     // ── Step F: save to DB ────────────────────────────────────────────────────
     const logo = await prisma.logo.create({
       data: {
+        owner: "admin",
         logoName: finalLogoName,
         slug: finalSlug,
         brand: aiContent.brand,

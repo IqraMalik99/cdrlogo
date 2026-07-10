@@ -9,6 +9,7 @@ datasource db {
 
 model Logo {
   id          String  @id @default(uuid())
+  owner       String?  @default("admin")
   favoritedBy User[]  @relation("UserFavorites")
   // ── Core identity ──────────────────────────────────────────────────────────
   logoName    String
