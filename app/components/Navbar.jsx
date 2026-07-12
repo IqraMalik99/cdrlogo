@@ -57,6 +57,56 @@ export default function Navbar() {
     loadNav();
   }, []);
 
+  // ── Account menu items shown in the avatar dropdown / mobile menu ──────
+  const accountItems = [
+    {
+      href: "/profile",
+      label: "Profile",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+    },
+    {
+      href: "/my-logos",
+      label: "My Logos",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      ),
+    },
+    {
+      href: "/liked-logos",
+      label: "Liked Logos",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+        </svg>
+      ),
+    },
+    {
+      href: "/upload-logo",
+      label: "Upload Logo",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+      ),
+    },
+  ];
+
   return (
     <>
       <style>{`
@@ -191,7 +241,7 @@ export default function Navbar() {
         /* Dropdown */
         .avatar-dropdown {
           position: absolute; top: calc(100% + 10px); right: 0;
-          min-width: 220px;
+          min-width: 232px;
           background: var(--drop-bg);
           border: 1px solid var(--drop-border);
           border-radius: 14px;
@@ -232,78 +282,30 @@ export default function Navbar() {
 
         .drop-divider { height: 1px; background: var(--drop-divider); }
 
-        /* Generic dropdown item */
+        /* Vertical list of account items (Profile, My Logos, Liked Logos, Upload Logo) */
+        .drop-list { padding: 6px; display: flex; flex-direction: column; gap: 1px; }
         .drop-item {
-          display: flex; align-items: center; gap: 9px;
-          padding: 9px 16px;
+          display: flex; align-items: center; gap: 11px;
+          padding: 9px 10px;
           font-size: 13px; font-weight: 500;
           color: var(--drop-text); text-decoration: none;
+          border-radius: 9px;
           transition: background 0.15s;
           cursor: pointer; border: none; background: transparent;
           width: 100%; font-family: 'Sora', sans-serif; text-align: left;
         }
+        .drop-item svg { color: var(--icon-color); flex-shrink: 0; transition: color 0.15s; }
         .drop-item:hover { background: var(--drop-hover); }
+        .drop-item:hover svg { color: var(--drop-text); }
 
-        /* Profile item — green accent */
-        .drop-item.profile {
-          color: #07A626;
-        }
-        [data-theme="dark"] .drop-item.profile { color: #4ade80; }
-        .drop-item.profile:hover {
-          background: rgba(7,166,38,0.08);
-        }
-
-        /* Sign out item — red */
+        /* Sign out row — red, separated at the bottom */
+        .drop-signout-wrap { padding: 6px; }
         .drop-item.signout {
           color: var(--drop-logout-color);
         }
+        .drop-item.signout svg { color: var(--drop-logout-color); }
         .drop-item.signout:hover {
           background: var(--drop-logout-bg);
-        }
-
-        /* Bottom action row inside dropdown */
-        .drop-actions {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 6px;
-          padding: 8px;
-        }
-        .drop-action-btn {
-          display: flex; align-items: center; justify-content: center; gap: 6px;
-          padding: 8px 10px;
-          border-radius: 8px;
-          border: 1px solid;
-          font-family: 'Sora', sans-serif;
-          font-size: 12px; font-weight: 600;
-          cursor: pointer;
-          transition: background 0.15s, border-color 0.15s;
-          text-decoration: none;
-          white-space: nowrap;
-        }
-        /* Profile action btn — green */
-        .drop-action-btn.profile {
-          background: rgba(7,166,38,0.08);
-          border-color: rgba(7,166,38,0.25);
-          color: #07A626;
-        }
-        [data-theme="dark"] .drop-action-btn.profile {
-          color: #4ade80;
-          background: rgba(7,166,38,0.1);
-          border-color: rgba(7,166,38,0.28);
-        }
-        .drop-action-btn.profile:hover {
-          background: rgba(7,166,38,0.15);
-          border-color: rgba(7,166,38,0.4);
-        }
-        /* Sign out action btn — subtle red */
-        .drop-action-btn.signout {
-          background: var(--drop-logout-bg);
-          border-color: rgba(239,68,68,0.2);
-          color: var(--drop-logout-color);
-        }
-        .drop-action-btn.signout:hover {
-          background: var(--drop-logout-hover);
-          border-color: rgba(239,68,68,0.35);
         }
 
         /* Hamburger */
@@ -355,38 +357,32 @@ export default function Navbar() {
         .mob-name { font-size: 13.5px; font-weight: 600; color: var(--drop-text); }
         .mob-email { font-size: 11.5px; color: var(--drop-sub); margin-top: 1px; }
 
-        /* Mobile action buttons row */
-        .mobile-action-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
-          margin-top: 8px;
+        /* Mobile account list — same vertical list as desktop dropdown */
+        .mobile-account-list {
+          display: flex; flex-direction: column; gap: 2px;
+          margin-top: 6px;
         }
-        .mob-action-btn {
-          display: flex; align-items: center; justify-content: center; gap: 6px;
-          padding: 10px 8px;
-          border-radius: 9px; border: 1px solid;
+        .mobile-account-item {
+          display: flex; align-items: center; gap: 11px;
+          padding: 10px 12px;
+          border-radius: 9px; border: none;
           font-family: 'Sora', sans-serif;
-          font-size: 13px; font-weight: 600;
+          font-size: 14px; font-weight: 500;
+          color: var(--link-color);
           cursor: pointer; text-decoration: none;
-          transition: background 0.2s;
+          background: transparent;
+          width: 100%; text-align: left;
+          transition: background 0.2s, color 0.2s;
         }
-        .mob-action-btn.profile {
-          background: rgba(7,166,38,0.08);
-          border-color: rgba(7,166,38,0.3);
-          color: #07A626;
-        }
-        [data-theme="dark"] .mob-action-btn.profile {
-          color: #4ade80;
-          background: rgba(7,166,38,0.1);
-        }
-        .mob-action-btn.profile:hover { background: rgba(7,166,38,0.16); }
-        .mob-action-btn.signout {
-          background: var(--drop-logout-bg);
-          border-color: rgba(239,68,68,0.22);
+        .mobile-account-item svg { flex-shrink: 0; color: var(--icon-color); }
+        .mobile-account-item:hover { background: var(--link-hover-bg); color: var(--link-hover-color); }
+        .mobile-account-item:hover svg { color: var(--link-hover-color); }
+        .mobile-account-item.signout {
           color: var(--drop-logout-color);
+          margin-top: 6px;
         }
-        .mob-action-btn.signout:hover { background: var(--drop-logout-hover); }
+        .mobile-account-item.signout svg { color: var(--drop-logout-color); }
+        .mobile-account-item.signout:hover { background: var(--drop-logout-hover); }
 
         /* Mobile login */
         .mobile-login {
@@ -505,32 +501,36 @@ export default function Navbar() {
 
                   <div className="drop-divider" />
 
-                  {/* Profile + Sign out as two side-by-side buttons */}
-                  <div className="drop-actions">
-                    <Link
-                      href="/profile"
-                      className="drop-action-btn profile"
-                      onClick={() => setDropOpen(false)}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      Profile
-                    </Link>
+                  {/* Profile / My Logos / Liked Logos / Upload Logo */}
+                  <div className="drop-list">
+                    {accountItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="drop-item"
+                        onClick={() => setDropOpen(false)}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
 
+                  <div className="drop-divider" />
+
+                  {/* Logout */}
+                  <div className="drop-signout-wrap">
                     <button
-                      className="drop-action-btn signout"
+                      className="drop-item signout"
                       onClick={() => { setDropOpen(false); signOut(); }}
                     >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                         <polyline points="16 17 21 12 16 7" />
                         <line x1="21" y1="12" x2="9" y2="12" />
                       </svg>
-                      Sign out
+                      Logout
                     </button>
                   </div>
                 </div>
@@ -599,27 +599,29 @@ export default function Navbar() {
                 </div>
               </div>
 
-              <div className="mobile-action-row">
-                <Link
-                  href="/profile"
-                  className="mob-action-btn profile"
-                  onClick={() => setMenuOpen(false)}
+              <div className="mobile-account-list">
+                {accountItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="mobile-account-item"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </Link>
+                ))}
+                <button
+                  className="mobile-account-item signout"
+                  onClick={() => { setMenuOpen(false); signOut(); }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                  Profile
-                </Link>
-                <button className="mob-action-btn signout" onClick={() => signOut()}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                     <polyline points="16 17 21 12 16 7" />
                     <line x1="21" y1="12" x2="9" y2="12" />
                   </svg>
-                  Sign out
+                  Logout
                 </button>
               </div>
             </>
