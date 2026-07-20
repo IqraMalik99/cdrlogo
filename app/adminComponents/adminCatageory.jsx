@@ -7,6 +7,9 @@ const TABS = ["Main Categories", "Brand Categories"
 
 ];
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/svg+xml";
+
 export default function AdminCategories({ dark = true }) {
   // ── Theme tokens ───────────────────────────────────────────────────────
   const bg         = dark ? "#0f1117"                    : "#FFFFFF";
@@ -20,16 +23,17 @@ export default function AdminCategories({ dark = true }) {
   const borderHov  = dark ? "rgba(255,255,255,0.16)"     : "rgba(0,0,0,0.18)";
 
   // ── State ──────────────────────────────────────────────────────────────
-  const [activeTab,     setActiveTab]     = useState("Main Categories");
-  const [grouped,       setGrouped]       = useState({});   // raw { "T":[...], "S":[...] }
-  const [loading,       setLoading]       = useState(false);
-  const [modalOpen,     setModalOpen]     = useState(false);
-  const [editItem,      setEditItem]      = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [form,          setForm]          = useState({ name: "", slug: "", type: "brand" });
-  const [formError,     setFormError]     = useState("");
-  const [saving,        setSaving]        = useState(false);
-  const [deleting,      setDeleting]      = useState(false);
+  const [activeTab,      setActiveTab]      = useState("Main Categories");
+  const [grouped,        setGrouped]        = useState({});   // raw { "T":[...], "S":[...] }
+  const [loading,        setLoading]        = useState(false);
+  const [modalOpen,      setModalOpen]      = useState(false);
+  const [editItem,       setEditItem]       = useState(null);
+  const [deleteConfirm,  setDeleteConfirm]  = useState(null);
+  const [form,           setForm]           = useState({ name: "", slug: "", type: "brand", url: [] });
+  const [formError,      setFormError]      = useState("");
+  const [saving,         setSaving]         = useState(false);
+  const [deleting,       setDeleting]       = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
   useEffect(() => { fetchCategories(); }, []);
@@ -38,13 +42,11 @@ export default function AdminCategories({ dark = true }) {
     setLoading(true);
     try {
       const res  = await fetch("/api/website/catageory-letter", {
-        method:  "POST",
+        method:  "PUT",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ letter: "all" }),
+        body:    JSON.stringify({ letter: "all", showAll: true }), // show ALL categories, logo or no logo
       });
       const data = await res.json();
-      // API returns grouped object { "T": [{name,slug,type}], ... }
-      // store it as-is; we flatten below
       setGrouped(data && typeof data === "object" && !Array.isArray(data) ? data : {});
     } catch (err) {
       console.error("Failed to fetch categories", err);
@@ -55,7 +57,6 @@ export default function AdminCategories({ dark = true }) {
   }
 
   // ── Flatten grouped → flat array ───────────────────────────────────────
-  // Object.values({T:[...], S:[...]}) → [[...],[...]] → flat [...]
   const allCats = Object.values(grouped).flat();
 
   const filtered = allCats.filter(c => {
@@ -65,25 +66,23 @@ export default function AdminCategories({ dark = true }) {
     return true;
   });
 
-  const brandCount    = allCats.filter(c => c.type === "brand").length;
-  // const templateCount = allCats.filter(c => c.type === "template").length;
+  const brandCount = allCats.filter(c => c.type === "brand").length;
 
   const tabCounts = {
-    "Main Categories":     allCats.length,
-    "Brand Categories":    brandCount,
-    // "Template Categories": templateCount,
+    "Main Categories":  allCats.length,
+    "Brand Categories": brandCount,
   };
 
   // ── Modal helpers ──────────────────────────────────────────────────────
   function openNew() {
     setEditItem(null);
-    setForm({ name: "", slug: "", type: "brand" });
+    setForm({ name: "", slug: "", type: "brand", url: [] });
     setFormError("");
     setModalOpen(true);
   }
   function openEdit(cat) {
     setEditItem(cat);
-    setForm({ name: cat.name, slug: cat.slug, type: cat.type });
+    setForm({ name: cat.name, slug: cat.slug, type: cat.type, url: Array.isArray(cat.url) ? cat.url : [] });
     setFormError("");
     setModalOpen(true);
   }
@@ -109,8 +108,8 @@ export default function AdminCategories({ dark = true }) {
     setFormError("");
     try {
       const isEdit = !!editItem;
-      const url    = isEdit ? `/api/website/catageory-letter/${editItem.slug}` : "/api/website/catageory-letter";
-      const method = isEdit ? "PUT" : "PATCH";
+      const url    = isEdit ? `/api/website/catageory-letter/${editItem.slug}` : "/api/website/category";
+      const method = isEdit ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -130,7 +129,7 @@ export default function AdminCategories({ dark = true }) {
     }
   }
 
-  // ── Delete ─────────────────────────────────────────────────────────────
+  // ── Delete category ────────────────────────────────────────────────────
   async function handleDelete(slug) {
     setDeleting(true);
     try {
@@ -141,6 +140,81 @@ export default function AdminCategories({ dark = true }) {
       console.error("Delete failed", err);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  // ── Image upload (direct-to-R2 via presigned URL) ─────────────────────
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !editItem) return;
+
+    if (!ALLOWED_IMAGE_TYPES.split(",").includes(file.type)) {
+      setFormError("Unsupported file type.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      setFormError("File too large (max 5MB).");
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingImage(true);
+    setFormError("");
+    try {
+      // 1. ask the server for a presigned upload URL
+      const presignRes = await fetch(`/api/website/category-image/${editItem.slug}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size }),
+      });
+      const presignData = await presignRes.json();
+      if (!presignRes.ok) { setFormError(presignData.message || "Could not start upload."); return; }
+
+      // 2. upload the file straight to R2
+      const putRes = await fetch(presignData.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!putRes.ok) { setFormError("Upload to storage failed."); return; }
+
+      // 3. confirm with the server so it saves the URL onto the category
+      const confirmRes = await fetch(`/api/website/category-image/${editItem.slug}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: presignData.publicUrl }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) { setFormError(confirmData.message || "Could not save image."); return; }
+
+      setForm(f => ({ ...f, url: [...(f.url || []), presignData.publicUrl] }));
+    } catch {
+      setFormError("Network error while uploading image.");
+    } finally {
+      setUploadingImage(false);
+      e.target.value = "";
+    }
+  }
+
+  // ── Image delete ────────────────────────────────────────────────────────
+  async function handleImageDelete(imgUrl) {
+    if (!editItem) return;
+    setUploadingImage(true);
+    setFormError("");
+    try {
+      const res = await fetch(`/api/website/category-image/${editItem.slug}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: imgUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFormError(data.message || "Delete failed."); return; }
+      setForm(f => ({ ...f, url: (f.url || []).filter(u => u !== imgUrl) }));
+    } catch {
+      setFormError("Network error while deleting image.");
+    } finally {
+      setUploadingImage(false);
     }
   }
 
@@ -172,6 +246,8 @@ export default function AdminCategories({ dark = true }) {
         .ac-save:hover:not(:disabled)       { background:#16a34a !important; transform:translateY(-1px); }
         .ac-del-ok:hover:not(:disabled)     { background:#dc2626 !important; }
         .ac-cancel:hover     { border-color:${borderHov} !important; color:${text} !important; }
+        .ac-img-del:hover:not(:disabled)    { background:#dc2626 !important; }
+        .ac-img-upload:hover { border-color:${green} !important; color:${green} !important; }
         @keyframes shimmer   { 0%,100%{opacity:1} 50%{opacity:0.35} }
         @keyframes spin      { to{transform:rotate(360deg)} }
         @media(max-width:600px){ .ac-grid{grid-template-columns:1fr !important;} .ac-tabwrap{overflow-x:auto;} }
@@ -186,8 +262,7 @@ export default function AdminCategories({ dark = true }) {
               Categories
             </h1>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: muted }}>
-              {allCats.length} total · {brandCount} brand · 
-              {/* {templateCount} template */}
+              {allCats.length} total · {brandCount} brand ·
             </p>
           </div>
           <button className="ac-new" onClick={openNew} style={{
@@ -250,9 +325,20 @@ export default function AdminCategories({ dark = true }) {
                 transition: "background .2s, border-color .2s, box-shadow .2s",
               }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: text, fontFamily: "'Sora',sans-serif" }}>
-                    {cat.name}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    {Array.isArray(cat.url) && cat.url[0] && (
+                      <img src={cat.url[0]} alt="" style={{
+                        width: 30, height: 30, borderRadius: 7, objectFit: "cover",
+                        border: `1px solid ${border}`, flexShrink: 0,
+                      }} />
+                    )}
+                    <span style={{
+                      fontSize: 14, fontWeight: 700, color: text, fontFamily: "'Sora',sans-serif",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {cat.name}
+                    </span>
+                  </div>
                   <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
                     <button className="ac-edit" title="Edit" onClick={() => openEdit(cat)} style={{
                       width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center",
@@ -297,6 +383,11 @@ export default function AdminCategories({ dark = true }) {
                   }}>
                     /{cat.slug}
                   </span>
+                  {Array.isArray(cat.url) && cat.url.length > 0 && (
+                    <span style={{ fontSize: 11, color: muted }}>
+                      {cat.url.length} image{cat.url.length > 1 ? "s" : ""}
+                    </span>
+                  )}
                 </div>
               </div>
             ))
@@ -314,6 +405,7 @@ export default function AdminCategories({ dark = true }) {
           <div style={{
             background: card, border: `1px solid ${border}`, borderRadius: 16, padding: 28,
             width: "100%", maxWidth: 420, boxShadow: "0 24px 64px rgba(0,0,0,.3)",
+            maxHeight: "90vh", overflowY: "auto",
           }}>
             <h2 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 800, color: text, fontFamily: "'Sora',sans-serif", letterSpacing: "-0.3px" }}>
               {editItem ? "Edit Category" : "New Category"}
@@ -354,6 +446,82 @@ export default function AdminCategories({ dark = true }) {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Images */}
+            <div style={{ marginBottom: 14 }}>
+              <span style={lbl}>Images</span>
+
+              {editItem ? (
+                <>
+                  {(form.url || []).length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                      {form.url.map(u => (
+                        <div key={u} style={{ position: "relative", width: 64, height: 64 }}>
+                          <img src={u} alt="" style={{
+                            width: "100%", height: "100%", objectFit: "cover",
+                            borderRadius: 8, border: `1px solid ${border}`,
+                          }} />
+                          <button
+                            type="button"
+                            className="ac-img-del"
+                            onClick={() => handleImageDelete(u)}
+                            disabled={uploadingImage}
+                            title="Remove image"
+                            style={{
+                              position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
+                              background: "#ef4444", color: "#fff", border: `2px solid ${card}`,
+                              cursor: uploadingImage ? "not-allowed" : "pointer",
+                              fontSize: 11, lineHeight: "16px", display: "flex",
+                              alignItems: "center", justifyContent: "center", transition: "background .15s",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <label className="ac-img-upload" style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px",
+                    border: `1.5px dashed ${border}`, borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    color: muted, cursor: uploadingImage ? "not-allowed" : "pointer", transition: "all .15s",
+                  }}>
+                    {uploadingImage ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}>
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                        Uploading…
+                      </>
+                    ) : (
+                      "+ Upload image"
+                    )}
+                    <input
+                      type="file"
+                      accept={ALLOWED_IMAGE_TYPES}
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                      style={{ display: "none" }}
+                    />
+                  </label>
+
+                  {form.slug !== editItem.slug && (form.url || []).length > 0 && (
+                    <div style={{
+                      fontSize: 11.5, color: "#eab308", marginTop: 10,
+                      background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.25)",
+                      borderRadius: 8, padding: "8px 10px", lineHeight: 1.5,
+                    }}>
+                      Changing the slug will move {form.url.length} image{form.url.length > 1 ? "s" : ""} to a new folder path.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ fontSize: 11.5, color: muted, margin: 0 }}>
+                  Save the category first, then edit it again to add images.
+                </p>
+              )}
             </div>
 
             {formError && (
@@ -422,6 +590,9 @@ export default function AdminCategories({ dark = true }) {
               Are you sure you want to delete{" "}
               <span style={{ color: text, fontWeight: 600 }}>{deleteConfirm.name}</span>?
               {" "}This action cannot be undone.
+              {Array.isArray(deleteConfirm.url) && deleteConfirm.url.length > 0 && (
+                <> Its {deleteConfirm.url.length} image{deleteConfirm.url.length > 1 ? "s" : ""} will also be permanently removed.</>
+              )}
             </p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button className="ac-cancel" onClick={() => setDeleteConfirm(null)} style={{

@@ -421,7 +421,7 @@ export default function TemplatesPage() {
           <div className="h-10" />
           {/* Hero */}
           <div className="bc-header">
-            <h2 className="bc-title">Template Categories</h2>
+            <h2 className="bc-title">Logo Templates</h2>
             <p className="bc-subtitle">Original logo concepts optimized for visual study</p>
           </div>
           {/* Grid */}

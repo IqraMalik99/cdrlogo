@@ -1,12 +1,18 @@
 import { prisma } from "../../../lib/prisma";
+import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { page = 1, limit = 10, search = "" } = body;
+    const { page = 1, search = "" } = body;
 
+    const website = await prisma.website.findFirst({
+      select: {limit: true }
+    });
+    console.log("📦 Request Body:", website);
+
+    const limitNum = Math.max(1, Number(website?.limit) || 12);
     const pageNum = Math.max(1, Number(page) || 1);
-    const limitNum = Math.max(1, Number(limit) || 12);
     const trimmedSearch = String(search || "").trim();
 
     // DB-level where clause — publishStatus, category, aur (agar search hai)
@@ -16,11 +22,11 @@ export async function POST(req) {
       category: { has: "template" },
       ...(trimmedSearch
         ? {
-            OR: [
-              { logoName: { contains: trimmedSearch, mode: "insensitive" } },
-              { description: { contains: trimmedSearch, mode: "insensitive" } },
-            ],
-          }
+          OR: [
+            { logoName: { contains: trimmedSearch, mode: "insensitive" } },
+            { description: { contains: trimmedSearch, mode: "insensitive" } },
+          ],
+        }
         : {}),
     };
 

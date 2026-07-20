@@ -9,6 +9,7 @@ import TrendingLogos from './components/HomeTrendingLogo'
 import TopBrands from './components/HomeTopBrand'
 import Footer from './components/Footer'
 import PantoneColorPicker from './components/Pantone'
+import Recent from "./components/Recent"
 
 const websiteSchema = {
   "@context": "https://schema.org",
@@ -162,6 +163,7 @@ export default function page() {
       <Home />
       <PantoneColorPicker />
       <LogosPage />
+      <Recent/>
       <BrandCategories />
       <HomeCatageory />
       <TrendingLogos />

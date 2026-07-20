@@ -565,9 +565,7 @@ function LogoCard({ logo, index }) {
         <div className="card-name">{logo.logoName}</div>
         <div className="card-cat">{logo.category[1] ? logo.category[1] : logo.category[0]}</div>
         <div className="card-footer">
-          <div className="color-dots">
-            {colors.map((c, i) => <div key={i} className="color-dot" style={{ backgroundColor: c }} />)}
-          </div>
+          
           <div className="fmt-chips">
             {FORMAT_CHIPS.map((f) => <span key={f.label} className={`fmt ${f.cls}`}>{f.label}</span>)}
           </div>

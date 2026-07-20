@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 
-const PAGE_SIZE = 12;
-
 export async function GET(req, { params }) {
   try {
     const { slug } = await params;
@@ -14,8 +12,12 @@ export async function GET(req, { params }) {
     }
 
     // resolve the display name for this slug from Website.categories,
-    // since Logo.category may store slug or name — match against both
-    const website = await prisma.website.findFirst({ select: { categories: true } });
+    // since Logo.category may store slug or name — match against both.
+    // Also pulls the dynamic page size (Website.limit) in the same call.
+    const website = await prisma.website.findFirst({
+      select: { categories: true, limit: true },
+    });
+    const PAGE_SIZE = Math.max(1, Number(website?.limit) || 12);
     const catList = Array.isArray(website?.categories) ? website.categories : [];
     const catDef = catList.find(c => c.slug?.toLowerCase() === slug.toLowerCase());
 

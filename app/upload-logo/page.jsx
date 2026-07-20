@@ -156,6 +156,15 @@ export default function UploadLogoPage() {
           <div className="pg-upload-title">Upload a logo</div>
 
           <div className="pg-type-toggle">
+
+            <button
+              type="button"
+              className={`pg-type-btn${sourceType === "ai" ? " active" : ""}`}
+              onClick={() => handleTypeChange("ai")}
+              disabled={uploading}
+            >
+              AI or PDF file
+            </button>
             <button
               type="button"
               className={`pg-type-btn${sourceType === "svg" ? " active" : ""}`}
@@ -163,14 +172,6 @@ export default function UploadLogoPage() {
               disabled={uploading}
             >
               SVG file
-            </button>
-            <button
-              type="button"
-              className={`pg-type-btn${sourceType === "ai" ? " active" : ""}`}
-              onClick={() => handleTypeChange("ai")}
-              disabled={uploading}
-            >
-              AI file
             </button>
           </div>
 

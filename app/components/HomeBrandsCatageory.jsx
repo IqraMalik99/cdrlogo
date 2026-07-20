@@ -4,15 +4,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "../context/ThemeContext";
 
-const PER_PAGE = 10; // change to 10 if you prefer
+const PER_PAGE = 10;
 
 function BrandCard({ cat, index, dark }) {
-  const router  = useRouter();
+  const router = useRouter();
   const [hov, setHov] = useState(false);
 
   const hoverStyle = dark
     ? { background: "rgba(7,166,38,0.1)", borderColor: "rgba(7,166,38,0.35)" }
     : { background: "rgba(7,166,38,0.06)", borderColor: "rgba(7,166,38,0.28)", boxShadow: "0 8px 28px rgba(7,166,38,0.1)" };
+
+  const hasImages = Array.isArray(cat.images) && cat.images.length > 0;
 
   return (
     <div
@@ -20,17 +22,22 @@ function BrandCard({ cat, index, dark }) {
       style={{ animationDelay: `${index * 50}ms`, ...(hov ? { ...hoverStyle, transform: "translateY(-3px)" } : {}) }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-     
-      onClick={
-        () => {
-           let query=cat.category.toLowerCase();
-          router.push(`/category/${query}`)
-        }
-    }
+      onClick={() => {
+        const query = cat.category.toLowerCase();
+        router.push(`/category/${query}`);
+      }}
     >
-      <div className={`bc-icon${hov ? " bc-icon--hov" : ""}`}>
-        <span className="bc-letter">{cat.category.charAt(0).toUpperCase()}</span>
-      </div>
+      {hasImages ? (
+        <div className="bc-imgs">
+          {cat.images.map((src, i) => (
+            <img key={i} src={src} alt="" className="bc-img" loading="lazy" />
+          ))}
+        </div>
+      ) : (
+        <div className={`bc-icon${hov ? " bc-icon--hov" : ""}`}>
+          <span className="bc-letter">{cat.category.charAt(0).toUpperCase()}</span>
+        </div>
+      )}
       <div className="bc-info">
         <span className={`bc-name${hov ? " bc-name--hov" : ""}`}>
           {cat.category.charAt(0).toUpperCase() + cat.category.slice(1).replace(/-/g, " ")}
@@ -64,11 +71,11 @@ export default function BrandCategories() {
     fetch("/api/catageory/brand")
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => {
-        console.log("Fetched categories:", data.categories);
-        const formatted = (data.categories ?? []).map(obj => {
-          const [category, count] = Object.entries(obj)[0];
-          return { category, count };
-        });
+        const formatted = (data.categories ?? []).map(c => ({
+          category: c.name,
+          count:    c.count,
+          images:   Array.isArray(c.images) ? c.images : [],
+        }));
 
         const sorted = formatted.sort((a, b) => b.count - a.count);
         setCats(sorted);
@@ -84,20 +91,14 @@ export default function BrandCategories() {
   const goToPage = (p) => {
     const clamped = Math.min(Math.max(1, p), totalPages);
     setPage(clamped);
-    // scroll the section into view smoothly when paging
     document.getElementById("bc-section-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // build a compact page list e.g. 1 2 3 ... 8
   const getPageNumbers = () => {
     const pages = [];
     const windowSize = 1;
     for (let i = 1; i <= totalPages; i++) {
-      if (
-        i === 1 ||
-        i === totalPages ||
-        (i >= page - windowSize && i <= page + windowSize)
-      ) {
+      if (i === 1 || i === totalPages || (i >= page - windowSize && i <= page + windowSize)) {
         pages.push(i);
       } else if (pages[pages.length - 1] !== "...") {
         pages.push("...");
@@ -160,6 +161,14 @@ export default function BrandCategories() {
 
         .bc-letter{font-size:20px;font-weight:800;line-height:1}
 
+        /* ── category image thumbnails ── */
+        .bc-imgs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:20px;max-width:100%}
+        .bc-img{
+          width:22px;height:22px;border-radius:6px;object-fit:cover;
+          border:1px solid var(--bc-border);background:var(--bc-surface);
+          flex-shrink:0;
+        }
+
         .bc-info{display:flex;flex-direction:column;gap:4px}
         .bc-name{font-size:14px;font-weight:700;color:var(--bc-name);letter-spacing:-.2px;line-height:1.3;transition:color .22s}
         .bc-name--hov{color:#4ade80}
@@ -175,7 +184,6 @@ export default function BrandCategories() {
 
         .bc-error{text-align:center;padding:40px;color:#f87171;font-size:13px}
 
-        /* pagination */
         .bc-pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:32px;font-family:'DM Sans',sans-serif}
         .bc-page-btn{
           min-width:34px;height:34px;padding:0 8px;border-radius:8px;
@@ -191,7 +199,7 @@ export default function BrandCategories() {
         .bc-page-ellipsis{color:var(--bc-page-text);font-size:13px;padding:0 4px;user-select:none}
 
         @media(max-width:1100px){.bc-grid{grid-template-columns:repeat(4,1fr)}}
-        @media(max-width:820px){.bc-grid{grid-template-columns:repeat(3,1fr);gap:10px}.bc-card{padding:16px 14px}.bc-icon{width:40px;height:40px;margin-bottom:20px}.bc-name{font-size:13px}}
+        @media(max-width:820px){.bc-grid{grid-template-columns:repeat(3,1fr);gap:10px}.bc-card{padding:16px 14px}.bc-icon{width:40px;height:40px;margin-bottom:20px}.bc-imgs{margin-bottom:20px}.bc-name{font-size:13px}}
         @media(max-width:520px){.bc-grid{grid-template-columns:repeat(2,1fr);gap:8px}.bc-container{padding:0 14px}.bc-title{font-size:20px}}
       `}</style>
 
@@ -214,37 +222,17 @@ export default function BrandCategories() {
 
               {!loading && totalPages > 1 && (
                 <div className="bc-pagination">
-                  <button
-                    className="bc-page-btn"
-                    onClick={() => goToPage(page - 1)}
-                    disabled={page === 1}
-                    aria-label="Previous page"
-                  >
-                    ‹
-                  </button>
-
+                  <button className="bc-page-btn" onClick={() => goToPage(page - 1)} disabled={page === 1} aria-label="Previous page">‹</button>
                   {getPageNumbers().map((p, i) =>
                     p === "..." ? (
                       <span key={`ellipsis-${i}`} className="bc-page-ellipsis">…</span>
                     ) : (
-                      <button
-                        key={p}
-                        className={`bc-page-btn${p === page ? " bc-page-btn--active" : ""}`}
-                        onClick={() => goToPage(p)}
-                      >
+                      <button key={p} className={`bc-page-btn${p === page ? " bc-page-btn--active" : ""}`} onClick={() => goToPage(p)}>
                         {p}
                       </button>
                     )
                   )}
-
-                  <button
-                    className="bc-page-btn"
-                    onClick={() => goToPage(page + 1)}
-                    disabled={page === totalPages}
-                    aria-label="Next page"
-                  >
-                    ›
-                  </button>
+                  <button className="bc-page-btn" onClick={() => goToPage(page + 1)} disabled={page === totalPages} aria-label="Next page">›</button>
                 </div>
               )}
             </>

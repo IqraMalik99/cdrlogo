@@ -132,15 +132,21 @@ export default function SiteSettings({ dark = true }) {
   const [saved,    setSaved]    = useState(false);
   const [websiteId, setWebsiteId] = useState(null);
 
+  // Logos-per-page limit now lives entirely behind /api/website/limit,
+  // separate from the rest of the site-setting form.
+  const [limit,        setLimit]        = useState(20);
+  const [limitLoading,  setLimitLoading]  = useState(true);
+  const [limitSaving,   setLimitSaving]   = useState(false);
+  const [limitSaved,    setLimitSaved]    = useState(false);
+
   const [form, setForm] = useState({
     metaTitle:        "",
     metaDescription:  "",
     showmode:         true,   // true = dark mode ON by default
-    limit:            20,
     MaintanceMessage: "",
   });
 
-  // ── Fetch on mount ─────────────────────────────────────────────────────────
+  // ── Fetch site settings on mount ────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/admin/site-setting")
       .then((r) => r.json())
@@ -151,7 +157,6 @@ export default function SiteSettings({ dark = true }) {
             metaTitle:        data.metaTitle        ?? "",
             metaDescription:  data.metaDescription  ?? "",
             showmode:         data.showmode         ?? true,
-            limit:            data.limit            ?? 20,
             MaintanceMessage: data.MaintanceMessage ?? "",
           });
         }
@@ -160,9 +165,20 @@ export default function SiteSettings({ dark = true }) {
       .finally(() => setLoading(false));
   }, []);
 
+  // ── Fetch limit separately from /api/website/limit ─────────────────────────
+  useEffect(() => {
+    fetch("/api/website/limit")
+      .then((r) => r.json())
+      .then((data) => {
+        if (typeof data?.limit === "number") setLimit(data.limit);
+      })
+      .catch(console.error)
+      .finally(() => setLimitLoading(false));
+  }, []);
+
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  // ── Save ───────────────────────────────────────────────────────────────────
+  // ── Save site settings (everything except limit) ───────────────────────────
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
@@ -180,6 +196,27 @@ export default function SiteSettings({ dark = true }) {
       console.error(e);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Save limit via /api/website/limit ───────────────────────────────────────
+  const handleLimitSave = async (nextLimit) => {
+    setLimitSaving(true);
+    setLimitSaved(false);
+    try {
+      const res = await fetch("/api/website/limit", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ limit: nextLimit }),
+      });
+      const data = await res.json();
+      if (typeof data?.limit === "number") setLimit(data.limit);
+      setLimitSaved(true);
+      setTimeout(() => setLimitSaved(false), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLimitSaving(false);
     }
   };
 
@@ -330,28 +367,30 @@ export default function SiteSettings({ dark = true }) {
           </div>
         </Section>
 
-        {/* ── Logos Per Page ────────────────────────────────────────────── */}
+        {/* ── Logos Per Page — now backed by /api/website/limit ──────────── */}
         <Section
           icon={Layers}
           title="Logos Per Page"
           subtitle="Number of logos shown per page in the public listing"
           dark={dark}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             {[12, 20, 24, 36, 48].map((n) => (
               <button
                 key={n}
-                onClick={() => set("limit", n)}
+                disabled={limitLoading || limitSaving}
+                onClick={() => { setLimit(n); handleLimitSave(n); }}
                 style={{
                   width: 52, height: 40, borderRadius: 10,
-                  border: `1px solid ${form.limit === n ? "#22c55e" : border}`,
-                  background: form.limit === n
+                  border: `1px solid ${limit === n ? "#22c55e" : border}`,
+                  background: limit === n
                     ? "rgba(34,197,94,0.12)"
                     : dark ? "#0f1117" : "#FFFFFF",
-                  color: form.limit === n ? "#22c55e" : muted,
-                  fontWeight: form.limit === n ? 700 : 500,
+                  color: limit === n ? "#22c55e" : muted,
+                  fontWeight: limit === n ? 700 : 500,
                   fontSize: 14,
-                  cursor: "pointer",
+                  cursor: (limitLoading || limitSaving) ? "not-allowed" : "pointer",
+                  opacity: (limitLoading || limitSaving) ? 0.6 : 1,
                   fontFamily: "'DM Sans', sans-serif",
                   transition: "all 0.18s",
                 }}
@@ -366,8 +405,14 @@ export default function SiteSettings({ dark = true }) {
                 type="number"
                 min={1}
                 max={200}
-                value={form.limit}
-                onChange={(e) => set("limit", Number(e.target.value))}
+                value={limit}
+                disabled={limitLoading || limitSaving}
+                onChange={(e) => setLimit(Number(e.target.value))}
+                onBlur={(e) => {
+                  const v = Math.max(1, Number(e.target.value) || 1);
+                  setLimit(v);
+                  handleLimitSave(v);
+                }}
                 style={{
                   ...field(dark),
                   width: 72,
@@ -377,6 +422,25 @@ export default function SiteSettings({ dark = true }) {
               />
               <span style={{ fontSize: 12, color: muted }}>custom</span>
             </div>
+
+            {(limitSaving || limitSaved) && (
+              <span style={{
+                display: "flex", alignItems: "center", gap: 5,
+                fontSize: 12, color: limitSaved ? "#22c55e" : muted,
+              }}>
+                {limitSaving ? (
+                  <>
+                    <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={13} />
+                    Saved
+                  </>
+                )}
+              </span>
+            )}
           </div>
         </Section>
 

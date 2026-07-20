@@ -279,7 +279,7 @@ export default function LogosPage() {
           display: flex; align-items: center; justify-content: center;
           overflow: hidden; transition: background 0.3s;
         }
-        .card-img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+        .card-img { width: 100%; height: 100%; object-fit: contain; padding: 0; transform: scale(1.3); }
         .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; font-family: 'Sora', sans-serif; }
 
         .card-body { padding: 10px 12px 12px; }

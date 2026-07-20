@@ -72,19 +72,15 @@ export async function POST(req) {
     const body = await req.json();
     console.log("📦 Request Body:", body);
 
-    const {
-      page = 1,
-      limit = 12,
-      search = "",
-    } = body;
+    const { page = 1, search = "" } = body;
 
-    // 1. Fetch ALL published logos that are NOT in the "template" category —
-    //    string or array form. DB-level filter excludes the plain-string
-    //    "template" case and the JSON-array-string case up front (so we're
-    //    not pulling logos we already know to exclude); the JS filter
-    //    afterward re-confirms exactness for the array-stored-as-string edge
-    //    case (e.g. '["template","other"]' should also be excluded even
-    //    though it's not a literal equals/contains match on just "template").
+    // Limit ab frontend se nahi, DB (Website.LogoLimit) se aayega
+    const website = await prisma.website.findFirst({
+      select: { limit: true },
+    });
+    const limitNum = Math.max(1, Number(website?.limit) || 8);
+    console.log(`📦 Limit: ${limitNum}`);
+
     const candidates = await prisma.logo.findMany({
       where: {
         publishStatus: "Published",
@@ -119,17 +115,18 @@ export async function POST(req) {
     const total = finalResults.length;
 
     // 3. Paginate the (possibly search-filtered) non-template results.
-    const skip = (Number(page) - 1) * Number(limit);
-    const logos = finalResults.slice(skip, skip + Number(limit));
+    const pageNum = Math.max(1, Number(page) || 1);
+    const skip = (pageNum - 1) * limitNum;
+    const logos = finalResults.slice(skip, skip + limitNum);
 
-    console.log(`🖼️ Page ${page}: ${logos.length} logos / ${total} total (search: "${trimmedSearch || "(none)"}")`);
+    console.log(`🖼️ Page ${pageNum}: ${logos.length} logos / ${total} total (search: "${trimmedSearch || "(none)"}")`);
 
     return Response.json({
       logos,
       total,
-      page: Number(page),
-      limit: Number(limit),
-      totalPages: Math.ceil(total / Number(limit)),
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum) || 1,
     });
   } catch (err) {
     console.error("💥 ERROR:", err);

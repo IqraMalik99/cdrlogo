@@ -907,13 +907,7 @@ export default function LogoDetail() {
                                                     <span className="rf-tag rf-svg">SVG</span>
                                                     <span className="rf-tag rf-png">PNG</span>
                                                 </div>
-                                                {relColors.length > 0 && (
-                                                    <div className="related-colors">
-                                                        {relColors.slice(0, 4).map((c, i) => (
-                                                            <span key={i} className="related-color-dot" style={{ background: c.hex || c }} />
-                                                        ))}
-                                                    </div>
-                                                )}
+                                              
                                             </div>
                                         </Link>
                                     );

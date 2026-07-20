@@ -98,7 +98,7 @@ model Website {
   Footer           Json?
   metaTitle        String?
   metaDescription  String?
-  limit            Int      @default(20)
+  limit            Int      @default(12)
   MaintanceMessage String?
   tags             Json     @default("[]")
   showmode         Boolean  @default(true)

@@ -13,6 +13,12 @@ export default function Navbar() {
   const [loadingNav, setLoadingNav] = useState(true);
   const [showThemeToggle, setShowThemeToggle] = useState(false);
 
+  // Upload Logo modal
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
   const dropRef = useRef(null);
   const { data: session, status } = useSession();
 
@@ -58,6 +64,7 @@ export default function Navbar() {
   }, []);
 
   // ── Account menu items shown in the avatar dropdown / mobile menu ──────
+  // (Upload Logo removed from here — it's its own standalone button)
   const accountItems = [
     {
       href: "/profile",
@@ -67,6 +74,18 @@ export default function Navbar() {
           stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+    },
+    {
+      href: "/upload-logo",
+      label: "Upload Logos",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
       ),
     },
@@ -93,19 +112,60 @@ export default function Navbar() {
         </svg>
       ),
     },
-    {
-      href: "/upload-logo",
-      label: "Upload Logo",
-      icon: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="17 8 12 3 7 8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
-        </svg>
-      ),
-    },
   ];
+
+  function openUpload() {
+    setUploadError("");
+    setUploadFile(null);
+    setUploadOpen(true);
+  }
+
+  function closeUpload() {
+    if (uploading) return; // don't let them close mid-request
+    setUploadOpen(false);
+    setUploadFile(null);
+    setUploadError("");
+  }
+
+  async function submitUpload() {
+    if (!uploadFile) {
+      setUploadError("Please choose a file first.");
+      return;
+    }
+    setUploading(true);
+    setUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+
+      const res = await fetch("/api/logos/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
+
+      setUploadOpen(false);
+      setUploadFile(null);
+    } catch (err) {
+      console.error(err);
+      setUploadError("Something went wrong uploading your logo. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // Standalone "Upload Logo" button icon — matches screenshot (green pill next to avatar)
+  const uploadLogoIcon = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
 
   return (
     <>
@@ -188,7 +248,7 @@ export default function Navbar() {
         .nav-links a:hover { color: var(--link-hover-color); background: var(--link-hover-bg); }
 
         /* Actions */
-        .navbar-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .navbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
         /* Theme toggle */
         .theme-toggle {
@@ -219,6 +279,24 @@ export default function Navbar() {
         .login-btn:hover { background: rgba(7,166,38,0.18); border-color: rgba(7,166,38,0.55); }
         [data-theme="dark"] .login-btn { color: #4ade80; }
         [data-theme="dark"] .login-btn:hover { color: #86efac; }
+
+        /* Upload Logo button — standalone, solid green, only visible when logged in */
+        .upload-logo-btn {
+          display: flex; align-items: center; gap: 6px;
+          padding: 8px 16px;
+          background: linear-gradient(135deg, #07A626 0%, #05891e 100%);
+          border: none;
+          border-radius: 9px; color: #fff;
+          font-size: 13.5px; font-weight: 600;
+          cursor: pointer; text-decoration: none;
+          transition: filter 0.2s, transform 0.2s;
+          white-space: nowrap; font-family: 'Sora', sans-serif;
+          box-shadow: 0 2px 10px rgba(7,166,38,0.25);
+        }
+        .upload-logo-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+        /* Wraps Upload Logo + Avatar so both share one outside-click boundary */
+        .account-actions { display: flex; align-items: center; gap: 8px; position: relative; }
 
         /* Avatar button */
         .avatar-wrap { position: relative; }
@@ -282,7 +360,7 @@ export default function Navbar() {
 
         .drop-divider { height: 1px; background: var(--drop-divider); }
 
-        /* Vertical list of account items (Profile, My Logos, Liked Logos, Upload Logo) */
+        /* Vertical list of account items (Profile, My Logos, Liked Logos) */
         .drop-list { padding: 6px; display: flex; flex-direction: column; gap: 1px; }
         .drop-item {
           display: flex; align-items: center; gap: 11px;
@@ -339,6 +417,18 @@ export default function Navbar() {
           border-radius: 8px; transition: background 0.2s, color 0.2s;
         }
         .mobile-menu a:hover { background: var(--link-hover-bg); color: var(--link-hover-color); }
+
+        /* Mobile Upload Logo button */
+        .mobile-upload-btn {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          padding: 10px 16px; margin-top: 6px;
+          background: linear-gradient(135deg, #07A626 0%, #05891e 100%);
+          border: none; border-radius: 9px; color: #fff;
+          font-size: 14px; font-weight: 600;
+          text-decoration: none; font-family: 'Sora', sans-serif;
+          transition: filter 0.2s;
+        }
+        .mobile-upload-btn:hover { filter: brightness(1.08); }
 
         /* Mobile user card */
         .mobile-user-card {
@@ -421,9 +511,81 @@ export default function Navbar() {
           color: var(--link-color);
         }
 
+        /* Upload Logo modal */
+        .upload-modal-overlay {
+          position: fixed; inset: 0; z-index: 300;
+          background: rgba(0,0,0,0.5);
+          display: flex; align-items: center; justify-content: center;
+          padding: 20px;
+        }
+        .upload-modal {
+          width: 100%; max-width: 420px;
+          background: var(--drop-bg);
+          border: 1px solid var(--drop-border);
+          border-radius: 16px;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+          padding: 20px;
+          font-family: 'Sora', sans-serif;
+        }
+        .upload-modal-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .upload-modal-header h3 {
+          margin: 0; font-size: 16px; font-weight: 700; color: var(--drop-text);
+        }
+        .upload-modal-close {
+          border: none; background: transparent; cursor: pointer;
+          color: var(--icon-color); padding: 4px; border-radius: 8px;
+          display: flex; align-items: center; justify-content: center;
+          transition: background 0.2s, color 0.2s;
+        }
+        .upload-modal-close:hover { background: var(--drop-hover); color: var(--drop-text); }
+
+        .upload-drop-zone {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 8px; text-align: center;
+          padding: 32px 16px;
+          border: 1.5px dashed var(--drop-border);
+          border-radius: 12px;
+          color: var(--drop-sub);
+          font-size: 13px; font-weight: 500;
+          cursor: pointer;
+          transition: border-color 0.2s, background 0.2s;
+        }
+        .upload-drop-zone:hover { border-color: rgba(7,166,38,0.5); background: var(--drop-hover); }
+        .upload-drop-zone svg { color: #07A626; }
+        .upload-file-name { color: var(--drop-text); font-weight: 600; word-break: break-all; }
+
+        .upload-error {
+          margin-top: 10px; font-size: 12.5px; color: var(--drop-logout-color);
+        }
+
+        .upload-modal-actions {
+          display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;
+        }
+        .upload-cancel-btn, .upload-submit-btn {
+          padding: 8px 16px; border-radius: 9px; font-size: 13.5px; font-weight: 600;
+          cursor: pointer; font-family: 'Sora', sans-serif; border: none;
+          transition: filter 0.2s, opacity 0.2s;
+        }
+        .upload-cancel-btn {
+          background: var(--drop-hover); color: var(--drop-text);
+          border: 1px solid var(--drop-border);
+        }
+        .upload-cancel-btn:hover { background: var(--nav-border); }
+        .upload-submit-btn {
+          background: linear-gradient(135deg, #07A626 0%, #05891e 100%); color: #fff;
+        }
+        .upload-submit-btn:hover { filter: brightness(1.08); }
+        .upload-cancel-btn:disabled, .upload-submit-btn:disabled {
+          opacity: 0.6; cursor: not-allowed;
+        }
+
         @media (max-width: 900px) {
           .nav-links    { display: none; }
           .login-btn    { display: none; }
+          .upload-logo-btn { display: none; }
           .hamburger    { display: flex; }
           .theme-toggle { display: none; }
           .avatar-wrap  { display: none; }
@@ -478,9 +640,17 @@ export default function Navbar() {
               </div>
             )}
 
-            {/* Desktop: Avatar + Dropdown */}
+            {/* Desktop: Upload Logo + Avatar both toggle the same account
+                dropdown, and share one outside-click ref so it opens/closes
+                correctly from either button. */}
             {!isLoading && isLogged ? (
-              <div className="avatar-wrap" ref={dropRef}>
+              <div className="account-actions" ref={dropRef}>
+                <button type="button" className="upload-logo-btn" onClick={() => setDropOpen(v => !v)}>
+                  {uploadLogoIcon}
+                  Upload Logo
+                </button>
+
+                <div className="avatar-wrap">
                 <button
                   className="avatar-btn"
                   aria-label="Account menu"
@@ -501,7 +671,7 @@ export default function Navbar() {
 
                   <div className="drop-divider" />
 
-                  {/* Profile / My Logos / Liked Logos / Upload Logo */}
+                  {/* Profile / My Logos / Liked Logos */}
                   <div className="drop-list">
                     {accountItems.map((item) => (
                       <Link
@@ -533,6 +703,7 @@ export default function Navbar() {
                       Logout
                     </button>
                   </div>
+                </div>
                 </div>
               </div>
             ) : !isLoading ? (
@@ -591,6 +762,16 @@ export default function Navbar() {
           {/* Logged in */}
           {isLogged ? (
             <>
+              {/* Upload Logo — standalone, mobile. No account items nested inside it. */}
+              <button
+                type="button"
+                className="mobile-upload-btn"
+                onClick={() => { setMenuOpen(false); openUpload(); }}
+              >
+                {uploadLogoIcon}
+                Upload Logo
+              </button>
+
               <div className="mobile-user-card">
                 <div className="mobile-avatar">{initial}</div>
                 <div>
@@ -599,6 +780,7 @@ export default function Navbar() {
                 </div>
               </div>
 
+              {/* Profile / My Logos / Liked Logos — appears exactly once */}
               <div className="mobile-account-list">
                 {accountItems.map((item) => (
                   <Link
@@ -636,6 +818,61 @@ export default function Navbar() {
           )}
         </div>
       </nav>
+
+      {/* ── Upload Logo modal ── */}
+      {uploadOpen && (
+        <div className="upload-modal-overlay" onMouseDown={closeUpload}>
+          <div className="upload-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="upload-modal-header">
+              <h3>Upload Logo</h3>
+              <button
+                type="button"
+                className="upload-modal-close"
+                aria-label="Close"
+                onClick={closeUpload}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <label className="upload-drop-zone" htmlFor="upload-logo-input">
+              {uploadFile ? (
+                <span className="upload-file-name">{uploadFile.name}</span>
+              ) : (
+                <>
+                  {uploadLogoIcon}
+                  <span>Click to choose a file, or drag it here</span>
+                </>
+              )}
+              <input
+                id="upload-logo-input"
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  setUploadError("");
+                  setUploadFile(e.target.files?.[0] ?? null);
+                }}
+              />
+            </label>
+
+            {uploadError && <div className="upload-error">{uploadError}</div>}
+
+            <div className="upload-modal-actions">
+              <button type="button" className="upload-cancel-btn" onClick={closeUpload} disabled={uploading}>
+                Cancel
+              </button>
+              <button type="button" className="upload-submit-btn" onClick={submitUpload} disabled={uploading}>
+                {uploading ? "Uploading…" : "Upload"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

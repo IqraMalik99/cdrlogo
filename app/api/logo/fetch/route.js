@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
 
-const PAGE_SIZE = 24;
-
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -10,6 +8,12 @@ export async function POST(req) {
     let letter   = body.letter?.toLowerCase()?.trim();
     let category = body.category?.toLowerCase()?.trim();
     let page     = Math.max(1, Number(body.page) || 1);
+
+    // Page size ab hardcoded nahi, DB (Website.limit) se aayega
+    const website = await prisma.website.findFirst({
+      select: { limit: true },
+    });
+    const PAGE_SIZE = Math.max(1, Number(website?.limit) || 24);
 
     const where = { publishStatus: "Published" };
 

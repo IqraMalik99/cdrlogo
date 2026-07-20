@@ -375,7 +375,7 @@ async function findRelatedLogos(logoName) {
     (c) => normalizeName(c.logoName) === targetNorm
   );
 
-  return { related: candidates.slice(0, 5), exactNormalizedMatches };
+  return { related: candidates.slice(0, 10), exactNormalizedMatches };
 }
 
 // ── Auto-version name ─────────────────────────────────────────────────────────
@@ -605,9 +605,9 @@ Logo Name     : ${logoName}
 Canonical URL : ${canonicalUrl}
 
 ${hasCategoryList
-      ? `Category: Select UP TO 5 categories from the list below, based strictly on relevancy to this logo's brand/industry name.
-- Try to select exactly 5 if there are 5 genuinely relevant matches.
-- If fewer than 5 are relevant, select only those that are (do NOT force irrelevant categories).
+      ? `Category: Select UP TO 3 categories from the list below, based strictly on relevancy to this logo's brand/industry name.
+- Try to select exactly 3 if there are 3 genuinely relevant matches.
+- If fewer than 3 are relevant, select only those that are (do NOT force irrelevant categories).
 - If NOT EVEN ONE category from the list is relevant, return exactly ["template"] as the category array.
 - Copy category names verbatim from this list — do not modify or invent names:
 ${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
@@ -615,7 +615,7 @@ ${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
     }
 
 Brand   : UNKNOWN — infer real brand if confidently identifiable donot guess.
-Website : UNKNOWN
+Website : UNKNOWN — infer real website if confidently identifiable donot guess but try to find real website.
 Industry: UNKNOWN — infer specific industry sector
 
 ${isVariant ? `
@@ -639,7 +639,7 @@ MANDATORY RULES FOR THIS VARIANT:
 2. meta_description MUST use different sentence structure and different educational/reference phrasing.
 3. main_description's first sentence MUST open differently from every sentence listed above.
 4. og_title, og_description, twitter_title, twitter_description must each differ in wording from previous fields.
-5. tags: keep core brand/format tags but vary the 4 context-specific tags.
+5. tags: keep core brand/format tags but vary the 4 context-specific tags. important **dont use these tags in tags [logo,png,svg,vector,cdrlogo,cdrlogo.com] **
 ` : ""}
 
 ==================================================
@@ -658,7 +658,7 @@ MANDATORY RULES:
 3. Must include minimum TWO of: PNG, SVG, Vector.
 4. If the generated title would be identical or near-identical to a previous page's meta_title, add a distinguishing qualifier (color, file variant, edition).
 
-STRICTLY FORBIDDEN: Free, Download, Free Download
+STRICTLY FORBIDDEN: Free, Download, Free Download,PNG ,SVG, Vector, cdrlogo.com , cdrlogo
 
 --------------------------------------------------
 meta_description (140–155 chars HARD LIMIT)
@@ -734,7 +734,7 @@ BANNED LIST:
 Free Download, High Quality, High Resolution, Best Logo, Premium,
 Amazing, Beautiful, Professional Design, Modern red/blue/green
 (or any color/style description), Click here, Download now,
-100% free, No copyright, HD logo, World best, Top quality,
+100% free, No copyright, HD logo, World best, Top quality
 Marketing/promotional language of any kind.
 
 SELF-CHECK BEFORE RETURNING main_description:
@@ -776,12 +776,37 @@ alt_text (LOCKED FORMAT)
 Return EXACTLY: "{Brand} logo — PNG SVG vector file on cdrlogo.com"
 DO NOT DEVIATE. DO NOT ADD WORDS.
 
---------------------------------------------------
-tags (12–15 items, array of strings)
---------------------------------------------------
 
-Must include: brand name, logo, PNG, SVG, vector, cdrlogo.com, industry term.
-Add 4 context-specific tags based on industry.
+==================================================
+🚨 ABSOLUTE TAG RULE (HIGHEST PRIORITY) only select less than 5
+==================================================
+
+The "tags" array MUST NEVER contain ANY of the following values:
+
+- logo
+- png
+- svg
+- vector
+- cdrlogo
+- cdrlogo.com
+- website
+- website.com
+
+THIS IS A HARD REQUIREMENT.
+
+DO NOT include these words exactly, in any capitalization, or as standalone tags.
+
+❌ WRONG:
+[ "logo", "png", "sports", "vector"]
+
+❌ WRONG:
+[ "SVG", "vector", "cdrlogo.com"]
+
+
+
+If you cannot think of enough tags, use fewer tags.
+DO NOT fill the array with the forbidden words.
+--------------------------------------------------
 
 --------------------------------------------------
 og_title (50–60 chars)
