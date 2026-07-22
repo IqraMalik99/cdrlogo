@@ -49,6 +49,18 @@ function fuzzyNameMatch(query, name) {
   return words.some((w) => w.length >= 4 && levenshtein(q, w) <= maxDistance);
 }
 
+// ── Tag match — fallback only, used when no name-based match is found ──────
+function tagMatch(query, tags) {
+  const q = normalize(query);
+  if (!q || !Array.isArray(tags)) return false;
+
+  return tags.some((tag) => {
+    const t = normalize(tag);
+    if (!t) return false;
+    return t.includes(q) || q.includes(t);
+  });
+}
+
 export async function POST(req) {
   try {
     const { query } = await req.json();
@@ -71,7 +83,7 @@ export async function POST(req) {
       },
     });
 
-    const scored = logos
+    let scored = logos
       .map((logo) => {
         let score = 0;
         const name = logo.logoName || "";
@@ -94,6 +106,15 @@ export async function POST(req) {
       .filter((l) => l.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 20);
+
+    // ── Fallback — nothing matched by name, try tags ONCE (no further retries) ──
+    if (scored.length === 0) {
+      scored = logos
+        .map((logo) => ({ ...logo, score: tagMatch(query, logo.tags) ? 50 : 0 }))
+        .filter((l) => l.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 20);
+    }
 
     return NextResponse.json({ results: scored });
   } catch (error) {

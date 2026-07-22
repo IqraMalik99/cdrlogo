@@ -676,10 +676,10 @@ Must contain AT LEAST ONE EXACT PHRASE:
 STRICTLY FORBIDDEN: commercial projects, business use, branding needs, marketing language
 
 --------------------------------------------------
-⚠️ MAIN_DESCRIPTION — ABSOLUTE BANNED WORDS (HIGHEST PRIORITY)
+⚠️ MAIN_DESCRIPTION 120–160 words  — ABSOLUTE BANNED WORDS (HIGHEST PRIORITY)
 ==================================================
 
-STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION  — MANDATORY
+STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION 120–160 words  — MANDATORY
 ==================================================
 
 This logo has been externally assigned: STYLE ${forcedStyle}
@@ -690,28 +690,43 @@ main_description using STYLE ${forcedStyle} below. Do NOT use any other
 style. Do NOT blend multiple styles together. Do NOT default to the style
 that "feels most natural" — use STYLE ${forcedStyle}, exactly as described.
 
+Each style below lists several example openers. These are illustrations of
+the PATTERN only — do not copy any of them verbatim. Pick a different
+sentence skeleton and vocabulary than the examples shown, and vary word
+choice, clause order, and sentence length so the final paragraph reads as
+freshly written rather than templated.
+
 STYLE A — Format-first:
 Start with the file formats as the subject.
-Example: "PNG, SVG, AI, and CDR files of the [Logo Name]
-are archived here as scalable vector assets for reference use."
+Vary the verb and structure each time — do not default to the same phrasing.
+Examples of the PATTERN (do not copy wording):
+- "PNG, SVG, AI, and CDR files of the [Logo Name] are archived here as scalable vector assets for reference use."
+- "Archived in PNG, SVG, AI, and CDR, the [Logo Name] is stored here as a set of scalable vector files for research reference."
+- "Scalable vector versions of the [Logo Name] — spanning PNG, SVG, AI, and CDR — are catalogued on this page for design study."
 
 STYLE B — Brand-first (requires confirmed brand, industry, AND country):
 Start with the brand as the subject.
-Example: "[Brand], a [industry] company from [country],
-is represented here through its [Logo Name], archived
-in PNG, SVG, AI, and CDR scalable vector formats."
+Vary the verb and structure each time — do not default to the same phrasing.
+Examples of the PATTERN (do not copy wording):
+- "[Brand], a [industry] company from [country], is represented here through its [Logo Name], archived in PNG, SVG, AI, and CDR scalable vector formats."
+- "Originating in [country], [Brand] operates within the [industry] sector; its [Logo Name] is catalogued here in PNG, SVG, AI, and CDR vector form for reference use."
+- "The [Logo Name] belongs to [Brand], a [country]-based name in [industry], and is preserved on this page across PNG, SVG, AI, and CDR vector formats."
 
 STYLE C — Archive-purpose-first:
 Start with the archive purpose as the subject.
-Example: "This entry documents the [Logo Name] for
-research and educational reference, available in PNG,
-SVG, AI, and CDR vector file formats."
+Vary the verb and structure each time — do not default to the same phrasing.
+Examples of the PATTERN (do not copy wording):
+- "This entry documents the [Logo Name] for research and educational reference, available in PNG, SVG, AI, and CDR vector file formats."
+- "Compiled as part of this reference archive, the [Logo Name] can be studied here in PNG, SVG, AI, and CDR vector formats."
+- "For educational and research reference, this page catalogues the [Logo Name] across PNG, SVG, AI, and CDR scalable vector files."
 
 STYLE D — Industry-context-first (requires confirmed industry AND country):
 Start with the industry as the subject.
-Example: "Within the [industry] sector, the [Logo Name]
-is preserved here as scalable vector artwork in PNG,
-SVG, AI, and CDR formats for educational study."
+Vary the verb and structure each time — do not default to the same phrasing.
+Examples of the PATTERN (do not copy wording):
+- "Within the [industry] sector, the [Logo Name] is preserved here as scalable vector artwork in PNG, SVG, AI, and CDR formats for educational study."
+- "The [industry] sector in [country] is represented on this page by the [Logo Name], catalogued in PNG, SVG, AI, and CDR vector formats for reference use."
+- "As an example from the [industry] field, the [Logo Name] is archived in PNG, SVG, AI, and CDR vector formats for research and design study."
 
 FALLBACK RULE (applies ONLY if the assigned style is STYLE B or STYLE D):
 STYLE B and STYLE D require a confidently identified brand, industry, AND
@@ -726,6 +741,14 @@ REGARDLESS OF STYLE:
    the same sentence skeleton — that still counts as a repeated template.
 3. Vary WHERE brand context, format list, and educational phrase appear
    within the sentence.
+4. Vary sentence length and rhythm across the paragraph — mix at least one
+   short sentence (under 12 words) with at least one longer sentence, rather
+   than writing several similarly-sized sentences back to back.
+5. Use varied, precise vocabulary rather than repeating the same connector
+   words (e.g. "archived", "catalogued", "documented", "preserved",
+   "compiled", "recorded" are all acceptable alternatives — do not default
+   to the same one every time).
+6. Do not open two consecutive sentences with the same word or clause type.
 
 ==================================================
 
@@ -770,7 +793,7 @@ Cover:
 * available formats (PNG, SVG, AI, CDR)
 
 Word count:
-45–100 words.
+120–160 words
 
 
 --------------------------------------------------
