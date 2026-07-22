@@ -1,0 +1,11 @@
+# CDRLogo
+
+> Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for designers and students.
+
+## Main Pages
+- [All Logos](https://www.cdrlogo.com/logos)
+- [Brand Categories](https://www.cdrlogo.com/category)
+- [About](https://www.cdrlogo.com/about-us)
+
+## Guidelines
+Educational reference library. Logos provided for design reference and learning purposes only.

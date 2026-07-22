@@ -24,9 +24,28 @@ export async function middleware(req) {
     });
   }
 
+  if (pathname === "/llms.txt") {
+    const content = `# CDRLogo
+
+> Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for designers and students.
+
+## Main Pages
+- [All Logos](${origin}/logos)
+- [Brand Categories](${origin}/category)
+- [About](${origin}/about-us)
+
+## Guidelines
+Educational reference library. Logos provided for design reference and learning purposes only.
+`;
+
+    return new NextResponse(content, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/sitemap.xml"],
+  matcher: ["/sitemap.xml", "/llms.txt"],
 };
