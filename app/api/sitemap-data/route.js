@@ -61,7 +61,7 @@ export async function GET() {
   const logoRoutes = logos
     .filter(l => typeof l.slug === "string" && l.slug.trim() !== "")
     .map(l => ({
-      url: `${baseUrl}/logo/${l.slug.replace(/^\/+/, "").trim()}/`,
+      url: `${baseUrl}/logo/${l.slug.replace(/^\/+/, "").trim()}`,
       lastModified: l.updatedAt || new Date(),
       changeFrequency: "weekly",
       priority: 0.9,
