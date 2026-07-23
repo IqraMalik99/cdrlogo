@@ -139,7 +139,7 @@ export default function LogosPage() {
 
   return (<>
     <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap');
+  
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -207,7 +207,7 @@ export default function LogosPage() {
         .logos-page {
           min-height: 100vh;
           background: var(--page-bg);
-          font-family: 'Sora', sans-serif;
+          font-family:  sans-serif;
           padding: 0px 0 60px;
           transition: background 0.35s;
         }

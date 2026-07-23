@@ -160,7 +160,7 @@ export default function Navbar() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
+  
 
         [data-theme="dark"] {
           --nav-bg: rgba(10,10,15,0.85);
@@ -213,7 +213,7 @@ export default function Navbar() {
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
           border-bottom: 1px solid var(--nav-border);
-          font-family: 'Sora', 'Segoe UI', sans-serif;
+          font-family:  sans-serif;
           transition: background 0.35s, border-color 0.35s;
         }
         .navbar-inner {

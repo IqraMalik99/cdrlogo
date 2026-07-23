@@ -97,7 +97,7 @@ export default function TemplatesPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap');
+   
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -164,7 +164,7 @@ export default function TemplatesPage() {
 
         .brands-root {
           min-height: 100vh; background: var(--bg);
-          font-family: 'Sora', 'Segoe UI', sans-serif;
+          font-family: sans-serif;
           padding-bottom: 80px; transition: background 0.35s;
           position: relative; overflow-x: hidden;
         }

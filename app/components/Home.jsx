@@ -69,7 +69,7 @@ export default function Home() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap');
+     
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -113,7 +113,7 @@ export default function Home() {
         .home-root {
           min-height: 50vh;
           background: var(--bg);
-          font-family: 'Sora', 'Segoe UI', sans-serif;
+          font-family: sans-serif;
           display: flex;
           flex-direction: column;
           align-items: center;

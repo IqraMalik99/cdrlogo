@@ -76,7 +76,6 @@ export default function Footer() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap');
 
         [data-footer-theme="dark"] {
           --f-bg:        #08080e;
@@ -137,7 +136,7 @@ export default function Footer() {
         .cdr-footer {
           background: var(--f-bg);
           border-top: 1px solid var(--f-border);
-          font-family: 'Sora', 'Segoe UI', sans-serif;
+          font-family: var(--font-sora), 'Segoe UI', sans-serif;
           transition: background 0.35s, border-color 0.35s;
           position: relative;
           overflow: hidden;
@@ -178,7 +177,7 @@ export default function Footer() {
           margin-bottom: 16px;
         }
         .f-desc {
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 12.5px;
           line-height: 1.8;
           color: var(--f-desc);
@@ -252,7 +251,7 @@ export default function Footer() {
           gap: 11px;
         }
         .f-link-list li a {
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 12.5px;
           color: var(--f-link);
           text-decoration: none;
@@ -324,7 +323,7 @@ export default function Footer() {
         }
         .f-stat-val .f-stat-accent { color: var(--f-accent-txt); }
         .f-stat-lbl {
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 10px;
           color: var(--f-stat-lbl);
           letter-spacing: 0.2px;
@@ -340,7 +339,7 @@ export default function Footer() {
           padding: 18px 0 28px;
         }
         .f-copyright {
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 11.5px;
           color: var(--f-copy);
           transition: color 0.35s;

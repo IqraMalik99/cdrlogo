@@ -111,7 +111,7 @@ export default function BrandCategories() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap');
+ 
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
         [data-theme="dark"]{
@@ -133,7 +133,7 @@ export default function BrandCategories() {
           --bc-page-bg:#ffffff;--bc-page-border:rgba(0,0,0,0.1);--bc-page-text:rgba(0,0,0,0.55);
         }
 
-        .bc-section{background:var(--bc-bg);font-family:'Sora',sans-serif;padding:48px 0 56px;transition:background .35s}
+        .bc-section{background:var(--bc-bg);font-family:sans-serif;padding:48px 0 56px;transition:background .35s}
         .bc-container{max-width:1260px;margin:0 auto;padding:0 28px}
         .bc-header{margin-bottom:28px}
         .bc-title{font-size:24px;font-weight:800;color:var(--bc-title);letter-spacing:-.4px;line-height:1;transition:color .3s}

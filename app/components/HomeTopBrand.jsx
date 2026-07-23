@@ -40,7 +40,7 @@ export default function TopBrands() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap');
+   
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -71,7 +71,7 @@ export default function TopBrands() {
 
         .tb-section {
           background: var(--tb-bg);
-          font-family: 'Sora', sans-serif;
+          font-family:  sans-serif;
           padding: 52px 0 60px;
           transition: background 0.35s;
         }
