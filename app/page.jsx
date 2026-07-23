@@ -21,11 +21,13 @@ const Recent = dynamic(() => import('./components/Recent'))
 // Server Component like this page.
 import PantoneColorPicker from './components/Pantoneclientonly'
 
+const SITE_URL = "https://www.cdrlogo.com"
+
 const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "CDRLogo",
-  url: "https://www.cdrlogo.com",
+  url: SITE_URL,
   description: "Logo library for educational and design reference use.",
   potentialAction: {
     "@type": "SearchAction",
@@ -34,17 +36,13 @@ const websiteSchema = {
   },
 };
 
-
-
 let OrganizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "CDRLogo",
-  url: "https://www.cdrlogo.com",
+  url: SITE_URL,
   logo: "https://www.cdrlogo.com/og-image.jpg",
 };
-
-
 
 const breadcrumbSchema = {
   "@context": "https://schema.org",
@@ -54,93 +52,56 @@ const breadcrumbSchema = {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://www.cdrlogo.com",
+      item: SITE_URL,
     },
   ],
 };
 
-export async function generateMetadata() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com";
+// ── Static metadata ────────────────────────────────────────────────
+// Previously this was fetched at request-time from
+// /api/admin/site-setting via generateMetadata(). That self-referencing
+// fetch (the page calling its own site's API while rendering) is fragile
+// on serverless — it can hang or fail cold-start, which risks Lighthouse
+// crawling a page whose <head> hasn't finished streaming its meta tags.
+// Static export removes that dependency entirely and guarantees the
+// description/title are present in the HTML immediately.
+const TITLE = "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo";
+const DESCRIPTION =
+  "Download vector logos in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com";
+const OG_IMAGE = `${SITE_URL}/og-image.jpg`;
 
-  try {
-    const cleanText = (text) =>
-      text ? text.replace(/[\r\n\t\u200B]+/g, " ").replace(/\s+/g, " ").trim() : "";
-    const res = await fetch(`${baseUrl}/api/admin/site-setting`, {
-      cache: "no-store",
-    });
+export const metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: SITE_URL },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  verification: {
+    google: "8XIFTI2Ell1-5-651AsIKaLVjgPfSCjLLhHim_LxE1k",
+  },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: SITE_URL,
+    siteName: "CDRLogo",
+    type: "website",
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "CDRLogo - Vector Logo Downloads" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [OG_IMAGE],
+  },
+};
 
-    const data = await res.json();
-
-    const title =
-      cleanText(data?.metaTitle) ||
-      "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo";
-
-    const description =
-      cleanText(data?.metaDescription) ||
-      "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.";
-
-    const image = `${baseUrl}/og-image.jpg`;
-    console.log(JSON.stringify(data?.metaDescription));
-
-    return {
-      title,
-      description,
-      alternates: { canonical: baseUrl },
-      robots: {
-        index: true,
-        follow: true,
-        googleBot: {
-          index: true,
-          follow: true,
-        },
-      },
-      verification: {
-        google: "8XIFTI2Ell1-5-651AsIKaLVjgPfSCjLLhHim_LxE1k",   // ← yeh line add karo
-      },
-      openGraph: {
-        title,
-        description,
-        url: "https://www.cdrlogo.com",
-        siteName: "CDRLogo",
-        type: "website",
-        images: [{ url: image, width: 1200, height: 630, alt: "CDRLogo - Vector Logo Downloads" }],
-      },
-      twitter: {
-        card: "summary_large_image",
-        title,
-        description,
-        images: [image],
-      },
-    };
-  } catch (error) {
-    return {
-      title: "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo",
-      description: "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.",
-      alternates: { canonical: "https://www.cdrlogo.com" },
-       verification: {
-        google: "8XIFTI2Ell1-5-651AsIKaLVjgPfSCjLLhHim_LxE1k",   // ← yeh line add karo
-      },
-      robots: {
-        index: true,
-        follow: true,
-      },
-      openGraph: {
-        title: "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo",
-        description: "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.",
-        url: "https://www.cdrlogo.com",
-        siteName: "CDRLogo",
-        type: "website",
-        images: [{ url: "https://www.cdrlogo.com/og-image.jpg", width: 1200, height: 630 }],
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: "Vector Logo Downloads | CDR, SVG, AI & PNG Files - CDRLogo",
-        description: "Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for graphic designers, students and print professionals. Design reference library at cdrlogo.com.",
-        images: ["https://www.cdrlogo.com/og-image.jpg"],
-      },
-    };
-  }
-}
+// If you still want the meta title/description to be editable from an
+// admin panel later, do it at build/ISR time (e.g. revalidate every N
+// minutes) rather than per-request inside generateMetadata — that keeps
+// it fast and avoids the self-fetch-during-render problem above.
 
 export default function page() {
   return (
