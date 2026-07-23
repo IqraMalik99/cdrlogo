@@ -264,7 +264,7 @@ export default function Navbar() {
           font-size: 13.5px; font-weight: 600;
           cursor: pointer; text-decoration: none;
           transition: background 0.2s, border-color 0.2s, color 0.2s;
-          white-space: nowrap; font-family: 'Sora', sans-serif;
+          white-space: nowrap; font-family: var(--font-sora), sans-serif;
         }
         .login-btn:hover { background: rgba(7,166,38,0.18); border-color: rgba(7,166,38,0.55); }
         [data-theme="dark"] .login-btn { color: #4ade80; }
@@ -280,7 +280,7 @@ export default function Navbar() {
           font-size: 13.5px; font-weight: 600;
           cursor: pointer; text-decoration: none;
           transition: filter 0.2s, transform 0.2s;
-          white-space: nowrap; font-family: 'Sora', sans-serif;
+          white-space: nowrap; font-family: var(--font-sora), sans-serif;
           box-shadow: 0 2px 10px rgba(7,166,38,0.25);
         }
         .upload-logo-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
@@ -294,7 +294,7 @@ export default function Navbar() {
           width: 36px; height: 36px; border-radius: 50%;
           background: linear-gradient(135deg, #07A626 0%, #05891e 100%);
           border: 2px solid rgba(7,166,38,0.4);
-          color: #fff; font-family: 'Sora', sans-serif;
+          color: #fff; font-family: var(--font-sora),sans-serif;
           font-size: 14px; font-weight: 700;
           cursor: pointer; display: flex; align-items: center; justify-content: center;
           transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
@@ -334,7 +334,7 @@ export default function Navbar() {
           background: linear-gradient(135deg, #07A626 0%, #05891e 100%);
           display: flex; align-items: center; justify-content: center;
           color: #fff; font-size: 15px; font-weight: 700;
-          font-family: 'Sora', sans-serif;
+          font-family: var(--font-sora), sans-serif;
         }
         .drop-user-info { overflow: hidden; }
         .drop-name {
@@ -360,7 +360,7 @@ export default function Navbar() {
           border-radius: 9px;
           transition: background 0.15s;
           cursor: pointer; border: none; background: transparent;
-          width: 100%; font-family: 'Sora', sans-serif; text-align: left;
+          width: 100%; font-family: var(--font-sora), sans-serif; text-align: left;
         }
         .drop-item svg { color: var(--icon-color); flex-shrink: 0; transition: color 0.15s; }
         .drop-item:hover { background: var(--drop-hover); }
@@ -415,7 +415,7 @@ export default function Navbar() {
           background: linear-gradient(135deg, #07A626 0%, #05891e 100%);
           border: none; border-radius: 9px; color: #fff;
           font-size: 14px; font-weight: 600;
-          text-decoration: none; font-family: 'Sora', sans-serif;
+          text-decoration: none; font-family: var(--font-sora), sans-serif;
           transition: filter 0.2s;
         }
         .mobile-upload-btn:hover { filter: brightness(1.08); }
@@ -446,7 +446,7 @@ export default function Navbar() {
           display: flex; align-items: center; gap: 11px;
           padding: 10px 12px;
           border-radius: 9px; border: none;
-          font-family: 'Sora', sans-serif;
+          font-family: var(--font-sora), sans-serif;
           font-size: 14px; font-weight: 500;
           color: var(--link-color);
           cursor: pointer; text-decoration: none;
@@ -472,7 +472,7 @@ export default function Navbar() {
           background: rgba(7,166,38,0.1); border: 1px solid rgba(7,166,38,0.35);
           border-radius: 9px; color: #07A626;
           font-size: 14px; font-weight: 600;
-          text-decoration: none; font-family: 'Sora', sans-serif;
+          text-decoration: none; font-family: var(--font-sora), sans-serif;
           transition: background 0.2s;
         }
         .mobile-login:hover { background: rgba(7,166,38,0.18); }
@@ -485,7 +485,7 @@ export default function Navbar() {
         }
         .mob-theme-btn {
           flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid;
-          font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600;
+          font-family: var(--font-sora), sans-serif; font-size: 13px; font-weight: 600;
           cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
           transition: all 0.2s;
         }
@@ -515,7 +515,7 @@ export default function Navbar() {
           border-radius: 16px;
           box-shadow: 0 20px 50px rgba(0,0,0,0.3);
           padding: 20px;
-          font-family: 'Sora', sans-serif;
+          font-family: var(--font-sora), sans-serif;
         }
         .upload-modal-header {
           display: flex; align-items: center; justify-content: space-between;
@@ -556,7 +556,7 @@ export default function Navbar() {
         }
         .upload-cancel-btn, .upload-submit-btn {
           padding: 8px 16px; border-radius: 9px; font-size: 13.5px; font-weight: 600;
-          cursor: pointer; font-family: 'Sora', sans-serif; border: none;
+          cursor: pointer; font-family: var(--font-sora), sans-serif; border: none;
           transition: filter 0.2s, opacity 0.2s;
         }
         .upload-cancel-btn {

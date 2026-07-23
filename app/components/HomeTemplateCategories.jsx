@@ -164,7 +164,7 @@ export default function TemplatesPage() {
 
         .brands-root {
           min-height: 100vh; background: var(--bg);
-          font-family: sans-serif;
+          font-family: var(--font-sora),sans-serif;
           padding-bottom: 80px; transition: background 0.35s;
           position: relative; overflow-x: hidden;
         }
@@ -226,7 +226,7 @@ export default function TemplatesPage() {
         }
 
         .hero-sub {
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-sora),sans-serif;
           font-size: clamp(12.5px, 1.6vw, 14px);
           color: var(--text-secondary); line-height: 1.65; max-width: 480px;
           transition: color 0.35s;
@@ -251,7 +251,7 @@ export default function TemplatesPage() {
         .search-icon { color: rgba(128,128,160,0.5); flex-shrink: 0; }
         .search-input {
           flex: 1; background: none; border: none; outline: none;
-          font-size: 13.5px; font-family: 'Sora', sans-serif; font-weight: 500;
+          font-size: 13.5px; font-family: var(--font-sora), sans-serif; font-weight: 500;
           color: var(--search-clr); caret-color: #07A626; transition: color 0.3s;
         }
         .search-input::placeholder { color: var(--search-ph); }
@@ -278,7 +278,7 @@ export default function TemplatesPage() {
           padding: 5px 13px; border-radius: 100px; font-size: 11px; font-weight: 600;
           cursor: pointer; background: var(--tag-bg); border: 1px solid var(--tag-bdr);
           color: var(--tag-clr); transition: background .18s, border-color .18s, color .18s;
-          font-family: 'Sora', sans-serif;
+          font-family:var(--font-sora), sans-serif;
         }
         .filter-tab:hover { border-color: var(--border-hover); color: #07A626; }
         .filter-tab.active {
@@ -348,7 +348,7 @@ export default function TemplatesPage() {
           padding: 2px 7px; border-radius: 100px; display: flex; align-items: center; gap: 3px;
         }
         .bc-title{font-size:24px;font-weight:800;color:var(--bc-title);letter-spacing:-.4px;line-height:1;transition:color .3s}
-        .bc-subtitle{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--bc-sub);margin-top:6px;transition:color .3s}
+        .bc-subtitle{font-family:var(--font-sora),sans-serif;font-size:13px;color:var(--bc-sub);margin-top:6px;transition:color .3s}
         .trend-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: pulse-dot 2s infinite; }
         .card-body { padding: 10px 12px 12px; }
         .card-name { font-size: 12px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; margin-bottom: 2px; }
@@ -390,7 +390,7 @@ export default function TemplatesPage() {
           font-size: 12px; font-weight: 600; cursor: pointer;
           border: 1px solid var(--pg-bdr); background: var(--pg-bg); color: var(--pg-clr);
           display: flex; align-items: center; justify-content: center;
-          transition: all .18s; font-family: 'Sora', sans-serif;
+          transition: all .18s; font-family: var(--font-sora),, sans-serif;
         }
         .pg-btn:hover:not(:disabled) { border-color: var(--border-hover); color: #07A626; background: var(--accent-glow); }
         .pg-btn:disabled { opacity: .35; cursor: default; }
@@ -406,7 +406,7 @@ export default function TemplatesPage() {
           margin-top: 12px; padding: 7px 16px; border-radius: 8px; font-size: 12px;
           font-weight: 600; cursor: pointer; background: rgba(7,166,38,0.12);
           border: 1px solid rgba(7,166,38,0.3); color: var(--badge-trend-clr);
-          font-family: 'Sora', sans-serif; transition: all .18s;
+          font-family: var(--font-sora), sans-serif; transition: all .18s;
         }
         .state-box button:hover { background: rgba(7,166,38,0.2); }
 

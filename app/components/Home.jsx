@@ -113,7 +113,7 @@ export default function Home() {
         .home-root {
           min-height: 50vh;
           background: var(--bg);
-          font-family: sans-serif;
+          font-family: var(--font-sora),sans-serif;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -216,7 +216,7 @@ export default function Home() {
 
         /* Sub */
         .home-sub {
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-sora), 'DM Sans', sans-serif;
           font-size: clamp(12px, 1.6vw, 13.5px);
           color: var(--sub); text-align: center;
           line-height: 1.6; max-width: 400px;
@@ -261,7 +261,7 @@ export default function Home() {
         .search-icon { color: rgba(128,128,160,0.55); flex-shrink: 0; }
         .search-input {
           flex: 1; background: none; border: none; outline: none;
-          font-size: 13.5px; font-family: 'Sora', sans-serif; font-weight: 500;
+          font-size: 13.5px; font-family: var(--font-sora), sans-serif; font-weight: 500;
           color: var(--search-clr); caret-color: #07A626;
           transition: color 0.3s;
         }
@@ -295,7 +295,7 @@ export default function Home() {
           cursor: pointer;
           transition: background .2s, border-color .2s, color .2s, transform .15s;
           white-space: nowrap;
-          font-family: 'Sora', sans-serif;
+          font-family: var(--font-sora), sans-serif;
         }
         .popular-tag:hover {
           background: rgba(7,166,38,.1);

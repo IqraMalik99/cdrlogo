@@ -141,7 +141,7 @@ export default function RecentLogos() {
           --rl-sk:rgba(0,0,0,0.07);
         }
 
-        .rl-section{background:var(--rl-bg);font-family:'Sora',sans-serif;padding:48px 0 56px;transition:background .35s}
+        .rl-section{background:var(--rl-bg);font-family:var(--font-sora),sans-serif;padding:48px 0 56px;transition:background .35s}
         .rl-container{max-width:1260px;margin:0 auto;padding:0 28px}
 
         .rl-header{margin-bottom:24px}

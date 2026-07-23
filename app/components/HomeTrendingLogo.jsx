@@ -147,7 +147,7 @@ export default function TrendingLogos() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap');
+   
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
         [data-theme="dark"]{
@@ -167,12 +167,12 @@ export default function TrendingLogos() {
           --tl-sk:rgba(0,0,0,0.07);
         }
 
-        .tl-section{background:var(--tl-bg);font-family:'Sora',sans-serif;padding:48px 0 56px;transition:background .35s}
+        .tl-section{background:var(--tl-bg);font-family:var(--font-sora),sans-serif;padding:48px 0 56px;transition:background .35s}
         .tl-container{max-width:1260px;margin:0 auto;padding:0 28px}
 
         .tl-header{margin-bottom:24px}
         .tl-title{font-size:24px;font-weight:800;color:var(--tl-title);letter-spacing:-.4px;line-height:1;transition:color .3s}
-        .tl-subtitle{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--tl-subtitle);margin-top:5px;transition:color .3s}
+        .tl-subtitle{font-family:var(--font-sora),sans-serif;font-size:13px;color:var(--tl-subtitle);margin-top:5px;transition:color .3s}
 
         .tl-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
 
@@ -191,7 +191,7 @@ export default function TrendingLogos() {
         .tl-title-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
         .tl-name{font-size:13px;font-weight:800;color:var(--tl-name);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s}
         .tl-meta-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-        .tl-category{font-family:'DM Sans',sans-serif;font-size:10.5px;color:var(--tl-category);transition:color .3s}
+        .tl-category{font-family:var(--font-sora),sans-serif;font-size:10.5px;color:var(--tl-category);transition:color .3s}
         .tl-colors{display:flex;gap:4px}
         .tl-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--tl-dot-border);flex-shrink:0}
         .tl-formats{display:flex;flex-wrap:wrap;gap:4px}

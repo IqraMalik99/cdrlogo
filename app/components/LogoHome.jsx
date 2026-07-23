@@ -207,7 +207,7 @@ export default function LogosPage() {
         .logos-page {
           min-height: 100vh;
           background: var(--page-bg);
-          font-family:  sans-serif;
+          font-family: var(--font-sora), sans-serif;
           padding: 0px 0 60px;
           transition: background 0.35s;
         }
@@ -219,7 +219,7 @@ export default function LogosPage() {
           gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
         }
         .page-title { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1; transition: color 0.3s; }
-        .page-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 4px; transition: color 0.3s; }
+        .page-subtitle { font-family:var(--font-sora), sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 4px; transition: color 0.3s; }
 
         .sort-group {
           display: flex; align-items: center; gap: 6px;
@@ -230,7 +230,7 @@ export default function LogosPage() {
         .sort-btn {
           display: flex; align-items: center; gap: 5px;
           padding: 5px 12px; border: none; border-radius: 7px;
-          background: transparent; font-family: 'Sora', sans-serif;
+          background: transparent; font-family: var(--font-sora), sans-serif;
           font-size: 12px; font-weight: 600; color: var(--sort-color);
           cursor: pointer; transition: background 0.2s, color 0.2s; white-space: nowrap;
         }
@@ -240,7 +240,7 @@ export default function LogosPage() {
         .alpha-btn {
           min-width: 32px; height: 32px; padding: 0 8px;
           border-radius: 8px; border: 1px solid var(--pill-border);
-          background: var(--pill-bg); font-family: 'Sora', sans-serif;
+          background: var(--pill-bg); font-family: var(--font-sora), sans-serif;
           font-size: 12px; font-weight: 600; color: var(--pill-color);
           cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
         }
@@ -252,7 +252,7 @@ export default function LogosPage() {
         .cat-btn {
           padding: 5px 14px; border-radius: 100px;
           border: 1px solid var(--pill-border); background: var(--pill-bg);
-          font-family: 'Sora', sans-serif; font-size: 12.5px; font-weight: 500;
+          font-family: var(--font-sora), sans-serif; font-size: 12.5px; font-weight: 500;
           color: var(--pill-color); cursor: pointer;
           transition: background 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap;
         }
@@ -288,11 +288,11 @@ export default function LogosPage() {
   overflow: hidden; transition: background 0.3s;
 }
        .card-img { object-fit: contain; transform: scale(1.3); }
-        .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; font-family: 'Sora', sans-serif; }
+        .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; font-family: var(--font-sora), sans-serif; }
 
         .card-body { padding: 10px 12px 12px; }
         .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s; }
-        .card-category { font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px; transition: color 0.3s; }
+        .card-category { font-family: var(--font-sora), sans-serif; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px; transition: color 0.3s; }
         .card-colors { display: flex; gap: 4px; margin-bottom: 8px; }
         .color-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); }
         [data-theme="light"] .color-dot { border-color: rgba(0,0,0,0.1); }
@@ -314,12 +314,12 @@ export default function LogosPage() {
         @keyframes shimmer { 0%{opacity:1} 50%{opacity:0.4} 100%{opacity:1} }
 
         .error-state { text-align:center; padding:60px 24px; color:var(--error-color); font-size:14px; }
-        .error-state button { margin-top:12px; padding:8px 20px; border-radius:8px; border:1px solid var(--error-color); background:transparent; color:var(--error-color); font-family:'Sora',sans-serif; font-size:13px; font-weight:600; cursor:pointer; }
+        .error-state button { margin-top:12px; padding:8px 20px; border-radius:8px; border:1px solid var(--error-color); background:transparent; color:var(--error-color); font-family:var(--font-sora),sans-serif; font-size:13px; font-weight:600; cursor:pointer; }
 
         .empty-state { grid-column:1/-1; text-align:center; padding:60px 24px; color:var(--text-secondary); font-size:14px; }
 
         .pagination { display:flex; align-items:center; justify-content:center; gap:6px; }
-        .page-btn { min-width:36px; height:36px; padding:0 10px; border-radius:9px; border:1px solid var(--pill-border); background:var(--page-btn-bg); font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:var(--page-btn-color); cursor:pointer; transition:background 0.15s,color 0.15s,border-color 0.15s; display:flex; align-items:center; justify-content:center; }
+        .page-btn { min-width:36px; height:36px; padding:0 10px; border-radius:9px; border:1px solid var(--pill-border); background:var(--page-btn-bg); font-family:var(--font-sora),sans-serif; font-size:13px; font-weight:600; color:var(--page-btn-color); cursor:pointer; transition:background 0.15s,color 0.15s,border-color 0.15s; display:flex; align-items:center; justify-content:center; }
         .page-btn:hover:not(.active):not(:disabled) { background:var(--page-btn-hover); color:var(--text-primary); }
         .page-btn.active { background:var(--page-active-bg); border-color:var(--page-active-border); color:var(--page-active-color); }
         .page-btn:disabled { opacity:0.35; cursor:not-allowed; }

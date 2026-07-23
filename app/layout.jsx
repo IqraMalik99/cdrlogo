@@ -7,13 +7,7 @@ import Providers from "./provider";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-// ── Sora + DM Sans, previously loaded via @import inside Navbar.jsx /
-// Footer.jsx <style> blocks. That was the actual LCP bottleneck: @import
-// is discovered late (only after the surrounding CSS parses), blocks
-// text render until the .woff2 arrives, and adds an extra
-// fonts.googleapis.com → fonts.gstatic.com network hop with no preconnect.
-// next/font/google self-hosts these at build time — no external request,
-// no render-blocking chain, font is inlined and ready immediately.
+
 const sora = Sora({
   variable: "--font-sora",
   subsets: ["latin"],

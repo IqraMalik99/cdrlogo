@@ -71,7 +71,7 @@ export default function TopBrands() {
 
         .tb-section {
           background: var(--tb-bg);
-          font-family:  sans-serif;
+          font-family:  var(--font-sora), sans-serif;
           padding: 52px 0 60px;
           transition: background 0.35s;
         }
@@ -94,7 +94,7 @@ export default function TopBrands() {
           transition: color 0.3s;
         }
         .tb-subtitle {
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-sora), sans-serif;
           font-size: 13px;
           color: var(--tb-subtitle);
           margin-top: 7px;
