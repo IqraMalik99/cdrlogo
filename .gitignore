@@ -13,6 +13,8 @@
 # testing
 /coverage
 
+/public/~partytown
+
 # next.js
 /.next/
 /out/
