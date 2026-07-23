@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { Partytown } from "@builder.io/partytown/react";
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
 import Providers from "./provider";
@@ -20,16 +21,19 @@ export default function RootLayout({ children }) {
         <meta name="yandex-verification" content="2ba291fe8912edc4" />
 
         {/*
-          ✅ Google Analytics (gtag.js) — har page par load hoga, kyunki ye root layout hai.
-          strategy="lazyOnload": browser ke idle hone ka wait karta hai, taake GTM ka
-          162 KiB bundle initial render / LCP / TBT ko block na kare. Analytics ke liye
-          kuch second ki delay acceptable hai, user-facing content ke liye nahi.
+          ✅ Partytown: GTM ko main thread se hata kar web worker mein
+          chalata hai, taake ye TBT/LCP ko block na kare.
+          forward: jo bhi global function GTM/gtag call karta hai
+          (dataLayer.push, gtag), Partytown usay worker se main thread
+          tak proxy karta hai.
         */}
+        <Partytown forward={["dataLayer.push", "gtag"]} />
+
         <Script
+          type="text/partytown"
           src="https://www.googletagmanager.com/gtag/js?id=G-CEG962163M"
-          strategy="lazyOnload"
         />
-        <Script id="ga-gtag-init" strategy="lazyOnload">
+        <Script type="text/partytown" id="ga-gtag-init">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}

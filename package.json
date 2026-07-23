@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "next-sitemap",
     "start": "next start",
+    "postinstall": "partytown copylib public/~partytown",
     "lint": "eslint"
   },
   "dependencies": {
