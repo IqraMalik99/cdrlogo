@@ -393,13 +393,13 @@ function buildBreadcrumbSchema({ brand, logoName, canonicalUrl }) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://www.cdrlogo.com/",
+        "item": "https://www.cdrlogo.com",
       },
       {
         "@type": "ListItem",
         "position": 2,
-        "name": brandLabel,
-        "item": `https://www.cdrlogo.com/brand/${brandSlug}/`,
+        "name": "All Logos",
+        "item": `https://www.cdrlogo.com/logos`,
       },
       {
         "@type": "ListItem",
@@ -1112,7 +1112,7 @@ export async function POST(req) {
     let finalSlug = slug;
     let relatedSlugs = [];
 
-    let canonicalUrl = `https://www.cdrlogo.com/logo/${slug}/`;
+    let canonicalUrl = `https://www.cdrlogo.com/logo/${slug}`;
 
     let ogTitle = "";
     let ogDescription = "";
@@ -1152,7 +1152,7 @@ export async function POST(req) {
               { status: 409 }
             );
           }
-          canonicalUrl = `https://www.cdrlogo.com/logo/${finalSlug}/`;
+          canonicalUrl = `https://www.cdrlogo.com/logo/${finalSlug}`;
         } else {
           console.log(`[4b] No exact matches — this is a new logo, no versioning needed`);
         }

@@ -49,3 +49,34 @@
     columns: 1;
   }
 }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.pagination a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.pagination a:hover {
+  text-decoration: underline;
+}
+
+.pagination-status {
+  color: #777;
+}
+
+@media (max-width: 480px) {
+  .pagination {
+    gap: 1rem;
+    font-size: 0.9rem;
+  }
+}

@@ -314,7 +314,7 @@ function buildBreadcrumbSchema({ brand, logoName, canonicalUrl }) {
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.cdrlogo.com" },
-      { "@type": "ListItem", "position": 2, "name": brandLabel, "item": `https://www.cdrlogo.com/brand/${brandSlug}` },
+      { "@type": "ListItem", "position": 2, "name": "Logos", "item": `https://www.cdrlogo.com/logos` },
       { "@type": "ListItem", "position": 3, "name": logoName, "item": canonicalUrl },
     ],
   };

@@ -724,7 +724,7 @@ export default function LogoDetail() {
                                 <div className="agree-row">
                                     <input type="checkbox" className="agree-check" id="agree" checked={agreed} onChange={e => setAgreed(e.target.checked)} />
                                     <label htmlFor="agree" className="agree-text">
-                                        I agree to the <Link href="/term">Terms of Use</Link>. Logos are for educational and reference purposes only.
+                                        I agree to the <Link href="https://www.cdrlogo.com/terms-of-service">Terms of Use</Link>. Logos are for educational and reference purposes only.
                                     </label>
                                 </div>
 

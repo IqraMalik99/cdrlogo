@@ -31,6 +31,7 @@ const SOCIAL_ICONS = {
 const QUICK_LINKS = [
   { label: "Contact Us", href: "/contact-us" },
   { label: "Request Logo", href: "/request" },
+  { label: "Blogs", href: "/blog" },
   { label: "Brands", href: "/brands" },
   { label: "Template", href: "/template" },
   { label: "All Logos", href: "/logos" },
