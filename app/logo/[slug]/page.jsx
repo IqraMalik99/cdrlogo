@@ -1,18 +1,6 @@
 // app/logo/[slug]/page.js
 import LogoDetail from "./LogoDetail";
 
-const SITE_URL = "https://www.cdrlogo.com";
-
-// Global defaults for image licensing metadata — required on every
-// logo page's ImageObject schema to satisfy Google Search Console's
-// image licensing structured data checks.
-const DEFAULT_IMAGE_LICENSE_META = {
-  copyrightNotice: "Copyright 2026 CDRLogo",
-  creditText: "CDRLogo Reference Library",
-  license: `${SITE_URL}/terms-of-service`,
-  acquireLicensePage: `${SITE_URL}/terms-of-service`,
-};
-
 async function fetchLogo(slug) {
   try {
     const res = await fetch(
@@ -37,13 +25,6 @@ async function fetchLogo(slug) {
   } catch {
     return null;
   }
-}
-
-// Merge global licensing defaults into any ImageObject schema, letting
-// per-logo values from the API take precedence when present.
-function withImageLicenseMeta(schema) {
-  if (!schema) return schema;
-  return { ...DEFAULT_IMAGE_LICENSE_META, ...schema };
 }
 
 export async function generateMetadata({ params }) {
@@ -116,10 +97,6 @@ export async function generateMetadata({ params }) {
         description: twitterDescription,
         ...(twitterImage ? { images: [twitterImage] } : {}),
       },
-
-      other: {
-        "copyright": DEFAULT_IMAGE_LICENSE_META.copyrightNotice,
-      },
     };
 
   } catch (err) {
@@ -142,24 +119,12 @@ export default async function Page({ params }) {
   try {
     logo = await fetchLogo(slug);
     if (logo) {
-      // Always build an ImageObject schema — merging in the global
-      // licensing defaults — even if the API didn't return one, since
-      // every published logo page needs this metadata.
-      const baseImageSchema =
-        logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length
-          ? logo.imageObjectSchema
-          : logo.webpUrl
-          ? {
-              "@context": "https://schema.org",
-              "@type": "ImageObject",
-              contentUrl: logo.webpUrl,
-              name: `${logo.logoName} Logo`,
-            }
-          : null;
-
-      imageObjectSchema = withImageLicenseMeta(baseImageSchema);
-
+      if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
+        imageObjectSchema = logo.imageObjectSchema;
+      }
       if (logo.breadcrumbSchema && Object.keys(logo.breadcrumbSchema).length) {
+        console.log(logo.breadcrumbSchema);
+        
         breadcrumbSchema = logo.breadcrumbSchema;
       }
       if (logo.faqSchema && Object.keys(logo.faqSchema).length) {

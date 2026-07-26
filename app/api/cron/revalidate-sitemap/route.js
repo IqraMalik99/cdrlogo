@@ -7,7 +7,7 @@ export async function GET(req) {
     revalidatePath("/sitemap.xml");
     console.log("run");
 
-    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://cdrlogo.com").replace(/\/$/, "");
+    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com").replace(/\/$/, "");
     const warmupRes = await fetch(`${baseUrl}/sitemap.xml`, { cache: "no-store" });
        console.log(warmupRes);
     return NextResponse.json({
