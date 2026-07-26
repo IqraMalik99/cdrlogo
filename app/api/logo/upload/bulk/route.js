@@ -47,7 +47,15 @@ function sanitizeFilename(filename) {
 function stripTrailingSlash(url) {
   return url.replace(/\/+$/, "");
 }
-
+function stripSpecialChars(name) {
+  if (!name) return name;
+  return name
+    .normalize("NFD")                  // decomposes é → e + ́ (combining accent mark)
+    .replace(/[\u0300-\u036f]/g, "")    // removes just the accent marks, keeps the base letter
+    .replace(/[^a-zA-Z0-9\s]/g, "")     // now safe to strip everything except plain letters/numbers/spaces
+    .replace(/\s+/g, " ")
+    .trim();
+}
 // ── XML escape ────────────────────────────────────────────────────────────────
 function escapeXml(str) {
   return String(str)
@@ -381,7 +389,12 @@ async function findRelatedLogos(logoName) {
 
   return { related: candidates.slice(0, 10), exactNormalizedMatches };
 }
-
+function stripAccents(text) {
+  if (!text) return text;
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
 // ── Auto-version name ─────────────────────────────────────────────────────────
 function generateVersionedName(logoName, exactNormalizedMatches) {
   const usedVersions = new Set();
@@ -1018,33 +1031,36 @@ Return ONLY VALID JSON:
 
 
   // ── Resolve brand / country / industry / website ──────────────────────────
-  const brand = (parsed.brand_used && String(parsed.brand_used).trim()) || "";
+  const brand = stripSpecialChars(
+    (parsed.brand_used && String(parsed.brand_used).trim()) || ""
+  );
   const country = (parsed.country_used && String(parsed.country_used).trim()) || "Worldwide";
   const industry = (parsed.industry_used && String(parsed.industry_used).trim()) || "Logo Design & Graphics";
   const website = (parsed.website_used && String(parsed.website_used).trim()) || "";
 
-  // ── Field fallbacks (educational-tone, banned-word-free) ─────────────────
-  const metaTitle = parsed.meta_title ||
+
+// ── Field fallbacks (educational-tone, banned-word-free) ─────────────────
+  const metaTitle = stripAccents(parsed.meta_title) ||
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
-  const metaDescription = parsed.meta_description ||
+  const metaDescription = stripAccents(parsed.meta_description) ||
     `${logoName}  available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`;
-  const description = parsed.main_description ||
+  const description = stripAccents(parsed.main_description) ||
     `The ${logoName}  is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`;
-  const altText = parsed.alt_text ||
+  const altText = stripAccents(parsed.alt_text) ||
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const tags = Array.isArray(parsed.tags) && parsed.tags.length
-    ? parsed.tags
+    ? parsed.tags.map(t => stripAccents(String(t)))
     : [logoName, "PNG", "SVG", "vector", "cdrlogo.com"];
 
-  const ogTitle = (parsed.og_title && String(parsed.og_title).trim()) ||
+  const ogTitle = stripAccents((parsed.og_title && String(parsed.og_title).trim())) ||
     `${logoName} — PNG & SVG Vector`;
-  const ogDescription = parsed.og_description ||
+  const ogDescription = stripAccents(parsed.og_description) ||
     `${logoName} available in PNG and SVG vector format for educational reference and research purposes.`;
-  const twitterTitle = (parsed.twitter_title && String(parsed.twitter_title).trim()) ||
+  const twitterTitle = stripAccents((parsed.twitter_title && String(parsed.twitter_title).trim())) ||
     `${logoName} — PNG SVG Vector`;
-  const twitterDescription = (parsed.twitter_description && String(parsed.twitter_description).trim()) ||
+  const twitterDescription = stripAccents((parsed.twitter_description && String(parsed.twitter_description).trim())) ||
     `${logoName} in PNG and SVG vector format for educational reference and research use.`;
-  const imageObjectDescription = parsed.image_object_description ||
+  const imageObjectDescription = stripAccents(parsed.image_object_description) ||
     `${logoName} image on cdrlogo.com`;
   const faqPairs = Array.isArray(parsed.faq) ? parsed.faq : [];
 
@@ -1074,14 +1090,14 @@ Return ONLY VALID JSON:
 
 // ── Process one logo folder ───────────────────────────────────────────────────
 async function processOneLogoFolder({ folderName, folderFiles, sharedFields, watermark }) {
-  const rawLogoName = logoNameFromFolderName(folderName);
+  const rawLogoName = stripSpecialChars(logoNameFromFolderName(folderName));
   console.log(`\n  ── Processing folder: "${folderName}" → "${rawLogoName}"`);
 
   try {
     // ── Step A: resolve final name & slug (auto-versioning) ──────────────────
     const { related, exactNormalizedMatches } = await findRelatedLogos(rawLogoName);
 
-    let finalLogoName = rawLogoName;
+    let finalLogoName = stripSpecialChars(rawLogoName);
     let versioned = false;
 
     if (exactNormalizedMatches.length > 0) {
@@ -1096,7 +1112,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
 
     // ── Step B: AI content generation ────────────────────────────────────────
     const aiContent = await generateAIContent({
-      logoName: finalLogoName,
+      logoName: stripSpecialChars(finalLogoName),
       userCategory: sharedFields.category,
       availableCategories: sharedFields.availableCategories,
       relatedLogos: related,
