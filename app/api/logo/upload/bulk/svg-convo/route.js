@@ -3,8 +3,7 @@ import JSZip from "jszip";
 import PDFDocument from "pdfkit";
 import SVGtoPDF from "svg-to-pdfkit";
 import * as mupdf from "mupdf";
-import createDOMPurify from "dompurify";
-import { JSDOM } from "jsdom";
+import DOMPurify from "isomorphic-dompurify";
 import { fileTypeFromBuffer } from "file-type";
 
 export const runtime = "nodejs";
@@ -12,9 +11,6 @@ export const runtime = "nodejs";
 // ── SECURITY CONFIG ──────────────────────────────────────────────────────
 const MAX_SVG_SIZE = 3 * 1024 * 1024;   // 3 MB — plenty for a logo SVG
 const MAX_AI_SIZE = 15 * 1024 * 1024;   // 15 MB — .ai/.pdf files are heavier
-
-const window = new JSDOM("").window;
-const DOMPurify = createDOMPurify(window);
 
 // Route accepts either:
 //   { type: "svg", svg: "<svg>...</svg>", filename }
