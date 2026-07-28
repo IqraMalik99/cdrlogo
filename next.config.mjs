@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
- serverExternalPackages: ["pdfkit", "svg-to-pdfkit","sharp"],
+ serverExternalPackages: ['jsdom', "pdfkit", "svg-to-pdfkit","sharp"],
  images: {
     remotePatterns: [
       {
