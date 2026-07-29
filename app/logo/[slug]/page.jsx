@@ -1,6 +1,15 @@
 // app/logo/[slug]/page.js
 import LogoDetail from "./LogoDetail";
 
+// Global fallback values for ImageObject licensing metadata.
+// These are fixed site-wide and applied to every logo page's schema.
+const GLOBAL_IMAGE_LICENSE_META = {
+  copyrightNotice: "Copyright 2026 CDRLogo",
+  creditText: "CDRLogo Reference Library",
+  license: "https://www.cdrlogo.com/terms-of-service",
+  acquireLicensePage: "https://www.cdrlogo.com/terms-of-service",
+};
+
 async function fetchLogo(slug) {
   try {
     const res = await fetch(
@@ -41,38 +50,31 @@ export async function generateMetadata({ params }) {
       };
     }
 
-
-    // ── 1. Canonical ─────────────────────────────────────────────────────────
     const canonicalUrl =
       logo.canonicalUrl ||
       `${process.env.NEXT_PUBLIC_BASE_URL}/logo/${logo.slug}`;
 
-    // ── 2. Core meta ─────────────────────────────────────────────────────────
     const metaTitle = logo.metaTitle ||
       `${logo.logoName} Logo – Download (SVG, PNG, AI, CDR)`;
 
     const metaDescription = logo.metaDescription ||
       (logo.description || "").slice(0, 160);
 
-    // ── 3. Open Graph ────────────────────────────────────────────────────────
     const ogTitle = logo.ogTitle || metaTitle;
     const ogDescription = logo.ogDescription || metaDescription;
     const ogType = "article";
     const ogImage = logo.ogImageUrl || logo.webpUrl || null;
 
-    // ── 4. Twitter / X card ──────────────────────────────────────────────────
     const twitterCard = logo.twitterCardType || "summary_large_image";
     const twitterTitle = logo.twitterTitle || ogTitle;
     const twitterDescription = logo.twitterDescription || ogDescription;
     const twitterImage = logo.twitterImage || ogImage;
 
-    // ── 5. Robots / indexing ─────────────────────────────────────────────────
     const isPublished = logo.publishStatus === "Published";
     const robots = isPublished
       ? { index: true, follow: true, googleBot: { index: true, follow: true } }
       : { index: false, follow: false, googleBot: { index: false, follow: false } };
 
-    // ── 6. Assemble — NO keywords ─────────────────────────────────────────────
     return {
       title: metaTitle,
       description: metaDescription,
@@ -120,11 +122,13 @@ export default async function Page({ params }) {
     logo = await fetchLogo(slug);
     if (logo) {
       if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
-        imageObjectSchema = logo.imageObjectSchema;
+        // Merge fixed global licensing metadata into every logo page's ImageObject schema.
+        imageObjectSchema = {
+          ...logo.imageObjectSchema,
+          ...GLOBAL_IMAGE_LICENSE_META,
+        };
       }
       if (logo.breadcrumbSchema && Object.keys(logo.breadcrumbSchema).length) {
-        console.log(logo.breadcrumbSchema);
-        
         breadcrumbSchema = logo.breadcrumbSchema;
       }
       if (logo.faqSchema && Object.keys(logo.faqSchema).length) {
@@ -174,7 +178,6 @@ export default async function Page({ params }) {
         </h1>
       }
       <LogoDetail />
-
     </>
   );
 }
