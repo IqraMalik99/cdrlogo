@@ -21,6 +21,7 @@ const nextConfig = {
       },
     ],
   },
+  experimental: { nextScriptWorkers: true },
 };
 
 
