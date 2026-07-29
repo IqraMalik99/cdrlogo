@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import Footer from "../../components/Footer";
 import Image from "next/image";
 
-export default function LogoDetail() {
+export default function LogoDetail({ logo: initialLogo }) {
     const { slug } = useParams();
     const router = useRouter();
     const { dark } = useTheme();
@@ -17,9 +17,9 @@ export default function LogoDetail() {
     const [isFavourited, setIsFavourited] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
 
-    const [logo, setLogo] = useState(null);
+    const [logo, setLogo] = useState(initialLogo || null);
     const [related, setRelated] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialLogo);
     const [error, setError] = useState(null);
 
     const [agreed, setAgreed] = useState(false);
@@ -114,7 +114,7 @@ export default function LogoDetail() {
     };
 
     useEffect(() => {
-        if (!slug) return;
+        if (!slug || initialLogo) return;   // ← ye add karo: agar server se already logo mil chuka hai to dobara fetch mat karo
         async function fetchLogo() {
             setLoading(true); setError(null);
             try {
@@ -595,7 +595,7 @@ export default function LogoDetail() {
 
                                 <div className="preview-img-wrap">
                                     {logo.webpUrl
-                                        ? <img src={logo.webpUrl} alt={logo.altText || `${logo.logoName} logo PNG SVG vector`}  draggable={false} onDragStart={e => e.preventDefault()} />
+                                        ? <img src={logo.webpUrl} alt={logo.altText || `${logo.logoName} logo PNG SVG vector`} draggable={false} onDragStart={e => e.preventDefault()} />
                                         : <div className="preview-img-placeholder" dangerouslySetInnerHTML={{ __html: logo.svgContent || logo.logoName }} />
                                     }
                                     <div className="img-overlay-bar">
@@ -896,7 +896,7 @@ export default function LogoDetail() {
                                         <Link key={rel.slug} href={`/logo/${rel.slug}`} className="related-card">
                                             <div className="related-img-wrap">
                                                 {rel.webpUrl
-                                                    ? <Image src={rel.webpUrl} alt={rel.logoName} width={150} height={150}/>
+                                                    ? <Image src={rel.webpUrl} alt={rel.logoName} width={150} height={150} />
                                                     : <div className="related-initials">{(rel.brand || rel.logoName)?.slice(0, 2).toUpperCase()}</div>
                                                 }
                                             </div>
@@ -908,7 +908,7 @@ export default function LogoDetail() {
                                                     <span className="rf-tag rf-svg">SVG</span>
                                                     <span className="rf-tag rf-png">PNG</span>
                                                 </div>
-                                              
+
                                             </div>
                                         </Link>
                                     );

@@ -177,7 +177,7 @@ export default async function Page({ params }) {
           {`${logo.logoName} – PNG SVG Vector | cdrlogo.com`}
         </h1>
       }
-      <LogoDetail />
+    <LogoDetail logo={logo} />
     </>
   );
 }
