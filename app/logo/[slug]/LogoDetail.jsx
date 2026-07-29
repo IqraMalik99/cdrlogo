@@ -595,7 +595,10 @@ export default function LogoDetail({ logo: initialLogo }) {
 
                                 <div className="preview-img-wrap">
                                     {logo.webpUrl
-                                        ? <img src={logo.webpUrl} alt={logo.altText || `${logo.logoName} logo PNG SVG vector`} draggable={false} onDragStart={e => e.preventDefault()} />
+                                        ? <Image
+                                            fill
+                                            sizes="(max-width: 768px) 90vw, 550px"
+                                            src={logo.webpUrl} alt={logo.altText || `${logo.logoName} logo PNG SVG vector`} draggable={false} onDragStart={e => e.preventDefault()} />
                                         : <div className="preview-img-placeholder" dangerouslySetInnerHTML={{ __html: logo.svgContent || logo.logoName }} />
                                     }
                                     <div className="img-overlay-bar">
@@ -896,7 +899,7 @@ export default function LogoDetail({ logo: initialLogo }) {
                                         <Link key={rel.slug} href={`/logo/${rel.slug}`} className="related-card">
                                             <div className="related-img-wrap">
                                                 {rel.webpUrl
-                                                    ? <Image src={rel.webpUrl} alt={rel.logoName} width={150} height={150} />
+                                                    ? <Image sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, 150px" src={rel.webpUrl} alt={rel.logoName} width={150} height={150} />
                                                     : <div className="related-initials">{(rel.brand || rel.logoName)?.slice(0, 2).toUpperCase()}</div>
                                                 }
                                             </div>

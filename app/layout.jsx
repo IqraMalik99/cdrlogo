@@ -29,16 +29,11 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} ${dmSans.variable} h-full antialiased`}
     >
       <head>
-        {/* ✅ Bing + Yandex — ENV se aayega, Git mein visible nahi hoga */}
         <meta name="msvalidate.01" content="C969DC98F5B4EA442FF6FF3A941F9C1A" />
         <meta name="yandex-verification" content="2ba291fe8912edc4" />
       </head>
       <body className="min-h-full flex flex-col">
-        {/*
-          ✅ Google Tag Manager via @next/third-parties (official Next.js
-          package). Handles optimized loading automatically — no worker/
-          sandbox setup, no deprecation warnings, no extra postinstall step.
-        */}
+
         <GoogleTagManager gtmId="G-CEG962163M" />
         <Providers>
           <ThemeProvider>

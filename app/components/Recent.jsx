@@ -88,7 +88,8 @@ function RecentCard({ logo, dark }) {
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
             fill
-            sizes="(max-width: 560px) 50vw, (max-width: 820px) 33vw, (max-width: 1100px) 25vw, 16vw"
+            quality={65}
+            sizes="(max-width: 560px) min(50vw, 240px), (max-width: 820px) min(33vw, 260px), (max-width: 1100px) min(25vw, 280px), min(16vw, 210px)"
           />
           : <span className="rl-brand-name">{logo.logoName}</span>
         }
