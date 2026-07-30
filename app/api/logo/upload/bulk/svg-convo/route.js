@@ -7,48 +7,58 @@ import sanitizeHtml from "sanitize-html";
 import { fileTypeFromBuffer } from "file-type";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 // ── SECURITY CONFIG ──────────────────────────────────────────────────────
 const MAX_SVG_SIZE = 3 * 1024 * 1024;   // 3 MB — plenty for a logo SVG
 const MAX_AI_SIZE = 15 * 1024 * 1024;   // 15 MB — .ai/.pdf files are heavier
+const MAX_OUTPUT_DIMENSION = 2000;      // px — hard ceiling on rasterized output
 
-// Route accepts either:
-//   { type: "svg", svg: "<svg>...</svg>", filename }
-//   { type: "ai",  ai: "<base64 .ai/.pdf data>", filename }
+// Route now accepts multipart/form-data (like /api/logo/upload/single),
+// NOT JSON+base64. This avoids ~33% base64 inflation and keeps request
+// bodies as close as possible to Vercel's 4.5MB function payload limit.
+//
+// Expected fields:
+//   type      : "svg" | "ai"
+//   file      : the raw .svg or .ai/.pdf File
+//   filename  : desired output filename (no extension)
 //
 // SVG path:
-//   svg (sanitized) → png (via sharp) → ai (svg wrapped in a PDF via svg-to-pdfkit)
+//   svg (sanitized) → png (via sharp, capped resolution) → ai (svg wrapped
+//   in a PDF via svg-to-pdfkit)
 //
 // AI path:
-//   ai (validated) → png (rasterized from the PDF-compatible .ai via mupdf, WITH alpha)
+//   ai (validated) → png (rasterized from the PDF-compatible .ai via mupdf,
+//                    WITH alpha, capped resolution)
 //                  → svg (rasterized PNG embedded as a base64 <image> inside
-//                    an SVG wrapper — this is NOT a true vector trace, just a
-//                    valid, openable .svg container around the raster preview)
+//                    an SVG wrapper — NOT a true vector trace)
 //
 // SECURITY MODEL (quarantine-equivalent):
 // Nothing here ever gets written to disk or executed. Every incoming payload
 // goes through: 1) size check  2) real byte/signature validation (never
 // trust the client's claimed type or file extension)  3) sanitization
-// (SVG only)  — and ONLY THEN is it handed to sharp / pdfkit / mupdf for
-// processing. This mirrors a quarantine → scan → promote flow even though
-// storage here is in-memory.
+// (SVG only) — and ONLY THEN is it handed to sharp / pdfkit / mupdf.
 
 export async function POST(req) {
   try {
     console.log("[convert] Request received");
 
-    const body = await req.json();
-    const rawFilename = typeof body.filename === "string" ? body.filename : "logo";
-    // Prevent path traversal / weird characters in the output filename
+    const formData = await req.formData();
+    const rawFilename = formData.get("filename")?.toString() || "logo";
     const filename = rawFilename.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 100) || "logo";
-    const type = body.type === "ai" ? "ai" : "svg"; // default to svg for back-compat
+    const type = formData.get("type")?.toString() === "ai" ? "ai" : "svg";
+    const file = formData.get("file");
 
     console.log(`[convert] type: "${type}", filename: "${filename}"`);
 
+    if (!file || typeof file === "string") {
+      return Response.json({ error: "No file provided" }, { status: 400 });
+    }
+
     if (type === "svg") {
-      return await handleSvgSource(body, filename);
+      return await handleSvgSource(file, filename);
     } else {
-      return await handleAiSource(body, filename);
+      return await handleAiSource(file, filename);
     }
   } catch (err) {
     console.error("[convert] Top-level conversion error:", {
@@ -63,6 +73,15 @@ export async function POST(req) {
   }
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// VALIDATION + SANITIZATION HELPERS
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * Strict SVG sanitizer using sanitize-html (no jsdom dependency — avoids
+ * the ERR_REQUIRE_ESM crash from isomorphic-dompurify's jsdom chain on
+ * Vercel/Turbopack builds).
+ */
 function sanitizeSvg(svgString) {
   const clean = sanitizeHtml(svgString, {
     allowedTags: [
@@ -79,13 +98,10 @@ function sanitizeSvg(svgString) {
     disallowedTagsMode: "discard",
     exclusiveFilter: (frame) => {
       const tag = frame.tag?.toLowerCase();
-      if (tag === "script" || tag === "foreignobject") return true;
-      return false;
+      return tag === "script" || tag === "foreignobject";
     },
     allowedSchemes: ["data", "http", "https"],
-    parser: {
-      lowerCaseAttributeNames: false,
-    },
+    parser: { lowerCaseAttributeNames: false },
   });
 
   if (!clean || clean.trim().length === 0) {
@@ -116,16 +132,8 @@ function sanitizeSvg(svgString) {
   return safe;
 }
 
-/**
- * Validates that the decoded AI/PDF buffer is ACTUALLY a PDF-compatible
- * file by checking its real magic bytes/signature — never trust the
- * filename, extension, or client-supplied MIME type.
- */
 async function validateAiBuffer(buffer) {
   const detected = await fileTypeFromBuffer(buffer);
-
-  // .ai files saved in "PDF-compatible" mode are real PDFs under the hood,
-  // which is the only kind this route (and mupdf) can actually open.
   const isPdfSignature = buffer.slice(0, 5).toString("ascii") === "%PDF-";
 
   if (!isPdfSignature && detected?.mime !== "application/pdf") {
@@ -138,31 +146,23 @@ async function validateAiBuffer(buffer) {
 // ────────────────────────────────────────────────────────────────────────
 // SVG → SVG + PNG + AI
 // ────────────────────────────────────────────────────────────────────────
-async function handleSvgSource(body, filename) {
-  const { svg } = body;
-
-  if (!svg || typeof svg !== "string") {
-    console.error("[convert:svg] No SVG content provided in request body");
-    return Response.json({ error: "No SVG content provided" }, { status: 400 });
-  }
-
-  const incomingSize = Buffer.byteLength(svg, "utf-8");
-  if (incomingSize > MAX_SVG_SIZE) {
-    console.warn(`[convert:svg] Rejected: SVG size ${incomingSize} exceeds limit`);
+async function handleSvgSource(file, filename) {
+  if (file.size > MAX_SVG_SIZE) {
+    console.warn(`[convert:svg] Rejected: SVG size ${file.size} exceeds limit`);
     return Response.json(
-      { error: `SVG too large (${(incomingSize / 1024 / 1024).toFixed(2)}MB). Max allowed is ${MAX_SVG_SIZE / 1024 / 1024}MB.` },
+      { error: `SVG too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Max allowed is ${MAX_SVG_SIZE / 1024 / 1024}MB.` },
       { status: 413 }
     );
   }
 
-  // Must look like an SVG before we even attempt to sanitize/parse it
+  const svg = await file.text();
+
   if (!svg.trim().toLowerCase().includes("<svg")) {
     return Response.json({ error: "Invalid SVG: no <svg> root element found" }, { status: 400 });
   }
 
   console.log(`[convert:svg] SVG length: ${svg.length} chars`);
 
-  // ── SANITIZE FIRST — nothing downstream ever sees the raw input ──
   let cleanSvg;
   try {
     cleanSvg = sanitizeSvg(svg);
@@ -174,16 +174,35 @@ async function handleSvgSource(body, filename) {
 
   const svgBuffer = Buffer.from(cleanSvg, "utf-8");
 
-  // --- PNG conversion (transparency preserved — sharp keeps alpha by default,
-  //     we just make sure we never call .flatten(), which would force a
-  //     solid background) ---
+  // --- PNG conversion (capped resolution — prevents OOM on huge viewBoxes) ---
   let pngBuffer;
   try {
     console.log("[convert:svg] Starting PNG conversion via sharp...");
-    pngBuffer = await sharp(svgBuffer, { density: 300 })
-      .ensureAlpha()          // guarantee an alpha channel is present
+
+    const probe = await sharp(svgBuffer).metadata();
+    const intrinsicW = probe.width || 1000;
+    const intrinsicH = probe.height || 1000;
+    const longestSide = Math.max(intrinsicW, intrinsicH);
+
+    const desiredDensity = 300;
+    const projectedLongestSide = longestSide * (desiredDensity / 72);
+    const density = projectedLongestSide > MAX_OUTPUT_DIMENSION
+      ? Math.max(72, Math.floor((MAX_OUTPUT_DIMENSION / longestSide) * 72))
+      : desiredDensity;
+
+    console.log(`[convert:svg] intrinsic ${intrinsicW}x${intrinsicH}, density=${density}`);
+
+    pngBuffer = await sharp(svgBuffer, { density })
+      .resize({
+        width: MAX_OUTPUT_DIMENSION,
+        height: MAX_OUTPUT_DIMENSION,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .ensureAlpha()
       .png({ compressionLevel: 9 })
       .toBuffer();
+
     console.log(`[convert:svg] PNG conversion succeeded, size: ${pngBuffer.length} bytes`);
   } catch (err) {
     console.error("[convert:svg] PNG conversion FAILED:", { message: err.message });
@@ -201,7 +220,7 @@ async function handleSvgSource(body, filename) {
     throw new Error(`AI conversion failed: ${err.message}`);
   }
 
-  // --- Zipping (sanitized SVG only — never the original raw upload) ---
+  // --- Zipping ---
   let zipBuffer;
   try {
     console.log("[convert:svg] Building zip archive...");
@@ -214,6 +233,10 @@ async function handleSvgSource(body, filename) {
   } catch (err) {
     console.error("[convert:svg] Zip creation FAILED:", { message: err.message });
     throw new Error(`Zip creation failed: ${err.message}`);
+  }
+
+  if (zipBuffer.length > 4.3 * 1024 * 1024) {
+    console.warn(`[convert:svg] Zip response is ${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB — close to Vercel's 4.5MB limit`);
   }
 
   console.log("[convert:svg] Sending zip response");
@@ -229,38 +252,18 @@ async function handleSvgSource(body, filename) {
 // ────────────────────────────────────────────────────────────────────────
 // AI → PNG + SVG (raster-wrapped) + AI (original passthrough)
 // ────────────────────────────────────────────────────────────────────────
-async function handleAiSource(body, filename) {
-  const { ai } = body;
-
-  if (!ai || typeof ai !== "string") {
-    console.error("[convert:ai] No AI file content provided in request body");
-    return Response.json({ error: "No AI file content provided" }, { status: 400 });
-  }
-
-  // Accept either a raw base64 string or a data URL (data:application/pdf;base64,....)
-  let base64Data = ai;
-  const commaIdx = ai.indexOf(",");
-  if (ai.startsWith("data:") && commaIdx !== -1) {
-    base64Data = ai.slice(commaIdx + 1);
-  }
-
-  let aiBuffer;
-  try {
-    aiBuffer = Buffer.from(base64Data, "base64");
-  } catch (err) {
-    console.error("[convert:ai] Failed to decode base64 AI data:", err.message);
-    return Response.json({ error: "Invalid AI file data (expected base64)" }, { status: 400 });
-  }
-
-  if (aiBuffer.length > MAX_AI_SIZE) {
-    console.warn(`[convert:ai] Rejected: AI file size ${aiBuffer.length} exceeds limit`);
+async function handleAiSource(file, filename) {
+  if (file.size > MAX_AI_SIZE) {
+    console.warn(`[convert:ai] Rejected: AI file size ${file.size} exceeds limit`);
     return Response.json(
-      { error: `File too large (${(aiBuffer.length / 1024 / 1024).toFixed(2)}MB). Max allowed is ${MAX_AI_SIZE / 1024 / 1024}MB.` },
+      { error: `File too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Max allowed is ${MAX_AI_SIZE / 1024 / 1024}MB.` },
       { status: 413 }
     );
   }
 
-  // ── VALIDATE REAL FILE SIGNATURE — never trust extension/claimed type ──
+  const arrayBuffer = await file.arrayBuffer();
+  const aiBuffer = Buffer.from(arrayBuffer);
+
   try {
     await validateAiBuffer(aiBuffer);
     console.log("[convert:ai] File signature validated as PDF-compatible");
@@ -271,11 +274,7 @@ async function handleAiSource(body, filename) {
 
   console.log(`[convert:ai] Decoded AI buffer, size: ${aiBuffer.length} bytes`);
 
-  // --- PNG conversion (rasterize the PDF-compatible .ai file via mupdf) ---
-  // FIX: the previous code passed `alpha = false` to toPixmap(), which forces
-  // mupdf to flatten the render onto an opaque (white) background — that is
-  // exactly why logos with no background were coming out with a white
-  // background in the PNG. Passing `alpha = true` preserves transparency.
+  // --- PNG conversion (rasterize via mupdf, capped resolution) ---
   let pngBuffer;
   let width;
   let height;
@@ -287,15 +286,18 @@ async function handleAiSource(body, filename) {
       throw new Error("AI/PDF document has no pages");
     }
     const page = doc.loadPage(0);
-    const bounds = page.getBounds(); // [x0, y0, x1, y1] in points
+    const bounds = page.getBounds();
     const pageWidthPt = bounds[2] - bounds[0];
     const pageHeightPt = bounds[3] - bounds[1];
 
     const dpi = 300;
-    const scale = dpi / 72;
-    const matrix = mupdf.Matrix.scale(scale, scale);
+    let scale = dpi / 72;
+    const projectedLongest = Math.max(pageWidthPt, pageHeightPt) * scale;
+    if (projectedLongest > MAX_OUTPUT_DIMENSION) {
+      scale = MAX_OUTPUT_DIMENSION / Math.max(pageWidthPt, pageHeightPt);
+    }
 
-    // alpha = true  → keep transparency instead of flattening to white
+    const matrix = mupdf.Matrix.scale(scale, scale);
     const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB, true, true);
     pngBuffer = Buffer.from(pixmap.asPNG());
 
@@ -313,11 +315,9 @@ async function handleAiSource(body, filename) {
   try {
     console.log("[convert:ai] Building raster-wrapped SVG from PNG preview...");
     const base64Png = pngBuffer.toString("base64");
-
     const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <image x="0" y="0" width="${width}" height="${height}" href="data:image/png;base64,${base64Png}" />
 </svg>`;
-
     svgBuffer = Buffer.from(svgString, "utf-8");
     console.log(`[convert:ai] Raster-wrapped SVG built, size: ${svgBuffer.length} bytes`);
   } catch (err) {
@@ -340,6 +340,10 @@ async function handleAiSource(body, filename) {
     throw new Error(`Zip creation failed: ${err.message}`);
   }
 
+  if (zipBuffer.length > 4.3 * 1024 * 1024) {
+    console.warn(`[convert:ai] Zip response is ${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB — close to Vercel's 4.5MB limit`);
+  }
+
   console.log("[convert:ai] Sending zip response");
   return new Response(zipBuffer, {
     status: 200,
@@ -350,6 +354,33 @@ async function handleAiSource(body, filename) {
   });
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// CLIENT-SIDE REFERENCE (page.jsx handleUpload) — not part of this route,
+// kept here as a comment for reference only:
+//
+// async function handleUpload(e) {
+//   e.preventDefault();
+//   ...
+//   const slug = slugify(logoName);
+//   const convFd = new FormData();
+//   convFd.append("type", sourceType);        // "svg" | "ai"
+//   convFd.append("file", file);              // raw File object, no reading/base64
+//   convFd.append("filename", slug);
+//
+//   setStep(sourceType === "svg" ? "Converting to PNG/AI…" : "Converting to PNG/SVG…");
+//   const convRes = await fetch("/api/logo/upload/bulk/svg-convo", {
+//     method: "POST",
+//     body: convFd,                            // NOTE: no Content-Type header —
+//   });                                        // browser sets multipart boundary automatically
+//   if (!convRes.ok) {
+//     const d = await convRes.json().catch(() => ({}));
+//     throw new Error(d.error || "File conversion failed");
+//   }
+//   const zipBlob = await convRes.blob();
+//   ...rest unchanged (upload zipBlob to /api/logo/upload/single)
+// }
+// ────────────────────────────────────────────────────────────────────────
+
 function svgToAiBuffer(svgString) {
   return new Promise((resolve, reject) => {
     try {
@@ -357,32 +388,20 @@ function svgToAiBuffer(svgString) {
       const chunks = [];
 
       doc.on("data", (c) => chunks.push(c));
-      doc.on("end", () => {
-        console.log("[convert:svg] PDFDocument stream ended");
-        resolve(Buffer.concat(chunks));
-      });
-      doc.on("error", (err) => {
-        console.error("[convert:svg] PDFDocument stream error:", err);
-        reject(err);
-      });
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", (err) => reject(err));
 
       doc.addPage({ size: [1000, 1000] });
 
-      console.log("[convert:svg] Calling SVGtoPDF...");
       SVGtoPDF(doc, svgString, 0, 0, {
         width: 1000,
         height: 1000,
         preserveAspectRatio: "xMidYMid meet",
         assumePt: true,
       });
-      console.log("[convert:svg] SVGtoPDF call completed without throwing");
 
       doc.end();
     } catch (err) {
-      console.error("[convert:svg] Synchronous error in svgToAiBuffer:", {
-        message: err.message,
-        stack: err.stack,
-      });
       reject(err);
     }
   });

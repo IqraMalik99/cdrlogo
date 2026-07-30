@@ -59,7 +59,7 @@ export default function UploadLogoPage() {
     });
   }
 
-  async function handleUpload(e) {
+async function handleUpload(e) {
     e.preventDefault();
     setUploadError(""); setUploadSuccess("");
 
@@ -78,23 +78,16 @@ export default function UploadLogoPage() {
     setUploading(true);
     try {
       const slug = slugify(logoName);
-      let convBody;
-
-      if (sourceType === "svg") {
-        setStep("Reading SVG…");
-        const svgText = await file.text();
-        convBody = { type: "svg", svg: svgText, filename: slug };
-      } else {
-        setStep("Reading AI file…");
-        const base64 = await readFileAsBase64(file);
-        convBody = { type: "ai", ai: base64, filename: slug };
-      }
 
       setStep(sourceType === "svg" ? "Converting to PNG/AI…" : "Converting to PNG/SVG…");
+      const convFd = new FormData();
+      convFd.append("type", sourceType);
+      convFd.append("file", file);
+      convFd.append("filename", slug);
+
       const convRes = await fetch("/api/logo/upload/bulk/svg-convo", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(convBody),
+        body: convFd, // no Content-Type header — browser sets the multipart boundary itself
       });
       if (!convRes.ok) {
         const d = await convRes.json().catch(() => ({}));
@@ -126,7 +119,6 @@ export default function UploadLogoPage() {
       setStep("");
     }
   }
-
   if (status === "loading" || status === "unauthenticated") {
     return (
       <div className="pg-loading-screen" style={{ background: dark ? "#08080e" : "#eef0f4" }}>

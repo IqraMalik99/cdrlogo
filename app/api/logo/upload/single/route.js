@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import AdmZip from "adm-zip";
 import sharp from "sharp";
@@ -7,6 +6,9 @@ import { uploadToR2 } from "../../../../lib/uploadToR2";
 import { prisma } from "../../../../lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
+
+export const runtime = "nodejs";
+export const maxDuration = 60; // seconds — raise further (up to plan ceiling) if still timing out
 
 let openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -84,9 +86,20 @@ function measureText(text, fontSize) {
 
 // ── Pixel-perfect watermark ───────────────────────────────────────────────────
 async function applyWatermark(buffer, wm) {
+  // Safety cap — protects against unexpectedly huge PNGs regardless of source,
+  // even though svg-convo already caps its own output resolution.
+  const MAX_DIM = 3000;
+  let meta = await sharp(buffer).metadata();
+
+  if (Math.max(meta.width || 0, meta.height || 0) > MAX_DIM) {
+    buffer = await sharp(buffer)
+      .resize({ width: MAX_DIM, height: MAX_DIM, fit: "inside", withoutEnlargement: true })
+      .toBuffer();
+    meta = await sharp(buffer).metadata();
+  }
+
   if (!wm?.enabled || !wm?.text?.trim()) return buffer;
 
-  let meta = await sharp(buffer).metadata();
   let W = meta.width;
   let H = meta.height;
 
@@ -1010,8 +1023,16 @@ export async function POST(req) {
     let logoName = formData.get("logoName")?.trim();
     let brand = formData.get("brand") || "";
     let website = formData.get("website") || "";
+
+    // FIX: default categoryRaw to "template" when the caller never sends one
+    // (the public upload page never sends a "category" field at all — only
+    // the admin panel does). Without this, an empty categoryRaw produced
+    // category = [""] (an array containing one empty string) whenever the
+    // AI-generation step failed and fell through to the manual fallback.
     let categoryRaw = formData.get("category") || "";
+    if (!categoryRaw.trim()) categoryRaw = "template";
     let category = categoryRaw.toLowerCase().trim() === "template" ? ["template"] : [categoryRaw];
+
     let industry = formData.get("industry") || "";
     let country = formData.get("country") || "";
     let license = formData.get("license") || "";
@@ -1226,6 +1247,10 @@ export async function POST(req) {
           },
         });
         console.log("[4] ⚠ Falling back to manually entered fields");
+        // FIX: reset category on the fallback path too — without this line,
+        // a public-upload request (which never sends "category") could end
+        // up saving category as [""] if the OpenAI call failed here.
+        category = ["template"];
         if (!brand || !brand.trim()) brand = "cdrlogo.com";
         if (!website || !website.trim()) website = "";
         if (!industry || !industry.trim()) industry = "Logo Design & Graphics";
