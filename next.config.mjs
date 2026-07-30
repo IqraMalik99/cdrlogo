@@ -20,8 +20,7 @@ const nextConfig = {
         hostname: "*.r2.dev",
       },
     ],
-  },
-  experimental: { nextScriptWorkers: true },
+  }
 };
 
 
