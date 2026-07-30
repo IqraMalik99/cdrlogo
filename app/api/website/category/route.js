@@ -14,7 +14,7 @@ function slugify(str = "") {
 
 export async function POST(req) {
   try {
-    const { name, slug: rawSlug, type, url = "" } = await req.json();
+    const { name, slug: rawSlug, type, url } = await req.json();
 
     if (!name?.trim()) {
       return Response.json({ message: "Name is required." }, { status: 400 });
@@ -43,7 +43,9 @@ export async function POST(req) {
       );
     }
 
-    const newCategory = { name: name.trim(), slug, type, url: url.trim() };
+    const safeUrl = typeof url === "string" ? url.trim() : "";
+
+    const newCategory = { name: name.trim(), slug, type, url: safeUrl };
     const updated = [...categories, newCategory];
 
     await prisma.website.update({
