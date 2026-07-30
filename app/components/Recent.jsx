@@ -124,7 +124,6 @@ export default function RecentLogos() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
         [data-theme="dark"]{
@@ -147,7 +146,7 @@ export default function RecentLogos() {
 
         .rl-header{margin-bottom:24px}
         .rl-title{font-size:24px;font-weight:800;color:var(--rl-title);letter-spacing:-.4px;line-height:1;transition:color .3s}
-        .rl-subtitle{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--rl-subtitle);margin-top:5px;transition:color .3s}
+        .rl-subtitle{font-family:var(--font-dm-sans),sans-serif;font-size:13px;color:var(--rl-subtitle);margin-top:5px;transition:color .3s}
 
         .rl-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
 
@@ -166,8 +165,8 @@ export default function RecentLogos() {
         .rl-title-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
         .rl-name{font-size:13px;font-weight:800;color:var(--rl-name);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s}
         .rl-meta-row{display:flex;align-items:center;justify-content:space-between}
-        .rl-category{font-family:'DM Sans',sans-serif;font-size:10.5px;color:var(--rl-category);transition:color .3s}
-        .rl-time{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--rl-time);transition:color .3s}
+        .rl-category{font-family:var(--font-dm-sans),sans-serif;font-size:10.5px;color:var(--rl-category);transition:color .3s}
+        .rl-time{font-family:var(--font-dm-sans),sans-serif;font-size:10px;color:var(--rl-time);transition:color .3s}
 
         @keyframes shimmer{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
         .rl-skeleton-preview{background:var(--rl-sk);animation:shimmer 1.6s infinite linear}
