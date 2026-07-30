@@ -6,7 +6,7 @@ export default function robots() {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin/", "/api/", "/login", "/verify"],
+        disallow: ["/admin/", "/api/", "/login", "/verify","/profile"],
       },
       {
         userAgent: "GPTBot",
