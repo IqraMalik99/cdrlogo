@@ -1,11 +1,12 @@
-import Script from "next/script";
 import { Geist, Geist_Mono, Sora, DM_Sans } from "next/font/google";
+import { GoogleTagManager } from "@next/third-parties/google";
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
 import Providers from "./provider";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
 
 const sora = Sora({
   variable: "--font-sora",
@@ -28,19 +29,21 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} ${dmSans.variable} h-full antialiased`}
     >
       <head>
+        {/* ✅ Bing + Yandex — ENV se aayega, Git mein visible nahi hoga */}
         <meta name="msvalidate.01" content="C969DC98F5B4EA442FF6FF3A941F9C1A" />
         <meta name="yandex-verification" content="2ba291fe8912edc4" />
       </head>
       <body className="min-h-full flex flex-col">
-        {/* GTM/GA4 script — lazyOnload strategy: JS execution ko browser idle/load-complete tak defer karta hai */}
-        <Script
-          id="gtm-script"
-          strategy="lazyOnload"
-          src={`https://www.googletagmanager.com/gtm.js?id=G-CEG962163M`}
-        />
-
+        {/*
+          ✅ Google Tag Manager via @next/third-parties (official Next.js
+          package). Handles optimized loading automatically — no worker/
+          sandbox setup, no deprecation warnings, no extra postinstall step.
+        */}
+        <GoogleTagManager gtmId="G-CEG962163M" />
         <Providers>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
         </Providers>
       </body>
     </html>
