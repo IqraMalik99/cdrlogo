@@ -6,7 +6,7 @@ const bundleAnalyzer = withBundleAnalyzer({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
- serverExternalPackages: ["pdfkit","svg-to-pdfkit","sharp","isomorphic-dompurify","jsdom","html-encoding-sniffer"],
+  serverExternalPackages: ["pdfkit", "svg-to-pdfkit", "sharp"],
   images: {
     imageSizes: [16, 32, 48, 64, 96, 110, 128, 150, 256],
     deviceSizes: [640, 750, 828, 1080, 1200],

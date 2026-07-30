@@ -3,7 +3,7 @@ import JSZip from "jszip";
 import PDFDocument from "pdfkit";
 import SVGtoPDF from "svg-to-pdfkit";
 import * as mupdf from "mupdf";
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 import { fileTypeFromBuffer } from "file-type";
 
 export const runtime = "nodejs";
@@ -63,48 +63,47 @@ export async function POST(req) {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// VALIDATION + SANITIZATION HELPERS
-// ────────────────────────────────────────────────────────────────────────
-
-/**
- * Strict SVG sanitizer. Strips <script>, event handler attributes
- * (onload/onerror/onclick/...), <foreignObject>, external references via
- * xlink:href to remote/script urls, and anything DOMPurify's SVG profile
- * doesn't recognize. This runs BEFORE the SVG ever touches sharp, pdfkit,
- * or gets written into the output zip.
- */
 function sanitizeSvg(svgString) {
-  // IMPORTANT: we do NOT forbid <style> here. Most logo SVGs define their
-  // colors via CSS classes in a <style> block (e.g. .cls-1{fill:#3498db}).
-  // Removing the whole tag strips all color information and every shape
-  // falls back to SVG's default fill, which is black — that was the cause
-  // of logos turning solid black after sanitization. Instead we keep
-  // <style>, let DOMPurify sanitize it normally, and additionally scrub
-  // only the genuinely dangerous constructs from its contents below.
-  const clean = DOMPurify.sanitize(svgString, {
-    USE_PROFILES: { svg: true, svgFilters: true },
-    FORBID_TAGS: ["script", "foreignObject"],
-    FORBID_ATTR: [
-      "onload", "onerror", "onclick", "onmouseover", "onmouseout",
-      "onfocus", "onblur", "onbegin", "onend", "onrepeat",
+  const clean = sanitizeHtml(svgString, {
+    allowedTags: [
+      "svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline",
+      "polygon", "text", "tspan", "textPath", "defs", "symbol", "use",
+      "clipPath", "mask", "pattern", "marker", "linearGradient",
+      "radialGradient", "stop", "filter", "feGaussianBlur", "feOffset",
+      "feBlend", "feColorMatrix", "feComposite", "feFlood", "feMerge",
+      "feMergeNode", "feMorphology", "feTile", "feTurbulence",
+      "feDisplacementMap", "feDropShadow", "title", "desc", "style",
+      "image", "switch",
     ],
+    allowedAttributes: false,
+    disallowedTagsMode: "discard",
+    exclusiveFilter: (frame) => {
+      const tag = frame.tag?.toLowerCase();
+      if (tag === "script" || tag === "foreignobject") return true;
+      return false;
+    },
+    allowedSchemes: ["data", "http", "https"],
+    parser: {
+      lowerCaseAttributeNames: false,
+    },
   });
 
   if (!clean || clean.trim().length === 0) {
     throw new Error("SVG failed sanitization (empty or fully stripped as malicious)");
   }
 
-  // Extra belt-and-suspenders check: reject if anything script-like slipped through
-  const lower = clean.toLowerCase();
+  let safe = clean
+    .replace(/\son\w+\s*=\s*"(?:[^"\\]|\\.)*"/gi, "")
+    .replace(/\son\w+\s*=\s*'(?:[^'\\]|\\.)*'/gi, "")
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
+    .replace(/javascript\s*:/gi, "");
+
+  const lower = safe.toLowerCase();
   if (lower.includes("<script") || lower.includes("javascript:")) {
     throw new Error("SVG rejected: potentially malicious content detected");
   }
 
-  // Scrub dangerous CSS constructs from any remaining <style> blocks
-  // WITHOUT deleting the block itself, so legitimate fill/stroke/color
-  // rules survive.
-  const sanitizedStyles = clean.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (match, css) => {
+  safe = safe.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (match, css) => {
     const safeCss = css
       .replace(/@import[^;]*;?/gi, "")
       .replace(/expression\s*\([^)]*\)/gi, "")
@@ -114,7 +113,7 @@ function sanitizeSvg(svgString) {
     return match.replace(css, safeCss);
   });
 
-  return sanitizedStyles;
+  return safe;
 }
 
 /**
