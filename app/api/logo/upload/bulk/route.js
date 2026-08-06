@@ -6,6 +6,17 @@ import { uploadToR2 } from "../../../../lib/uploadToR2";
 import { prisma } from "../../../../lib/prisma";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { r2 } from "../../../../lib/r2";
+import {
+  extractCategoryEntries,
+  buildCategoryTree,
+  categoryTreeLines,
+  findCategoryMatch,
+  normalizeLabel,
+  buildCategoryTreeFromText,
+  validateMainSubAgainstTree
+} from "../../../../lib/categoryMatch";
+import { STATIC_CATEGORIES } from "../../../../lib/Staticcategories";
+import { CATEGORY_TAXONOMY_TEXT } from "../../../../lib/Categorytaxonomytext";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -180,25 +191,6 @@ function getSignificantWords(name) {
     .replace(/\b(19|20)\d{2}\b/g, "")
     .split(/[^a-z0-9]+/)
     .filter((w) => w && !stop.has(w) && !/^v\.?\d+$/.test(w) && !/^\d+$/.test(w));
-}
-
-function extractCategoryNames(categoriesJson) {
-  if (!categoriesJson) return [];
-  let list = categoriesJson;
-  if (typeof list === "string") {
-    try { list = JSON.parse(list); } catch { return []; }
-  }
-  if (!Array.isArray(list)) return [];
-  return list
-    .map((c) => {
-      if (typeof c === "string") return { name: c, slug: generateSlugFromName(c) };
-      if (c && typeof c === "object" && (c.name || c.title || c.label)) return {
-        name: c.name || c.title || c.label || "",
-        slug: c.slug || generateSlugFromName(c.name || c.title || c.label || ""),
-      };
-      return null;
-    })
-    .filter((c) => c && c.name);
 }
 
 // ── Banned phrases & educational phrases ─────────────────────────────────────
@@ -461,8 +453,99 @@ async function generateAIContent({
       .map((r) => (r.description || "").split(/[.!?]/)[0].trim())
       .filter(Boolean)
     : [];
+const hasCategoryList = availableCategories.length > 0;
+const categoryTree = buildCategoryTreeFromText(CATEGORY_TAXONOMY_TEXT);
+  // NOTE: categoryTreeLines() no longer used to build the prompt — GPT now
+  // gets CATEGORY_TAXONOMY_TEXT verbatim (imported above). categoryTree is
+  // still needed here for validating GPT's answer against real values.
 
-  const hasCategoryList = availableCategories.length > 0;
+  // ── STEP 1: category-only call — main_category + sub_category ONLY. ───────
+  // This is deliberately separated from the content call so brand/country can
+  // be resolved from our own records (findCategoryMatch) BEFORE any SEO copy
+  // is written, instead of letting GPT guess brand/country itself.
+  let mainCategory = "template";
+  let subCategory = "";
+
+  if (hasCategoryList) {
+    const categoryPrompt = `Classify this logo into the EXISTING main_category and sub_category taxonomy below. Your job is to find the closest real match — not to default to "no match" just because the wording isn't identical.
+
+Logo Name: ${logoName}
+
+Main Category → Sub Categories (copy verbatim, do not invent names):
+${CATEGORY_TAXONOMY_TEXT}
+
+HOW TO CLASSIFY (do this in order):
+1. Work out what the logo actually IS or represents — what product, service, or industry does "${logoName}" belong to in real life? (e.g. a milk, cheese, yogurt, or butter brand is a DAIRY product; a sedan or SUV brand is a CAR MANUFACTURER; a jet or airliner brand is an AIRCRAFT MANUFACTURER.)
+2. Scan every sub_category listed under every main_category for the one that matches that real-world product/service/industry by MEANING, not by literal spelling. A milk brand should match "Dairy Products", not sit unmatched just because the logo name doesn't contain the word "dairy".
+3. You MUST always return BOTH a main_category AND a matching sub_category from the list above — a sub_category is required every time, it is never left blank and never "Other {main_category}". Keep scanning the full sub_category list for that main_category until you find the closest real match.
+4. Only return main_category = "template" (and sub_category = "") in the extremely rare case that the logo genuinely does not fit ANY main_category at all — this should almost never happen.
+
+Examples of correct reasoning (do not copy literally, just the pattern):
+- "Nestle Milk" → industry = dairy product → main_category: "Food & Beverages", sub_category: "Dairy Products"
+- "SkyJet Airlines" → industry = air travel → main_category: "Automotive & Transport", sub_category: "Airlines"
+- "Random abstract shape with no real-world meaning" → main_category: "template", sub_category: ""
+
+Rules:
+- main_category and sub_category MUST be copied verbatim (exact spelling) from the list above.
+- sub_category MUST belong to the listed main_category, and MUST be present whenever main_category isn't "template".
+- Do NOT return brand, website, industry, or country — not asked for here.
+
+Return ONLY valid JSON: { "reasoning": "one short sentence on what the logo represents and why this category fits", "main_category": "...", "sub_category": "..." }`;
+
+    try {
+      const catCompletion = await callOpenAIWithRetry({
+        model: "gpt-4.1-mini",
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: "You classify logos into an existing main/sub category taxonomy by real-world meaning (what the brand actually sells or represents), not by literal keyword matching against the logo name. main_category and sub_category are BOTH required on every response — sub_category is never left blank and never set to \"Other {main_category}\". You always keep searching the sub_category list for the real match. You never invent category names that aren't in the provided list. You return only JSON." },
+          { role: "user", content: categoryPrompt },
+        ],
+        response_format: { type: "json_object" },
+      });
+      const catRaw = catCompletion.choices[0]?.message?.content || "{}";
+      let catParsed = {};
+      try { catParsed = JSON.parse(catRaw); } catch { catParsed = {}; }
+      mainCategory = (catParsed.main_category && String(catParsed.main_category).trim()) || "template";
+      subCategory = (catParsed.sub_category && String(catParsed.sub_category).trim()) || "";
+      if (catParsed.reasoning) console.log(`  [ai:category] reasoning: ${catParsed.reasoning}`);
+      // ── RAW LLM PICK — exactly what GPT returned, before any validation ──
+      console.log(`  [ai:category] RAW pick from LLM → main_category: "${mainCategory}" | sub_category: "${subCategory}"`);
+    } catch (err) {
+      console.warn(`  [ai:category] Failed, defaulting to "template": ${err.message}`);
+      mainCategory = "template";
+      subCategory = "";
+    }
+  }
+  const mainCategoryFromLLM = mainCategory;
+  const subCategoryFromLLM = subCategory;
+
+  ({ mainCategory, subCategory } = validateMainSubAgainstTree(
+    categoryTree,
+    mainCategoryFromLLM,
+    subCategoryFromLLM
+  ));
+
+  if (mainCategoryFromLLM !== mainCategory || subCategoryFromLLM !== subCategory) {
+    console.log(`  [ai:category] VALIDATION CHANGED IT → main: "${mainCategoryFromLLM}" → "${mainCategory}" | sub: "${subCategoryFromLLM}" → "${subCategory}"`);
+  } else {
+    console.log(`  [ai:category] VALIDATED pick unchanged → main: "${mainCategory}" | sub: "${subCategory}"`);
+  }
+  // Look up brand/country from OUR OWN category records — never from GPT.
+  // main_category/sub_category are matched fuzzily (case-insensitive, even
+  // one shared word is enough) against website.categories. Among the
+  // matching DB record(s), we walk in order and use the FIRST one whose
+  // `brand` fuzzy-matches the logo name (shared word, or any 3+ letter run
+  // in common) — not the best-scoring one, the first hit. If nothing matches,
+  // brand falls back to "Other {sub_category}"; country/industry are only
+  // ever taken from a matched record, never generated.
+  const { match: categoryMatch } = findCategoryMatch(availableCategories, mainCategory, subCategory, logoName);
+  console.log(
+    `  [category] main: "${mainCategory}" | sub: "${subCategory}" | matched: ${categoryMatch ? `${categoryMatch.brand} / ${categoryMatch.country || "(no country)"}` : "none"}`
+  );
+
+  const resolvedBrand = categoryMatch?.brand || (subCategory ? `Other ${subCategory}` : "");
+  const resolvedCountry = categoryMatch?.country || "";
+  const resolvedIndustry = categoryMatch?.etype || "";
 
   // ── System prompt ─────────────────────────────────────────────────────────
   const systemPrompt = `You are a senior SEO specialist generating metadata for cdrlogo.com, a professional logo reference archive website.
@@ -621,19 +704,19 @@ LOGO DETAILS
 Logo Name     : ${logoName}
 Canonical URL : ${canonicalUrl}
 
-${hasCategoryList
-      ? `Category: Select UP TO 3 categories from the list below, based strictly on relevancy to this logo's brand/industry name.
-- Try to select exactly 3 if there are 3 genuinely relevant matches.
-- If fewer than 3 are relevant, select only those that are (do NOT force irrelevant categories).
-- If NOT EVEN ONE category from the list is relevant, return exactly ["template"] as the category array.
-- Copy category names verbatim from this list — do not modify or invent names:
-${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
-      : `Category: Use your best classification for this logo's industry.`
-    }
+Category (already decided — do not change, do not output a category field):
+- Main Category : ${mainCategory}
+- Sub Category  : ${subCategory}
 
-Brand   : UNKNOWN — infer real brand if confidently identifiable donot guess.
-Website : UNKNOWN — infer real website if confidently identifiable donot guess but try to find real website.
-Industry: UNKNOWN — infer specific industry sector
+Brand   : ${resolvedBrand} (FIXED — from our own records, not generated by you. Use exactly this string, do not alter, translate, or second-guess it.)
+Country : ${resolvedCountry || "Worldwide"} (FIXED — from our own records, not generated by you. Use exactly this string.)
+Industry: ${resolvedIndustry || "Logo Design & Graphics"} (FIXED — from our own records, not generated by you. Use exactly this string.)
+Website : UNKNOWN — you may infer the real official website ONLY if highly confident, otherwise leave "". This is the only one of these four fields you ever fill in yourself.
+
+IMPORTANT: Do not output brand_used / country_used / industry_used at all —
+these are supplied above as fixed facts and are never generated by you; write
+your copy using the Brand/Country/Industry values given above exactly as
+given. Only website_used is yours to determine.
 
 ${isVariant ? `
 ==================================================
@@ -908,7 +991,11 @@ Return as array: [{ "question": "...", "answer": "..." }, ...]
 FINAL OUTPUT FIELDS
 --------------------------------------------------
 
-brand_used, website_used, industry_used, country_used
+website_used only.
+(brand, industry, and country are FIXED FACTS given to you above — never
+include brand_used / country_used / industry_used in your JSON output. This
+section no longer decides main_category/sub_category either — that was
+already decided in a separate step before this prompt.)
 ===========================================
 ==================================================
 FINAL SELF VALIDATION
@@ -918,14 +1005,11 @@ BEFORE RETURNING: Scan ALL fields. If ANY banned word found OR
 educational phrase missing from meta_description / og_description /
 twitter_description / main_description — REGENERATE internally.
 
-Return ONLY VALID JSON:
+Return ONLY VALID JSON (no "category", "brand_used", "country_used", or
+"industry_used" fields — those are all decided outside of you):
 
 {
-  "category": ["...", "...", "...", "...", "..."],
-  "brand_used": "...",
   "website_used": "...",
-  "country_used": "...",
-  "industry_used": "...",
   "meta_title": "...",
   "meta_description": "...",
   "main_description": "...",
@@ -1009,37 +1093,25 @@ Return ONLY VALID JSON:
 
 
   // ── Resolve category ──────────────────────────────────────────────────────
-  let rawCategories = parsed.category;
-  if (typeof rawCategories === "string") rawCategories = [rawCategories];
-  if (!Array.isArray(rawCategories)) rawCategories = [];
-
-  let resolvedCategories = [];
-  if (hasCategoryList) {
-    for (const cat of rawCategories) {
-      const match = availableCategories.find(
-        (c) => c.name.toLowerCase() === String(cat).trim().toLowerCase()
-      );
-      if (match) resolvedCategories.push(match.name);
-    }
-    resolvedCategories = resolvedCategories.slice(0, 5);
-    if (resolvedCategories.length === 0) resolvedCategories = ["template"];
-  } else {
-    resolvedCategories = rawCategories.slice(0, 5).map(String).filter(Boolean);
-  }
-
-  // ...
-
+  // logo.category is a single-element array containing ONLY the sub category
+  // (main_category / sub_category were already decided deterministically in
+  // STEP 1 above — GPT's "category" output, if any, is ignored here).
+  const finalCategoryValue = mainCategory === "template" ? "template" : subCategory;
+  const resolvedCategories = [finalCategoryValue];
 
   // ── Resolve brand / country / industry / website ──────────────────────────
-  const brand = stripSpecialChars(
-    (parsed.brand_used && String(parsed.brand_used).trim()) || ""
-  );
-  const country = (parsed.country_used && String(parsed.country_used).trim()) || "Worldwide";
-  const industry = (parsed.industry_used && String(parsed.industry_used).trim()) || "Logo Design & Graphics";
+  // brand/country/industry are FULLY deterministic — always taken from our
+  // own records (resolvedBrand/resolvedCountry/resolvedIndustry, computed
+  // above via findCategoryMatch). GPT never generates these; there is no
+  // fallback to any GPT-provided value for them anymore. Website is the only
+  // one of the four GPT is still allowed to fill in (only when confident).
+  const brand = stripSpecialChars(resolvedBrand);
+  const country = resolvedCountry || "Worldwide";
+  const industry = resolvedIndustry || "Logo Design & Graphics";
   const website = (parsed.website_used && String(parsed.website_used).trim()) || "";
 
 
-// ── Field fallbacks (educational-tone, banned-word-free) ─────────────────
+  // ── Field fallbacks (educational-tone, banned-word-free) ─────────────────
   const metaTitle = stripAccents(parsed.meta_title) ||
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const metaDescription = stripAccents(parsed.meta_description) ||
@@ -1068,6 +1140,8 @@ Return ONLY VALID JSON:
 
   return {
     category: resolvedCategories,
+    mainCategory,
+    subCategory: finalCategoryValue,
     brand,
     website,
     country,
@@ -1119,7 +1193,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       canonicalUrl,
     });
 
-    console.log(`  [ai] category: "${aiContent.category}" | brand: "${aiContent.brand}" | website: "${aiContent.website || "(none)"}" | country: "${aiContent.country}" | industry: "${aiContent.industry}"`);
+    console.log(`  [ai] main: "${aiContent.mainCategory}" | sub: "${aiContent.subCategory}" | brand: "${aiContent.brand}" | website: "${aiContent.website || "(none)"}" | country: "${aiContent.country}" | industry: "${aiContent.industry}"`);
     console.log(`  [ai] metaTitle (${aiContent.metaTitle.length} chars): "${aiContent.metaTitle.substring(0, 60)}"`);
     console.log(`  [ai] ogTitle: "${aiContent.ogTitle}" | twitterTitle: "${aiContent.twitterTitle}"`);
     console.log(`  [ai] tags: ${aiContent.tags.length} | faq pairs: ${aiContent.faqPairs.length}`);
@@ -1229,11 +1303,12 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         slug: finalSlug,
         brand: aiContent.brand,
         website: aiContent.website,
+        // Single-element array: just the sub category (or ["template"]).
+        // sharedFields.category === "template" is a manual override that
+        // forces template regardless of what the classifier picked.
         category: sharedFields.category.toLowerCase().trim() === "template"
           ? ["template"]
-          : Array.isArray(aiContent.category) && aiContent.category.length > 0
-            ? aiContent.category
-            : ["template"],
+          : aiContent.category,
         industry: aiContent.industry,
         country: aiContent.country,
         license: sharedFields.license,
@@ -1352,9 +1427,13 @@ export async function POST(req) {
 
     const websiteRecord = await prisma.website.findFirst();
     const watermark = websiteRecord?.watermark ?? null;
+    // ── CHANGED: use static hardcoded categories instead of DB (for now) ──
+    // Previously: extractCategoryEntries(websiteRecord?.categories)
+    // websiteRecord is still fetched above for `watermark`, but categories
+    // no longer depend on website.categories in the DB at all.
     const availableCategories = category.toLowerCase().trim() === "template"
       ? []
-      : extractCategoryNames(websiteRecord?.categories);
+      : STATIC_CATEGORIES;
 
     const sharedFields = { category, license, publishStatus, downloadCount, brandColors, availableCategories };
 

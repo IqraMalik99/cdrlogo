@@ -1,11 +1,10 @@
-
-import CategoryGroupClient from "./Client.jsx";
+import CategoryClient from "./Client.jsx";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com";
 
-async function getGroupData(slug) {
+async function getCategoryData(slug) {
   try {
-    const res = await fetch(`${baseUrl}/api/catageory/group/${encodeURIComponent(slug)}`, {
+    const res = await fetch(`${baseUrl}/api/catageory/${encodeURIComponent(slug)}?page=1`, {
       cache: "no-store",
     });
     if (!res.ok) return null;
@@ -17,12 +16,12 @@ async function getGroupData(slug) {
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const data = await getGroupData(slug);
+  const data = await getCategoryData(slug);
   const name = data?.categoryName || slug.replace(/-/g, " ");
   const prettyName = name.charAt(0).toUpperCase() + name.slice(1);
 
-  const title = `${prettyName} Logos — Browse All Sub-Categories | CDRLogo`;
-  const description = `Browse all ${prettyName} sub-categories and download brand logos in CDR, SVG, AI and PNG formats.`;
+  const title = `${prettyName} Logo Vector Files — Free CDR SVG PNG Download | CDRLogo`;
+  const description = `Download ${prettyName} brand logos in CDR, SVG, AI and PNG formats. Free vector files for designers and print professionals.`;
   const url = `${baseUrl}/category/${slug}`;
   const image = `${baseUrl}/og-image.jpg`;
 
@@ -41,7 +40,7 @@ export async function generateMetadata({ params }) {
       url,
       siteName: "CDRLogo",
       type: "website",
-      images: [{ url: image, width: 1200, height: 630, alt: `${prettyName} Logos` }],
+      images: [{ url: image, width: 1200, height: 630, alt: `${prettyName} Logo` }],
     },
     twitter: {
       card: "summary_large_image",
@@ -52,9 +51,9 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default async function CategoryGroupPage({ params }) {
+export default async function CategoryPage({ params }) {
   const { slug } = await params;
-  const data = await getGroupData(slug);
+  const data = await getCategoryData(slug);
   const name = data?.categoryName || slug.replace(/-/g, " ");
   const prettyName = name.charAt(0).toUpperCase() + name.slice(1);
   const url = `${baseUrl}/category/${slug}`;
@@ -62,8 +61,8 @@ export default async function CategoryGroupPage({ params }) {
   const collectionSchema = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${prettyName} Logos`,
-    description: `Browse all ${prettyName} sub-categories and logos.`,
+    name: `${prettyName} Logo Vector Files`,
+    description: `Download ${prettyName} brand logos in CDR, SVG, AI and PNG formats.`,
     url,
   };
 
@@ -72,8 +71,7 @@ export default async function CategoryGroupPage({ params }) {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: baseUrl },
-      { "@type": "ListItem", position: 2, name: "Categories", item: `${baseUrl}/categories` },
-      { "@type": "ListItem", position: 3, name: prettyName, item: url },
+      { "@type": "ListItem", position: 2, name: prettyName, item: url },
     ],
   };
 
@@ -87,12 +85,8 @@ export default async function CategoryGroupPage({ params }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      <h1 className="page-title-seo">{prettyName} Logos — Sub-Categories</h1>
-      <CategoryGroupClient
-        slug={slug}
-        initialCategoryName={data?.categoryName || prettyName}
-        initialData={data}
-      />
+       <h1 className="page-title-seo">{prettyName} Logo Vector Files</h1>
+      <CategoryClient slug={slug} initialCategoryName={prettyName} />
     </>
   );
 }

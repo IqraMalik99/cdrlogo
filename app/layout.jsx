@@ -34,13 +34,7 @@ export default function RootLayout({ children }) {
         <meta name="yandex-verification" content="2ba291fe8912edc4" />
       </head>
       <body className="min-h-full flex flex-col">
-        {/*
-          ✅ Google Tag Manager — deferred until first user interaction
-          (scroll/click/keydown/touch) or a 4s idle fallback, whichever
-          comes first. Cuts ~85 KiB of unused JS from the critical path
-          without losing any tracking, since GTM only needs to be ready
-          before the user actually does something worth tracking.
-        */}
+      
         <DeferredGTM gtmId="G-CEG962163M" />
         <Providers>
           <ThemeProvider>

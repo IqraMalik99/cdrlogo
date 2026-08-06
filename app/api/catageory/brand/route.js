@@ -11,38 +11,59 @@ export async function GET() {
       prisma.website.findFirst({ select: { categories: true } }),
     ]);
 
-    // ── count how many published logos use each category name ──
-    const categoryCount = {};
+    // ── count how many published logos use each SUBcategory value ──
+    const subCategoryCount = {};
     for (const logo of logos) {
-      for (const cat of logo.category) {
-        if (cat.toLowerCase() === "template") continue; // skip template
-        if (!categoryCount[cat]) categoryCount[cat] = 0;
-        categoryCount[cat]++;
+      const cats = Array.isArray(logo.category)
+        ? logo.category
+        : typeof logo.category === "string"
+        ? [logo.category]
+        : [];
+      for (const cat of cats) {
+        if (!cat || cat.toLowerCase() === "template") continue; // skip template
+        const key = cat.trim().toLowerCase();
+        subCategoryCount[key] = (subCategoryCount[key] || 0) + 1;
       }
     }
 
-    // ── build a lookup of images per category, keyed by lowercased name/slug ──
     const categories = Array.isArray(website?.categories) ? website.categories : [];
-    const imagesByKey = {};
+
+    // ── group by MAIN name, dedupe, sum counts across all its subnames, collect images ──
+    const groupedByName = new Map();
+
     for (const c of categories) {
-      const urls = Array.isArray(c.url) ? c.url : [];
-      if (c.name)  imagesByKey[c.name.trim().toLowerCase()]  = urls;
-      if (c.slug)  imagesByKey[c.slug.trim().toLowerCase()]  = urls;
+      const name = c?.name?.trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+
+      if (!groupedByName.has(key)) {
+        groupedByName.set(key, { name, count: 0, images: [], seenImages: new Set() });
+      }
+      const group = groupedByName.get(key);
+
+      // sum published-logo count for this subname into the main category's total
+      const subKey = (c.subname || "").trim().toLowerCase();
+      if (subKey) {
+        group.count += subCategoryCount[subKey] || 0;
+      }
+
+      // collect image url (string, per your sample data) — dedupe + skip empty
+      const url = typeof c.url === "string" ? c.url.trim() : "";
+      if (url && !group.seenImages.has(url)) {
+        group.seenImages.add(url);
+        group.images.push(url);
+      }
     }
 
-    const formatted = Object.entries(categoryCount).map(([name, count]) => ({
+    const formatted = Array.from(groupedByName.values()).map(({ name, count, images }) => ({
       name,
       count,
-      images: imagesByKey[name.trim().toLowerCase()] || [],
+      images,
     }));
 
     return NextResponse.json({ categories: formatted });
-
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { error: "Something went wrong" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

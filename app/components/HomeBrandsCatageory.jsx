@@ -9,6 +9,16 @@ const PER_PAGE = 10;
 function BrandCard({ cat, index, dark }) {
   const router = useRouter();
   const [hov, setHov] = useState(false);
+  function cleanSlug(slug = "") {
+    return slug
+        .trim()
+        .toLowerCase()
+        .replace(/^\/+/, "")            // remove leading slash if stored as "/some-slug"
+        .replace(/[^a-z0-9\s-]/g, "")   // drop special characters (keep letters, numbers, spaces, hyphens)
+        .replace(/\s+/g, "-")           // spaces -> hyphens
+        .replace(/-+/g, "-")            // collapse multiple hyphens into one
+        .replace(/^-+|-+$/g, "");       // trim leading/trailing hyphens
+}
 
   const hoverStyle = dark
     ? { background: "rgba(7,166,38,0.1)", borderColor: "rgba(7,166,38,0.35)" }
@@ -24,7 +34,7 @@ function BrandCard({ cat, index, dark }) {
       onMouseLeave={() => setHov(false)}
       onClick={() => {
         const query = cat.category.toLowerCase();
-        router.push(`/category/${query}`);
+        router.push(`/category/${cleanSlug(query)}`);
       }}
     >
       {hasImages ? (

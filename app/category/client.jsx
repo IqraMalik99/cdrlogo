@@ -41,6 +41,7 @@ export default function CategoriesClient() {
                     body: JSON.stringify({ letter }),
                 });
                 const data = await res.json();
+                console.log(data,"datafg");
                 console.log("Fetched categories for letter", letter, data);
 
                 // API returns { SectionKey: [ { name, slug }, ... ] }
@@ -84,10 +85,27 @@ export default function CategoriesClient() {
         return source;
     };
 
-    const handleCategoryClick = (cat) => {
-        // cat is { name, slug } — use slug directly from API
-        router.push(`/category/${encodeURIComponent(cat.slug)}`);
-    };
+function cleanSlug(slug = "") {
+    return slug
+        .trim()
+        .toLowerCase()
+        .replace(/^\/+/, "")            // remove leading slash if stored as "/some-slug"
+        .replace(/[^a-z0-9\s-]/g, "")   // drop special characters (keep letters, numbers, spaces, hyphens)
+        .replace(/\s+/g, "-")           // spaces -> hyphens
+        .replace(/-+/g, "-")            // collapse multiple hyphens into one
+        .replace(/^-+|-+$/g, "");       // trim leading/trailing hyphens
+}
+
+const handleCategoryClick = (cat) => {
+    router.push(`/category/${encodeURIComponent(cleanSlug(cat.slug))}`);
+};
+
+const handleSearch = () => {
+    const q = searchValue.trim().toLowerCase();
+    if (!q) return;
+    router.push(`/category/${encodeURIComponent(cleanSlug(q))}`);
+};
+
 
     const handleLetterClick = (l) => {
         setSearchValue(""); // clear search when switching letters
@@ -96,12 +114,6 @@ export default function CategoriesClient() {
 
     const visible = Object.entries(filteredCategories()).filter(([, cats]) => cats.length > 0);
 
-    const handleSearch = () => {
-        const q = searchValue.trim().toLowerCase();
-        if (!q) return;
-        const slug = q.replace(/\s+/g, "-");
-        router.push(`/category/${encodeURIComponent(slug)}`);
-    };
 
     const handleKeyDown = (e) => {
         if (e.key === "Enter") handleSearch();

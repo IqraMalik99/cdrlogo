@@ -626,7 +626,7 @@ export default function LogoManagement({ dark = true }) {
   };
 
   const handleCategoriesLoaded = useCallback((cats) => {
-    setCategories((prev) => (prev.length > 0 ? prev : cats));
+   setCategories((prev) => (prev.length > 0 ? prev : Array.from(new Set(cats))));
   }, []);
 
   const handleStatusToggle = async (logo) => {

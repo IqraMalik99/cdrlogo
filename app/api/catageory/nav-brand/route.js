@@ -2,25 +2,12 @@ import { prisma } from "../../../lib/prisma";
 
 // --- Fuzzy helpers -----------------------------------------------------------
 
-/**
- * Returns true when `query` is found "loosely" inside `target` — a partial,
- * substring-style match. Even a half-typed word matches as long as its
- * characters appear as a contiguous run inside the target (case-insensitive).
- *
- * Examples: "log" matches "Logo", "nik" matches "Nike", "desc" matches
- * "description text here".
- */
 function isLooseMatch(query, target) {
   if (!query) return true;
   if (!target) return false;
   return target.toLowerCase().includes(query.toLowerCase().trim());
 }
 
-/**
- * Post-filter an array of logo objects by loose/partial search on
- * logoName + description only. Category is never touched here — the
- * non-template-category scoping already happened before this runs.
- */
 function searchFilter(logos, query) {
   const q = (query || "").trim();
   if (!q) return logos;
@@ -33,11 +20,6 @@ function searchFilter(logos, query) {
 
 // --- Category helpers ---------------------------------------------------------
 
-/**
- * Logo.category is a Prisma String, but tolerate it occasionally holding a
- * JSON-stringified array (e.g. '["template","other"]') instead of a plain
- * string. Returns true if "template" is present either way.
- */
 function isTemplateCategory(value) {
   if (value == null) return false;
 
@@ -63,6 +45,34 @@ function isTemplateCategory(value) {
   return false;
 }
 
+/**
+ * Returns true if the FIRST item of logo.category starts with "other"
+ * (case-insensitive). Tolerates the same array / JSON-stringified-array /
+ * plain-string shapes as isTemplateCategory.
+ */
+function firstCategoryStartsWithOther(value) {
+  let firstItem = null;
+
+  if (Array.isArray(value)) {
+    firstItem = value[0];
+  } else if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) firstItem = parsed[0];
+      } catch {
+        firstItem = trimmed;
+      }
+    } else {
+      firstItem = trimmed;
+    }
+  }
+
+  if (firstItem == null) return false;
+  return String(firstItem).trim().toLowerCase().startsWith("other");
+}
+
 // --- Route handler -----------------------------------------------------------
 
 export async function POST(req) {
@@ -74,7 +84,6 @@ export async function POST(req) {
 
     const { page = 1, search = "" } = body;
 
-    // Limit ab frontend se nahi, DB (Website.LogoLimit) se aayega
     const website = await prisma.website.findFirst({
       select: { limit: true },
     });
@@ -101,11 +110,13 @@ export async function POST(req) {
       orderBy: { createdAt: "desc" },
     });
 
-    const nonTemplateLogos = candidates.filter((logo) => !isTemplateCategory(logo.category));
-    console.log(`🏷️ Non-template-category logos found: ${nonTemplateLogos.length}`);
+    const nonTemplateLogos = candidates.filter(
+      (logo) =>
+        !isTemplateCategory(logo.category) &&
+        !firstCategoryStartsWithOther(logo.category)
+    );
+    console.log(`🏷️ Non-template, non-"other"-first logos found: ${nonTemplateLogos.length}`);
 
-    // 2. Search step — only runs if `search` is non-empty. No search → no
-    //    fuzzy logic at all, just paginate the non-template set directly.
     const trimmedSearch = String(search || "").trim();
 
     const finalResults = trimmedSearch
@@ -114,7 +125,6 @@ export async function POST(req) {
 
     const total = finalResults.length;
 
-    // 3. Paginate the (possibly search-filtered) non-template results.
     const pageNum = Math.max(1, Number(page) || 1);
     const skip = (pageNum - 1) * limitNum;
     const logos = finalResults.slice(skip, skip + limitNum);

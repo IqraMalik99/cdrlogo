@@ -83,35 +83,84 @@ export async function POST(req) {
 export async function PATCH(req) {
   try {
     const body = await req.json();
-    const { id, ...incoming } = body;
 
-    if (!id) {
-      return Response.json({ error: "ID is required" }, { status: 400 });
+    const isArray = Array.isArray(body);
+    const items = isArray ? body : [body];
+
+    if (items.length === 0) {
+      return Response.json({ error: "No data provided" }, { status: 400 });
     }
 
-    // ✅ Remove undefined / null / empty string
-    const data = Object.fromEntries(
-      Object.entries(incoming).filter(([_, v]) => v !== undefined && v !== null && v !== "")
-    );
+    const results = [];
+    const errors = [];
 
-    // ✅ Optional: type fixes
-    if (data.downloadCount !== undefined) {
-      data.downloadCount = String(data.downloadCount);
+    for (const item of items) {
+      const { id, ...incoming } = item;
+
+      if (!id) {
+        errors.push({ id: null, error: "ID is required" });
+        continue;
+      }
+
+      // ✅ Remove undefined / null / empty string
+      const data = Object.fromEntries(
+        Object.entries(incoming).filter(
+          ([_, v]) => v !== undefined && v !== null && v !== ""
+        )
+      );
+
+      // ✅ category must stay String[] in the schema — wrap it
+      if (data.category !== undefined) {
+        data.category = Array.isArray(data.category)
+          ? data.category
+          : [data.category];
+      }
+
+      // ✅ Optional: type fixes
+      if (data.downloadCount !== undefined) {
+        data.downloadCount = String(data.downloadCount);
+      }
+
+      if (Object.keys(data).length === 0) {
+        errors.push({ id, error: "No valid fields to update" });
+        continue;
+      }
+
+      try {
+        const updatedLogo = await prisma.logo.update({
+          where: { id },
+          data,
+        });
+        results.push(updatedLogo);
+      } catch (err) {
+        console.error(`PATCH Error for id ${id}:`, err);
+        const message =
+          err.code === "P2025" ? "Logo not found" : "Failed to update logo";
+        errors.push({ id, error: message });
+      }
     }
 
-    const updatedLogo = await prisma.logo.update({
-      where: { id },
-      data,
+    if (!isArray) {
+      if (errors.length > 0) {
+        return Response.json(
+          { error: errors[0].error },
+          { status: errors[0].error === "Logo not found" ? 404 : 400 }
+        );
+      }
+      return Response.json(results[0]);
+    }
+
+    return Response.json({
+      updatedCount: results.length,
+      failedCount: errors.length,
+      updated: results,
+      errors,
     });
-
-    return Response.json(updatedLogo);
-
   } catch (error) {
     console.error("PATCH Error:", error);
-    return Response.json({ error: "Failed to update logo" }, { status: 500 });
+    return Response.json({ error: "Failed to update logo(s)" }, { status: 500 });
   }
 }
-
 
 import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { r2 } from "../../../lib/r2";

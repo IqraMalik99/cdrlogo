@@ -31,11 +31,12 @@ export default function BulkUploadLogo({ dark }) {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/catageory/home");
-        const data = await res.json();
-        if (data?.success) {
-          setCategories([...data.data]);
-        }
+        // const res = await fetch("/api/catageory/home");
+        // const data = await res.json();
+        // if (data?.success) {
+         
+        // }
+         setCategories([]);
       } catch (err) {
         console.error("Failed to load categories", err);
       }

@@ -1,116 +1,69 @@
+
+
+
+
 "use client";
 
-import { useRouter, useParams } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useTheme } from "../../context/ThemeContext";
 import Navbar from "../../components/Navbar";
-import Image from "next/image";
 
-const PAGE_SIZE = 12;
-
-function SkeletonCard() {
-  return (
-    <div className="logo-card skeleton-card">
-      <div className="card-image skeleton-img" />
-      <div className="card-body">
-        <div className="skeleton-line w60" />
-        <div className="skeleton-line w40 mt4" />
-        <div className="card-formats" style={{ marginTop: 8 }}>
-          {[1, 2, 3].map(i => <div key={i} className="skeleton-badge" />)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LogoCard({ logo }) {
-  const [imgErr, setImgErr] = useState(false);
+export default function CategoryGroupClient({ slug, initialCategoryName, initialData }) {
   const router = useRouter();
-  const colors = Array.isArray(logo.brandColors) ? logo.brandColors : [];
-  const formats = ["SVG", "PNG", "AI", "CDR"];
+  const { dark } = useTheme();
 
-  return (
-    <div className="logo-card" onClick={(e) => {
-      e.preventDefault();
-      router.push(`/logo/${logo.slug}`);
-    }}>
-      {logo.trending && (
-        <div className="trending-badge">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-            <polyline points="17 6 23 6 23 12" />
-          </svg>
-          TRENDING
-        </div>
-      )}
-
-      <div className="card-image">
-        {!imgErr && logo.webpUrl ? (
-          <Image src={logo.webpUrl} alt={logo.logoName}
-            onError={() => setImgErr(true)} className="card-img"
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-             width={150}
-            height={150}
-          />
-        ) : (
-          <span className="card-initials">{logo.logoName?.slice(0, 2).toUpperCase()}</span>
-        )}
-      </div>
-
-      <div className="card-body">
-        <div className="card-name">{logo.logoName}</div>
-        <span className="card-category">
-          {logo.category?.[1] ? logo.category[1] : logo.category?.[0]}
-        </span>
-
-     
-
-        <div className="card-formats">
-          {formats.map(f => (
-            <span key={f} className={`fmt-tag fmt-${f.toLowerCase()}`}>{f}</span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function CategoryClient({ slug: slugProp, initialCategoryName }) {
-const slug = slugProp;
-
-  const [logos, setLogos] = useState([]);
-const [categoryName, setCategoryName] = useState(initialCategoryName || "");
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(initialData || null);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [searchValue, setSearchValue] = useState("");
+  const [sort, setSort] = useState("az"); // "az" | "count"
 
-  const fetchLogos = useCallback(async () => {
-    if (!slug) return;
+  const fetchGroup = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/catageory/${encodeURIComponent(slug)}?page=${page}`);
+      const res = await fetch(`/api/catageory/group/${encodeURIComponent(slug)}`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
-      const data = await res.json();
-      setLogos(data.logos ?? []);
-      setTotalPages(data.totalPages ?? 1);
-      setCategoryName(data.categoryName ?? slug);
+      const json = await res.json();
+      setData(json);
     } catch (err) {
       setError(err.message);
-      setLogos([]);
     } finally {
       setLoading(false);
     }
-  }, [slug, page]);
+  }, [slug]);
 
-  useEffect(() => { fetchLogos(); }, [fetchLogos]);
-  useEffect(() => { setPage(1); }, [slug]);
+  useEffect(() => {
+    if (!initialData) fetchGroup();
+  }, [fetchGroup, initialData]);
 
-  return (<>
-    <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap');
+  // Client-side filter + sort — instant, no refetch on keystroke
+  const visibleSubcategories = useMemo(() => {
+    if (!data?.subcategories) return [];
+    const q = searchValue.trim().toLowerCase();
+    let list = q
+      ? data.subcategories.filter((s) => s.name.toLowerCase().includes(q))
+      : data.subcategories;
+
+    list = [...list].sort((a, b) =>
+      sort === "count" ? b.count - a.count : a.name.localeCompare(b.name)
+    );
+    return list;
+  }, [data, searchValue, sort]);
+
+  const handleSubClick = (sub) => {
+    router.push(`/category/sub-cat/${encodeURIComponent(sub.slug)}`);
+  };
+
+  const categoryName = data?.categoryName || initialCategoryName || slug;
+  const totalLogos = data?.totalLogos ?? 0;
+  const totalSubs = data?.subcategories?.length ?? 0;
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -123,20 +76,15 @@ const [categoryName, setCategoryName] = useState(initialCategoryName || "");
           --text-primary:   #ffffff;
           --text-secondary: rgba(255,255,255,0.45);
           --text-muted:     rgba(255,255,255,0.25);
-          --pill-bg:        rgba(255,255,255,0.06);
-          --pill-border:    rgba(255,255,255,0.1);
-          --pill-color:     rgba(255,255,255,0.6);
-          --pill-active-bg:     rgba(7,166,38,0.18);
-          --pill-active-border: rgba(7,166,38,0.45);
-          --pill-active-color:  #4ade80;
-          --card-img-bg:    #1a1a24;
+          --search-bg:      rgba(255,255,255,0.04);
+          --search-bdr:     rgba(255,255,255,0.1);
+          --search-clr:     #ffffff;
+          --search-ph:      rgba(255,255,255,0.3);
+          --toggle-bg:      rgba(255,255,255,0.05);
+          --toggle-border:  rgba(255,255,255,0.09);
+          --toggle-active-bg: rgba(7,166,38,0.18);
+          --toggle-active-clr: #4ade80;
           --skeleton:       rgba(255,255,255,0.06);
-          --page-btn-bg:    rgba(255,255,255,0.06);
-          --page-btn-color: rgba(255,255,255,0.5);
-          --page-btn-hover: rgba(255,255,255,0.1);
-          --page-active-bg: rgba(7,166,38,0.2);
-          --page-active-color: #4ade80;
-          --page-active-border: rgba(7,166,38,0.45);
           --error-color:    #f87171;
         }
         [data-theme="light"] {
@@ -148,157 +96,161 @@ const [categoryName, setCategoryName] = useState(initialCategoryName || "");
           --text-primary:   #0a0a14;
           --text-secondary: rgba(0,0,0,0.5);
           --text-muted:     rgba(0,0,0,0.3);
-          --pill-bg:        rgba(0,0,0,0.05);
-          --pill-border:    rgba(0,0,0,0.09);
-          --pill-color:     rgba(0,0,0,0.6);
-          --pill-active-bg:     rgba(7,166,38,0.1);
-          --pill-active-border: rgba(7,166,38,0.35);
-          --pill-active-color:  #15803d;
-          --card-img-bg:    #f0f0f5;
+          --search-bg:      rgba(255,255,255,0.9);
+          --search-bdr:     rgba(0,0,0,0.12);
+          --search-clr:     #0a0a14;
+          --search-ph:      rgba(0,0,0,0.3);
+          --toggle-bg:      rgba(255,255,255,0.9);
+          --toggle-border:  rgba(0,0,0,0.1);
+          --toggle-active-bg: rgba(7,166,38,0.1);
+          --toggle-active-clr: #15803d;
           --skeleton:       rgba(0,0,0,0.06);
-          --page-btn-bg:    rgba(0,0,0,0.05);
-          --page-btn-color: rgba(0,0,0,0.5);
-          --page-btn-hover: rgba(0,0,0,0.09);
-          --page-active-bg: rgba(7,166,38,0.1);
-          --page-active-color: #15803d;
-          --page-active-border: rgba(7,166,38,0.35);
           --error-color:    #dc2626;
         }
 
-        .logos-page { min-height: 100vh; background: var(--page-bg); font-family: 'Sora', sans-serif; padding: 0px 0 60px; transition: background 0.35s; }
-        .logos-container { max-width: 1200px; margin: 0 auto; padding: 24px 24px 0; }
+        .grp-page { min-height: 100vh; background: var(--page-bg); font-family: 'Sora', sans-serif; padding: 0 0 60px; transition: background 0.35s; }
+        .grp-container { max-width: 1200px; margin: 0 auto; padding: 24px 24px 0; }
 
-        .page-header { margin-bottom: 20px; }
-        .back-link {
-          display: inline-flex; align-items: center; gap: 6px;
-          font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600;
-          color: var(--text-secondary); text-decoration: none; cursor: pointer;
-          margin-bottom: 10px; border: none; background: none; padding: 0;
-        }
-        .back-link:hover { color: #4ade80; }
-        .page-title { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1; text-transform: capitalize; }
-        .page-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+        .grp-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 6px; flex-wrap: wrap; }
+        .grp-title { font-size: 26px; font-weight: 900; color: var(--text-primary); letter-spacing: -0.6px; }
+        .grp-sub { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 6px; max-width: 560px; line-height: 1.6; }
+        .grp-count { text-align: right; flex-shrink: 0; }
+        .grp-count-num { font-size: 22px; font-weight: 900; color: var(--text-primary); line-height: 1; }
+        .grp-count-lbl { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.6px; color: var(--text-muted); text-transform: uppercase; }
 
-        .logos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 36px; }
+        .grp-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 22px 0 10px; flex-wrap: wrap; }
 
-        .logo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; cursor: pointer; position: relative; transition: background 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s; }
-        .logo-card:hover { background: var(--surface-hover); border-color: var(--border-hover); transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.15); }
-        [data-theme="dark"] .logo-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
+        .grp-search { flex: 1; min-width: 220px; display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--search-bg); border: 1.5px solid var(--search-bdr); border-radius: 10px; }
+        .grp-search input { flex: 1; background: none; border: none; outline: none; font-size: 13px; font-family: 'Sora', sans-serif; font-weight: 500; color: var(--search-clr); }
+        .grp-search input::placeholder { color: var(--search-ph); }
+        .grp-search svg { color: rgba(128,128,160,0.5); flex-shrink: 0; }
 
-        .trending-badge { position: absolute; top: 10px; left: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(7,166,38,0.85); border-radius: 6px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px); }
+        .sort-toggle { display: flex; border: 1px solid var(--toggle-border); border-radius: 9px; overflow: hidden; background: var(--toggle-bg); flex-shrink: 0; }
+        .sort-btn { padding: 8px 14px; font-size: 12px; font-weight: 700; font-family: 'Sora', sans-serif; color: var(--text-secondary); background: none; border: none; cursor: pointer; transition: background .15s, color .15s; }
+        .sort-btn.active { background: var(--toggle-active-bg); color: var(--toggle-active-clr); }
 
-        .card-image { width: 100%; height: 130px; background: var(--card-img-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .card-img { width: 100%; height: 100%; object-fit: contain; padding: 16px; }
-        .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; }
+        .grp-result-line { font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
 
-        .card-body { padding: 10px 12px 12px; }
-        .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .card-category { font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px; }
-        .card-colors { display: flex; gap: 4px; margin-bottom: 8px; }
-        .color-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); }
-        [data-theme="light"] .color-dot { border-color: rgba(0,0,0,0.1); }
+        .sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+        .sub-card { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: background .2s, border-color .2s, transform .15s; text-align: left; }
+        .sub-card:hover { background: var(--surface-hover); border-color: var(--border-hover); transform: translateY(-2px); }
+        .sub-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+        .sub-count { font-family: 'DM Sans', sans-serif; font-size: 11.5px; color: var(--text-muted); }
+        .sub-arrow { color: #07A626; opacity: 0.7; flex-shrink: 0; transition: opacity .15s, transform .15s; }
+        .sub-card:hover .sub-arrow { opacity: 1; transform: translate(2px,-2px); }
 
-        .card-formats { display: flex; flex-wrap: wrap; gap: 4px; }
-        .fmt-tag { padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid; }
-        .fmt-ai  { background:rgba(234,179,8,.1);  border-color:rgba(234,179,8,.25);  color:#fde68a; }
-        .fmt-svg { background:rgba(34,197,94,.1);  border-color:rgba(34,197,94,.25);  color:#86efac; }
-        .fmt-png { background:rgba(59,130,246,.1); border-color:rgba(59,130,246,.25); color:#93c5fd; }
-        [data-theme="light"] .fmt-ai  { color:#92400e; }
-        [data-theme="light"] .fmt-svg { color:#166534; }
-        [data-theme="light"] .fmt-png { color:#1e40af; }
+        .skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+        .skeleton-card { height: 56px; border-radius: 12px; background: var(--skeleton); animation: shimmer 1.4s ease-in-out infinite; }
+        @keyframes shimmer { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        .skeleton-card { pointer-events: none; }
-        .skeleton-img { width: 100%; height: 130px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
-        .skeleton-line { height: 10px; border-radius: 5px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
-        .w60{width:60%} .w40{width:40%} .mt4{margin-top:4px}
-        .skeleton-badge { width:28px; height:16px; border-radius:4px; background:var(--skeleton); animation:shimmer 1.6s infinite linear; }
-        @keyframes shimmer { 0%{opacity:1} 50%{opacity:0.4} 100%{opacity:1} }
+        .error-state, .empty-state { text-align: center; padding: 60px 24px; color: var(--text-secondary); font-size: 14px; }
+        .error-state { color: var(--error-color); }
+        .error-state button { margin-top: 12px; padding: 8px 20px; border-radius: 8px; border: 1px solid var(--error-color); background: transparent; color: var(--error-color); font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
 
-        .error-state { text-align:center; padding:60px 24px; color:var(--error-color); font-size:14px; }
-        .error-state button { margin-top:12px; padding:8px 20px; border-radius:8px; border:1px solid var(--error-color); background:transparent; color:var(--error-color); font-family:'Sora',sans-serif; font-size:13px; font-weight:600; cursor:pointer; }
-
-        .empty-state { grid-column:1/-1; text-align:center; padding:60px 24px; color:var(--text-secondary); font-size:14px; }
-
-        .pagination { display:flex; align-items:center; justify-content:center; gap:6px; }
-        .page-btn { min-width:36px; height:36px; padding:0 10px; border-radius:9px; border:1px solid var(--pill-border); background:var(--page-btn-bg); font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:var(--page-btn-color); cursor:pointer; transition:background 0.15s,color 0.15s,border-color 0.15s; display:flex; align-items:center; justify-content:center; }
-        .page-btn:hover:not(.active):not(:disabled) { background:var(--page-btn-hover); color:var(--text-primary); }
-        .page-btn.active { background:var(--page-active-bg); border-color:var(--page-active-border); color:var(--page-active-color); }
-        .page-btn:disabled { opacity:0.35; cursor:not-allowed; }
-        .page-ellipsis { color:var(--text-muted); font-size:13px; padding:0 4px; }
-
-        @media (max-width:640px) {
-          .logos-page { padding: 12px 0 40px; }
-          .logos-container { padding: 14px 12px 0; }
-          .page-title { font-size: 20px; }
-          .logos-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
-          .card-image { height: 105px; }
-          .card-name { font-size: 13px; }
-          .pagination { gap: 4px; }
-          .page-btn { min-width: 32px; height: 32px; font-size: 12px; }
+        @media (max-width: 640px) {
+          .grp-container { padding: 14px 12px 0; }
+          .grp-title { font-size: 21px; }
+          .sub-grid, .skeleton-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+          .grp-toolbar { flex-direction: column; align-items: stretch; }
         }
       `}</style>
 
-    
+      <div className="grp-page">
+        <div className="grp-container">
+          <Navbar />
+          <div className="h-20" />
 
-    <div className="logos-page">
-      <div className="logos-container">
+          <div className="grp-header">
+            <div>
+              <p className="grp-title">{categoryName}</p>
+              <p className="grp-sub">
+                Browse all sub-categories under {categoryName} and find the logos you need.
+              </p>
+            </div>
+            <div className="grp-count">
+              <div className="grp-count-num">{totalLogos.toLocaleString()}</div>
+              <div className="grp-count-lbl">Logos</div>
+            </div>
+          </div>
 
-        <div className="page-header">
-        <Navbar />
-        <div className="h-20"></div>
-          <button className="back-link" onClick={() => history.back()}>
-            ← Back to categories
-          </button>
-<p className="page-title" style={{ fontSize: 24, fontWeight: 800 }}>{categoryName || slug}</p>
-          <p className="page-subtitle">Browse logos in this category</p>
+          {error ? (
+            <div className="error-state">
+              <p>Failed to load categories: {error}</p>
+              <button onClick={fetchGroup}>Try again</button>
+            </div>
+          ) : (
+            <>
+              <div className="grp-toolbar">
+                <div className="grp-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Filter sub-categories…"
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                  />
+                </div>
+
+                <div className="sort-toggle">
+                  <button
+                    className={`sort-btn${sort === "az" ? " active" : ""}`}
+                    onClick={() => setSort("az")}
+                  >
+                    A–Z
+                  </button>
+                  <button
+                    className={`sort-btn${sort === "count" ? " active" : ""}`}
+                    onClick={() => setSort("count")}
+                  >
+                    Most logos
+                  </button>
+                </div>
+              </div>
+
+              {!loading && (
+                <div className="grp-result-line">
+                  {visibleSubcategories.length} of {totalSubs} sub-categories
+                </div>
+              )}
+
+              {loading ? (
+                <div className="skeleton-grid">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div key={i} className="skeleton-card" style={{ animationDelay: `${i * 60}ms` }} />
+                  ))}
+                </div>
+              ) : visibleSubcategories.length === 0 ? (
+                <div className="empty-state">No sub-categories match your search.</div>
+              ) : (
+                <div className="sub-grid">
+                  {visibleSubcategories.map((sub) => (
+                    <button
+                      key={sub.slug}
+                      className="sub-card"
+                      onClick={() => handleSubClick(sub)}
+                    >
+                      <div>
+                        <div className="sub-name">{sub.name}</div>
+                        <div className="sub-count">
+                          {sub.count} {sub.count === 1 ? "logo" : "logos"}
+                        </div>
+                      </div>
+                      <svg className="sub-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="7" y1="17" x2="17" y2="7" />
+                        <polyline points="7 7 17 7 17 17" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
-
-        {error ? (
-          <div className="error-state">
-            <p>Failed to load logos: {error}</p>
-            <button onClick={fetchLogos}>Try again</button>
-          </div>
-        ) : (
-          <div className="logos-grid">
-            {loading
-              ? Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)
-              : logos.length === 0
-                ? <div className="empty-state">No logos found in this category.</div>
-                : logos.map(logo => <LogoCard key={logo.id} logo={logo} />)
-            }
-          </div>
-        )}
-
-        {!error && !loading && logos.length > 0 && (
-          <div className="pagination">
-            <button className="page-btn"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}>‹</button>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
-              .reduce((acc, n, idx, arr) => {
-                if (idx > 0 && n - arr[idx - 1] > 1) acc.push("…");
-                acc.push(n);
-                return acc;
-              }, [])
-              .map((n, i) =>
-                n === "…"
-                  ? <span key={`e${i}`} className="page-ellipsis">…</span>
-                  : <button key={n}
-                    className={`page-btn${page === n ? " active" : ""}`}
-                    onClick={() => setPage(n)}>{n}</button>
-              )
-            }
-
-            <button className="page-btn"
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}>›</button>
-          </div>
-        )}
-
       </div>
-    </div>
-  </>
+    </>
   );
 }
+
