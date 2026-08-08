@@ -99,9 +99,10 @@ function wordsOf(s) {
 }
 
 // Fuzzy, case-insensitive word-overlap match: true if ANY whole word is
-// shared between the two labels. Used for main/sub CATEGORY matching only
-// (deliberately lenient — DB wording can differ slightly from the
-// classification taxonomy).
+// shared between the two labels. Kept for sub_category VALIDATION against
+// the GPT taxonomy tree (findClosestSubCategory below) — NOT used anymore
+// for candidate/category filtering in findCategoryMatch, which now requires
+// an EXACT match (see exactLabelMatch further down).
 function hasWordOverlap(a, b) {
   const wordsA = new Set(wordsOf(a));
   if (!wordsA.size) return false;
@@ -226,8 +227,7 @@ function hasConsecutiveWordMatch(a, b, stopWords, minWords = 2) {
 // score) vs. "Amul (Gujarat Cooperative Milk Marketing Federation)" (6
 // distinguishing words, only "milk" happens to overlap → weak score) — a
 // flat "any shared word counts the same" rule would wrongly treat both as
-// equally good and let list order decide, which is how "Nestle Milk" was
-// incorrectly matching Amul before.
+// equally good and let list order decide.
 //   ~1.0+ = brand's distinguishing vocabulary is (almost) fully present in the logo name
 //   ~0.15–0.9 = only some of the brand's distinguishing words are present
 //   ~0.15–0.3 = no shared word, but a loose letter-run overlap (acronyms, partial names)
@@ -306,57 +306,98 @@ function collectCandidateNoiseWords(candidates) {
   return noise;
 }
 
-// Finds the DB record(s) for the chosen main+sub pair (fuzzy word-overlap on
-// name/subname), scores EVERY candidate's brand/synonyms against the logo
-// name, and returns the HIGHEST-SCORING one — not just the first one that
-// clears some minimum bar. This matters because a weak, coincidental match
-// (e.g. the word "milk" appearing inside one candidate's long legal name)
-// must never outrank a strong, direct brand-name match on another candidate
-// (e.g. "Nestle" matching "Nestle Milk" almost exactly). Ties (equal score)
-// keep the first candidate in list order. Every step is recorded into `log`
-// so callers — including the debug route — can see exactly why a brand was
-// or wasn't picked, not just the final answer.
-// STRICT brand match: no synonyms, no scoring — just loop through
-// candidates in list order and stop at the FIRST one whose brand shares
-// any word with the logo name. This is deliberate: a scored "best match"
-// let something like "Amul" win over "Nestle" if it scored a fraction
-// higher on a coincidental word. Strict first-match avoids that entirely.
+// ── EXACT category match (case-insensitive, accent/whitespace-normalized) ──
+// main_category and sub_category must match the DB record's name/subname
+// EXACTLY (after normalization) to be considered a candidate at all. This
+// replaces the old fuzzy hasWordOverlap-based candidate filter.
+function exactLabelMatch(a, b) {
+  return normalizeLabel(a) === normalizeLabel(b);
+}
+
+// findCategoryMatch — the single entry point used by the upload route:
+//
+//   STEP 1: filter `entries` (from website.categories, via
+//           extractCategoryEntries) down to records whose name/subname
+//           EXACTLY match mainCategory/subCategory (case-insensitive,
+//           accent/whitespace-normalized — not fuzzy word-overlap).
+//
+//   STEP 2: among those candidates, score EVERY candidate's brand (+
+//           synonyms) against logoName using fuzzyBrandScore, and select
+//           the HIGHEST-scoring one above a minimum threshold. This is pure
+//           code — no LLM call.
+//
+// Every step is both pushed into `log` (for callers like the debug route)
+// and printed directly to the console for quick visibility while testing.
 function findCategoryMatch(entries, mainCategory, subCategory, logoName) {
   const log = [];
+
+  console.log(`\n[findCategoryMatch] ══════════════════════════════════════`);
+  console.log(`  source        : website.categories (DB)`);
+  console.log(`  entries total : ${entries.length}`);
+  console.log(`  logoName      : "${logoName}"`);
+  console.log(`  mainCategory  : "${mainCategory}"`);
+  console.log(`  subCategory   : "${subCategory}"`);
+
   if (!mainCategory || !subCategory) {
     log.push("No mainCategory/subCategory provided — skipping DB lookup.");
+    console.log(`  → SKIPPED, missing mainCategory/subCategory.\n`);
     return { match: null, candidates: [], log };
   }
 
+  // ── STEP 1: EXACT category match ─────────────────────────────────────────
   const candidates = entries.filter(
-    (e) => hasWordOverlap(e.name, mainCategory) && hasWordOverlap(e.subname || "", subCategory)
+    (e) => exactLabelMatch(e.name, mainCategory) && exactLabelMatch(e.subname || "", subCategory)
   );
-  log.push(`main="${mainCategory}" sub="${subCategory}" → ${candidates.length} DB record(s) matched on category.`);
+
+  log.push(`EXACT match → main="${mainCategory}" sub="${subCategory}" → ${candidates.length} DB record(s).`);
+  console.log(`  ── STEP 1: exact category filter ──`);
+  console.log(`  candidates found: ${candidates.length}`);
 
   if (!candidates.length) {
-    log.push('No DB records exist for this main+sub pair — brand will fall back to "Other {sub_category}".');
+    log.push('No DB records exist for this EXACT main+sub pair — brand will fall back to "Other {sub_category}".');
+    console.log(`  → NO candidates for this exact main+sub. Brand will fallback to "Other ${subCategory}".\n`);
     return { match: null, candidates, log };
   }
 
-  let match = null;
+  console.log(`  candidate pool (brand | country | industry):`);
+  candidates.forEach((c, i) => {
+    console.log(`    ${i + 1}. brand="${c.brand || "(unknown)"}" | country="${c.country || "(unknown)"}" | industry="${c.etype || "(unknown)"}"`);
+  });
+
+  // ── STEP 2: fuzzy brand score against logoName ───────────────────────────
+  const stopWords = buildBrandStopWords(mainCategory, subCategory);
+  console.log(`  ── STEP 2: fuzzy brand scoring against logoName="${logoName}" ──`);
+
+  let best = null;
+  let bestScore = 0;
+  const scored = [];
+
   for (const c of candidates) {
-    if (c.brand && hasWordOverlap(c.brand, logoName)) {
-      match = c;
-      log.push(`  candidate brand="${c.brand}" → word match with logo="${logoName}" → SELECTED (first match, stop searching).`);
-      break;
+    const score = recordFuzzyScore(c, logoName, stopWords);
+    scored.push({ candidate: c, score });
+    console.log(`    brand="${c.brand || "(unknown)"}" → fuzzyScore=${score.toFixed(3)}`);
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
     }
-    log.push(`  candidate brand="${c.brand}" → no word overlap with logo="${logoName}", skip.`);
   }
 
-  if (!match) {
-    log.push('No candidate brand word-matched the logo name — brand falls back to "Other {sub_category}", country "Worldwide".');
+  // Minimum threshold — avoid picking a candidate on pure noise (score ~0.15
+  // is the weakest "letter-run" signal from fuzzyBrandScore; require at
+  // least a real shared-word signal, i.e. > 0.15, to count as a match).
+  const MIN_SCORE = 0.15;
+
+  if (best && bestScore > MIN_SCORE) {
+    log.push(`Fuzzy brand match → brand="${best.brand}" score=${bestScore.toFixed(3)} (highest among ${candidates.length} candidates).`);
+    console.log(`  → SELECTED: brand="${best.brand}" (score=${bestScore.toFixed(3)})\n`);
+    return { match: best, candidates, log };
   }
 
-  return { match, candidates, log };
+  log.push(`No candidate brand scored above threshold (${MIN_SCORE}) — brand falls back to "Other {sub_category}".`);
+  console.log(`  → NO candidate scored above ${MIN_SCORE}. Brand falls back to "Other ${subCategory}".\n`);
+  return { match: null, candidates, log };
 }
-// ── GPT category classification (main_category + sub_category ONLY) ───────
-// Kept here too so the debug route exercises the exact same call the upload
-// route makes — never a re-implementation that could drift.
+
 async function classifyMainSubCategory({ openai, logoName, tree }) {
   const lines = categoryTreeLines(tree);
 
@@ -412,17 +453,16 @@ Return ONLY valid JSON: { "reasoning": "one short sentence on what the logo repr
 
 // Validates/normalizes GPT's main/sub choice against the real tree.
 //
-// CHANGED: sub_category validation now uses fuzzy word-overlap scoring
+// sub_category validation uses fuzzy word-overlap scoring
 // (findClosestSubCategory) instead of requiring byte-for-byte string
-// equality. Previously, if GPT's wording for sub_category didn't match the
-// tree EXACTLY (different word order, minor paraphrase, plural/singular,
-// etc.), subCategory was silently reset to "" and mainCategory — even when
-// it was correctly identified — got reset all the way down to "template".
-// That meant a fully correct main_category answer was routinely discarded
-// over a trivial sub_category wording mismatch. Now we look for the closest
-// real sub_category under the chosen main_category by shared-word fraction,
-// and only fall back to "template" if nothing scores above a sane threshold
-// (see findClosestSubCategory's 0.34 cutoff).
+// equality — this is validation against the GPT taxonomy tree only, NOT
+// the DB candidate lookup (which is exact — see findCategoryMatch above).
+// If GPT's wording for sub_category didn't match the tree exactly (word
+// order, minor paraphrase, plural/singular), subCategory would otherwise be
+// silently reset to "" and mainCategory reset to "template". Now we look
+// for the closest real sub_category under the chosen main_category by
+// shared-word fraction, and only fall back to "template" if nothing scores
+// above a sane threshold (see findClosestSubCategory's 0.34 cutoff).
 function validateMainSubAgainstTree(tree, mainCategoryRaw, subCategoryRaw) {
   let mainCategory = mainCategoryRaw;
   let subCategory = subCategoryRaw;

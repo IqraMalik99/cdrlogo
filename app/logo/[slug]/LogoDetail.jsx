@@ -671,7 +671,7 @@ export default function LogoDetail({ logo: initialLogo }) {
                                 <div className="info-grid">
                                     {[
                                         { icon: "🏷️", label: "Brand", value: logo.brand },
-                                        { icon: "⚙️", label: "Industry", value: logo.industry },
+                                        // { icon: "⚙️", label: "Industry", value: logo.industry },
                                         { icon: "🌍", label: "Country", value: logo.country },
                                         { icon: "📁", label: "Category", value: categoryDisplay },
                                     ]

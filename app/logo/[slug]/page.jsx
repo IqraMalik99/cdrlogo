@@ -27,6 +27,8 @@ async function fetchLogo(slug) {
     const json = await res.json();
     const logo = json.data || json;
 
+    console.log("[fetchLogo]", slug, logo);
+
     // If API returned an error object, return null
     if (!logo || logo.error || !logo.slug) return null;
 

@@ -15,7 +15,6 @@ import {
   buildCategoryTreeFromText,
   validateMainSubAgainstTree
 } from "../../../../lib/categoryMatch";
-import { STATIC_CATEGORIES } from "../../../../lib/Staticcategories";
 import { CATEGORY_TAXONOMY_TEXT } from "../../../../lib/Categorytaxonomytext";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -453,8 +452,8 @@ async function generateAIContent({
       .map((r) => (r.description || "").split(/[.!?]/)[0].trim())
       .filter(Boolean)
     : [];
-const hasCategoryList = availableCategories.length > 0;
-const categoryTree = buildCategoryTreeFromText(CATEGORY_TAXONOMY_TEXT);
+  const hasCategoryList = availableCategories.length > 0;
+  const categoryTree = buildCategoryTreeFromText(CATEGORY_TAXONOMY_TEXT);
   // NOTE: categoryTreeLines() no longer used to build the prompt — GPT now
   // gets CATEGORY_TAXONOMY_TEXT verbatim (imported above). categoryTree is
   // still needed here for validating GPT's answer against real values.
@@ -463,45 +462,72 @@ const categoryTree = buildCategoryTreeFromText(CATEGORY_TAXONOMY_TEXT);
   // This is deliberately separated from the content call so brand/country can
   // be resolved from our own records (findCategoryMatch) BEFORE any SEO copy
   // is written, instead of letting GPT guess brand/country itself.
-  let mainCategory = "template";
+  let mainCategory = "";
   let subCategory = "";
 
   if (hasCategoryList) {
-    const categoryPrompt = `Classify this logo into the EXISTING main_category and sub_category taxonomy below. Your job is to find the closest real match — not to default to "no match" just because the wording isn't identical.
+    console.log("iqra", logoName, CATEGORY_TAXONOMY_TEXT);
+    const categoryPrompt = `You are classifying a logo NAME into the closest matching entry in a fixed taxonomy.
+
+You have NO image and NO extra context. You only have the logo name and your own knowledge of real-world brands.
 
 Logo Name: ${logoName}
 
-Main Category → Sub Categories (copy verbatim, do not invent names):
+Main Category → Sub Categories (this is the COMPLETE list — copy values verbatim, never invent):
 ${CATEGORY_TAXONOMY_TEXT}
 
-HOW TO CLASSIFY (do this in order):
-1. Work out what the logo actually IS or represents — what product, service, or industry does "${logoName}" belong to in real life? (e.g. a milk, cheese, yogurt, or butter brand is a DAIRY product; a sedan or SUV brand is a CAR MANUFACTURER; a jet or airliner brand is an AIRCRAFT MANUFACTURER.)
-2. Scan every sub_category listed under every main_category for the one that matches that real-world product/service/industry by MEANING, not by literal spelling. A milk brand should match "Dairy Products", not sit unmatched just because the logo name doesn't contain the word "dairy".
-3. You MUST always return BOTH a main_category AND a matching sub_category from the list above — a sub_category is required every time, it is never left blank and never "Other {main_category}". Keep scanning the full sub_category list for that main_category until you find the closest real match.
-4. Only return main_category = "template" (and sub_category = "") in the extremely rare case that the logo genuinely does not fit ANY main_category at all — this should almost never happen.
+STEP 1 — IDENTIFY THE REAL BRAND FIRST (do this before looking at the taxonomy):
+Using your own knowledge, recall what "${logoName}" is actually known for in the real world — what does this company/brand MAKE, SELL, or DO? Think about its actual products or services, not what the word sounds like or evokes.
 
-Examples of correct reasoning (do not copy literally, just the pattern):
-- "Nestle Milk" → industry = dairy product → main_category: "Food & Beverages", sub_category: "Dairy Products"
-- "SkyJet Airlines" → industry = air travel → main_category: "Automotive & Transport", sub_category: "Airlines"
-- "Random abstract shape with no real-world meaning" → main_category: "template", sub_category: ""
+Example of this reasoning pattern (do not copy — just the approach):
+- "Dove" → known for soap and skincare products → this is a Beauty & Cosmetics company, NOT a bird.
+- "Amazon" → known for online retail and cloud computing → this is E-commerce / Cloud Computing, NOT the river or rainforest.
+- "Puma" → known for athletic footwear and apparel → this is Sportswear, NOT the animal.
 
-Rules:
-- main_category and sub_category MUST be copied verbatim (exact spelling) from the list above.
-- sub_category MUST belong to the listed main_category, and MUST be present whenever main_category isn't "template".
-- Do NOT return brand, website, industry, or country — not asked for here.
+The word itself is often NOT the industry. Your job in Step 1 is to recall the ACTUAL products/services of the real brand behind this name — the way a person who has actually used or seen this brand in stores/ads would know it.
 
-Return ONLY valid JSON: { "reasoning": "one short sentence on what the logo represents and why this category fits", "main_category": "...", "sub_category": "..." }`;
+STEP 2 — MATCH TO TAXONOMY:
+Once you know what the brand actually does (from Step 1), scan the full taxonomy above and find the sub_category that matches those REAL products/services — not the sub_category that matches the literal word.
+
+STEP 3 — VERIFY:
+Confirm the sub_category you picked is listed under the main_category you picked in the taxonomy. Fix the pairing if not.
+
+RULES:
+- main_category and sub_category MUST be copied EXACTLY (verbatim) from the taxonomy — never invented, never outside the list.
+- Always return both fields — pick the closest real match even for less-familiar names, but base it on Step 1's real-world identification, not on the word's surface meaning or theme.
+- If truly nothing is known about the brand behind the name, fall back to the taxonomy entry matching the literal meaning of the word only as a last resort — and say so explicitly in your reasoning.
+
+Return ONLY valid JSON:
+
+{
+  "brand_identity": "what this brand is actually known for making/selling/doing in the real world (Step 1 result)",
+  "reasoning": "why this taxonomy entry matches that real-world identity",
+  "main_category": "...",
+  "sub_category": "..."
+}`;
 
     try {
       const catCompletion = await callOpenAIWithRetry({
-        model: "gpt-4.1-mini",
-        temperature: 0.2,
+        model: "gpt-5.4-mini",
+        temperature: 0,
         messages: [
-          { role: "system", content: "You classify logos into an existing main/sub category taxonomy by real-world meaning (what the brand actually sells or represents), not by literal keyword matching against the logo name. main_category and sub_category are BOTH required on every response — sub_category is never left blank and never set to \"Other {main_category}\". You always keep searching the sub_category list for the real match. You never invent category names that aren't in the provided list. You return only JSON." },
+          {
+            role: "system",
+            content: `You classify logo names into a fixed taxonomy. Your core skill is knowing what real brands actually make, sell, or do — not guessing from what a word sounds like or evokes.
+
+You ALWAYS perform two separate steps: (1) recall what the real-world brand behind this name is actually known for — its actual products, services, or industry, based on genuine brand knowledge (e.g. Canon = cameras/printers, not artillery; Dove = soap, not bird; Puma = sportswear, not animal) — THEN (2) match that real identity to the closest taxonomy entry.
+
+You never classify based on the literal/surface meaning of the word when you know the real brand behind it. Literal-word matching is only a last resort for names with no identifiable real brand.
+
+main_category and sub_category are copied EXACTLY from the provided taxonomy, never invented. Both fields are always required.
+
+Return ONLY JSON, no markdown, no commentary.`
+          },
           { role: "user", content: categoryPrompt },
         ],
         response_format: { type: "json_object" },
       });
+
       const catRaw = catCompletion.choices[0]?.message?.content || "{}";
       let catParsed = {};
       try { catParsed = JSON.parse(catRaw); } catch { catParsed = {}; }
@@ -530,15 +556,24 @@ Return ONLY valid JSON: { "reasoning": "one short sentence on what the logo repr
   } else {
     console.log(`  [ai:category] VALIDATED pick unchanged → main: "${mainCategory}" | sub: "${subCategory}"`);
   }
-  // Look up brand/country from OUR OWN category records — never from GPT.
-  // main_category/sub_category are matched fuzzily (case-insensitive, even
-  // one shared word is enough) against website.categories. Among the
-  // matching DB record(s), we walk in order and use the FIRST one whose
-  // `brand` fuzzy-matches the logo name (shared word, or any 3+ letter run
-  // in common) — not the best-scoring one, the first hit. If nothing matches,
-  // brand falls back to "Other {sub_category}"; country/industry are only
-  // ever taken from a matched record, never generated.
-  const { match: categoryMatch } = findCategoryMatch(availableCategories, mainCategory, subCategory, logoName);
+
+  // ── Brand resolution: EXACT category match + code-based FUZZY brand match ──
+  // main_category/sub_category are matched EXACTLY (case-insensitive,
+  // accent/whitespace-normalized) against website.categories (DB). Among the
+  // resulting candidates, every candidate's brand (+ synonyms) is fuzzy-
+  // scored against the logo name, and the HIGHEST-scoring candidate above a
+  // minimum threshold is selected. This is pure code — no LLM call involved.
+  // If nothing exact-matches the category, or no candidate's brand scores
+  // above the threshold, brand falls back to "Other {sub_category}" and
+  // country/industry are left blank (defaulted later to Worldwide / Logo
+  // Design & Graphics).
+  const { match: categoryMatch, log: matchLog } = findCategoryMatch(
+    availableCategories,
+    mainCategory,
+    subCategory,
+    logoName
+  );
+  matchLog.forEach((l) => console.log(`  [brand:fuzzy] ${l}`));
   console.log(
     `  [category] main: "${mainCategory}" | sub: "${subCategory}" | matched: ${categoryMatch ? `${categoryMatch.brand} / ${categoryMatch.country || "(no country)"}` : "none"}`
   );
@@ -1043,55 +1078,6 @@ Return ONLY VALID JSON (no "category", "brand_used", "country_used", or
   let parsed;
   try { parsed = JSON.parse(raw); } catch { parsed = {}; }
 
-
-
-
-  // ── Server-side compliance check ──────────────────────────────────────────
-  //   const usedTitles = relatedLogos.map((r) => r.metaTitle).filter(Boolean);
-  //   const violations = validateAIContent(parsed, { usedTitles, usedOpeners });
-
-  //   if (violations.length) {
-  //     console.warn(`  [AI Validation] ${violations.length} violation(s) found, re-calling OpenAI once:`);
-  //     violations.forEach((v) => console.warn(`       - ${v}`));
-
-  //     const correctionPrompt = `Your previous JSON response violated these rules:
-
-  // ${violations.map((v) => `- ${v}`).join("\n")}
-
-  // Regenerate the COMPLETE JSON response, fixing every violation above. Do not
-  // repeat the same mistakes. Re-check every field against the banned-words list
-  // and the educational/reference phrase requirement before returning. Return
-  // ONLY the corrected JSON object, with the same structure as before.`;
-
-  //     const retryCompletion = await callOpenAIWithRetry({
-  //       model: "gpt-4.1-mini",
-  //       temperature: 0.5,
-  //       messages: [
-  //         ...messages,
-  //         { role: "assistant", content: raw },
-  //         { role: "user", content: correctionPrompt },
-  //       ],
-  //       response_format: { type: "json_object" },
-  //     });
-
-  //     const retryRaw = retryCompletion.choices[0]?.message?.content || "{}";
-  //     let retryParsed;
-  //     try { retryParsed = JSON.parse(retryRaw); } catch { retryParsed = null; }
-
-  //     if (retryParsed) {
-  //       const retryViolations = validateAIContent(retryParsed, { usedTitles, usedOpeners });
-  //       console.log(`  [AI Validation] Retry result: ${retryViolations.length ? `${retryViolations.length} violation(s) remain` : "clean"}`);
-  //       parsed = retryParsed;
-  //     } else {
-  //       console.warn("  [AI Validation] Retry response failed to parse — keeping original");
-  //     }
-  //   } else {
-  //     console.log("  [AI Validation] ✓ No violations found on first attempt");
-  //   }
-
-
-
-
   // ── Resolve category ──────────────────────────────────────────────────────
   // logo.category is a single-element array containing ONLY the sub category
   // (main_category / sub_category were already decided deterministically in
@@ -1427,13 +1413,15 @@ export async function POST(req) {
 
     const websiteRecord = await prisma.website.findFirst();
     const watermark = websiteRecord?.watermark ?? null;
-    // ── CHANGED: use static hardcoded categories instead of DB (for now) ──
-    // Previously: extractCategoryEntries(websiteRecord?.categories)
-    // websiteRecord is still fetched above for `watermark`, but categories
-    // no longer depend on website.categories in the DB at all.
+
+    // ── Categories now come from website.categories (DB) — NOT a static
+    // hardcoded file. extractCategoryEntries() parses website.categories
+    // JSON into { name, subname, brand, country, etype, synonyms, ... }.
     const availableCategories = category.toLowerCase().trim() === "template"
       ? []
-      : STATIC_CATEGORIES;
+      : extractCategoryEntries(websiteRecord?.categories);
+
+    console.log(`[categories] website.findFirst() → ${availableCategories.length} categories loaded from DB`);
 
     const sharedFields = { category, license, publishStatus, downloadCount, brandColors, availableCategories };
 
