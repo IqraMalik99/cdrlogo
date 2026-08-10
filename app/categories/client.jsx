@@ -1,123 +1,145 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 
 const LETTERS = ["All", "0-9", ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i))];
+const PAGE_LIMIT = 60;
 
-export default function CategoriesClient() {
+export default function BrandsClient() {
     const [searchValue, setSearchValue] = useState("");
     const [activeLetter, setActiveLetter] = useState("All");
     const [focused, setFocused] = useState(false);
     const [ready, setReady] = useState(false);
-    const [categories, setCategories] = useState({});
-    // allCategories caches the full "All" response so search always works across every letter
-    const [allCategories, setAllCategories] = useState({});
-    const [loading, setLoading] = useState(false);
+
+    const [brands, setBrands] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [lettersWithData, setLettersWithData] = useState(new Set());
+
     const { dark } = useTheme();
     const router = useRouter();
-    const letterRefs = useRef({});
 
-    // Derive which letters have categories from the full "All" cache
-    const lettersWithData = useMemo(() => {
-        return new Set(Object.keys(allCategories));
-    }, [allCategories]);
+    const searchDebounceRef = useRef(null);
+    const searchFirstRender = useRef(true);
 
     useEffect(() => {
         const t = setTimeout(() => setReady(true), 60);
         return () => clearTimeout(t);
     }, []);
 
-    useEffect(() => {
-        async function fetchCategories() {
-            const letter = activeLetter === "All" ? "all" : activeLetter.toLowerCase();
-            setLoading(true);
-            try {
-                const res = await fetch("/api/website/catageory-letter", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ letter }),
-                });
-                const data = await res.json();
-                console.log(data,"datafg");
-                console.log("Fetched categories for letter", letter, data);
-
-                // API returns { SectionKey: [ { name, slug }, ... ] }
-                // Values are already objects — no JSON.parse needed
-                const parsed = {};
-                Object.entries(data || {}).forEach(([key, cats]) => {
-                    parsed[key] = cats.map(c =>
-                        typeof c === "object" && c !== null
-                            ? c
-                            : { name: String(c), slug: String(c).toLowerCase().replace(/\s+/g, "-") }
-                    );
-                });
-
-                setCategories(parsed);
-                if (activeLetter === "All") {
-                    setAllCategories(parsed);
-                }
-            } catch (err) {
-                console.error("Failed to fetch categories", err);
-            } finally {
-                setLoading(false);
+    // ── fetch brands whenever letter, page, or (debounced) search changes ──
+    async function fetchBrands({ letter, pageNum, query }) {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (query) {
+                params.set("search", query);
+            } else {
+                params.set("letter", letter === "All" ? "all" : letter);
             }
+            params.set("page", String(pageNum));
+            params.set("limit", String(PAGE_LIMIT));
+
+            const res = await fetch(`/api/brand/list?${params.toString()}`, { method: "GET" });
+            const data = await res.json();
+            console.log("[BrandsClient] fetched", { letter, pageNum, query, count: data.brands?.length, total: data.total });
+
+            setBrands(data.brands || []);
+            setTotalPages(data.totalPages || 1);
+            setTotal(data.total || 0);
+            if (Array.isArray(data.lettersWithData)) {
+                setLettersWithData(new Set(data.lettersWithData));
+            }
+        } catch (err) {
+            console.error("[BrandsClient] fetch failed", err);
+            setBrands([]);
+        } finally {
+            setLoading(false);
         }
-        fetchCategories();
-    }, [activeLetter]);
+    }
 
-    const filteredCategories = () => {
-        const query = searchValue.trim().toLowerCase();
-        // when searching use the full "All" cache so results aren't limited to active letter
-        const source = query ? allCategories : categories;
+    // letter / page changes → fetch immediately (only when not actively searching)
+    useEffect(() => {
+        if (searchValue.trim()) return; // search effect below handles this case
+        fetchBrands({ letter: activeLetter, pageNum: page, query: "" });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeLetter, page]);
 
-        if (query) {
-            const result = {};
-            Object.entries(source).forEach(([key, cats]) => {
-                const matched = cats.filter(c => c.name.toLowerCase().includes(query));
-                if (matched.length) result[key] = matched;
-            });
-            return result;
+    // search changes → debounce, reset to page 1, fetch across all letters
+    useEffect(() => {
+        if (searchFirstRender.current) {
+            searchFirstRender.current = false;
+            return;
+        }
+        clearTimeout(searchDebounceRef.current);
+        const q = searchValue.trim();
+
+        if (!q) {
+            setPage(1);
+            fetchBrands({ letter: activeLetter, pageNum: 1, query: "" });
+            return;
         }
 
-        return source;
+        searchDebounceRef.current = setTimeout(() => {
+            setPage(1);
+            fetchBrands({ letter: activeLetter, pageNum: 1, query: q });
+        }, 400);
+
+        return () => clearTimeout(searchDebounceRef.current);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchValue]);
+
+    function cleanSlug(slug = "") {
+        return slug
+            .trim()
+            .toLowerCase()
+            .replace(/^\/+/, "")
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-+|-+$/g, "");
+    }
+
+    const handleBrandClick = (brand) => {
+        router.push(`/categories/logos/${encodeURIComponent(cleanSlug(brand.slug))}`);
     };
-
-function cleanSlug(slug = "") {
-    return slug
-        .trim()
-        .toLowerCase()
-        .replace(/^\/+/, "")            // remove leading slash if stored as "/some-slug"
-        .replace(/[^a-z0-9\s-]/g, "")   // drop special characters (keep letters, numbers, spaces, hyphens)
-        .replace(/\s+/g, "-")           // spaces -> hyphens
-        .replace(/-+/g, "-")            // collapse multiple hyphens into one
-        .replace(/^-+|-+$/g, "");       // trim leading/trailing hyphens
-}
-
-const handleCategoryClick = (cat) => {
-    router.push(`/category/${encodeURIComponent(cleanSlug(cat.slug))}`);
-};
-
-const handleSearch = () => {
-    const q = searchValue.trim().toLowerCase();
-    if (!q) return;
-    router.push(`/category/${encodeURIComponent(cleanSlug(q))}`);
-};
-
 
     const handleLetterClick = (l) => {
-        setSearchValue(""); // clear search when switching letters
+        setSearchValue("");
         setActiveLetter(l);
+        setPage(1);
     };
-
-    const visible = Object.entries(filteredCategories()).filter(([, cats]) => cats.length > 0);
-
 
     const handleKeyDown = (e) => {
-        if (e.key === "Enter") handleSearch();
+        if (e.key === "Enter") {
+            clearTimeout(searchDebounceRef.current);
+            const q = searchValue.trim();
+            if (q) { setPage(1); fetchBrands({ letter: activeLetter, pageNum: 1, query: q }); }
+        }
     };
+
+    const goToPage = (p) => {
+        if (p < 1 || p > totalPages || p === page) return;
+        setPage(p);
+        if (searchValue.trim()) {
+            fetchBrands({ letter: activeLetter, pageNum: p, query: searchValue.trim() });
+        }
+        // non-search case is handled by the [activeLetter, page] effect
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    // build a compact page-number list: 1 … p-1 p p+1 … last
+    const pageNumbers = (() => {
+        const nums = [];
+        const add = (n) => { if (n >= 1 && n <= totalPages && !nums.includes(n)) nums.push(n); };
+        add(1); add(page - 1); add(page); add(page + 1); add(totalPages);
+        return nums.sort((a, b) => a - b);
+    })();
 
     return (
         <>
@@ -176,9 +198,7 @@ const handleSearch = () => {
           position: absolute; top: 0; left: 0; right: 0;
           height: 320px; pointer-events: none; z-index: 0;
         }
-          .accent {
-             color: #07A626;
-        }
+        .accent { color: #07A626; }
         .bg-glow::before {
           content: '';
           position: absolute;
@@ -280,46 +300,26 @@ const handleSearch = () => {
         }
         [data-theme="light"] .letter-btn.active { color: #059c1f; }
         .letter-btn.all-btn { width: auto; padding: 0 12px; }
-
-        /* Letters that have categories */
-        .letter-btn.has-data {
-          color: var(--heading);
-          border-color: rgba(7,166,38,.22);
-        }
-        [data-theme="light"] .letter-btn.has-data {
-          color: var(--heading);
-          border-color: rgba(7,166,38,.28);
-        }
-
-        /* Small green dot below the letter */
+        .letter-btn.has-data { color: var(--heading); border-color: rgba(7,166,38,.22); }
+        [data-theme="light"] .letter-btn.has-data { color: var(--heading); border-color: rgba(7,166,38,.28); }
         .letter-dot {
-          position: absolute;
-          bottom: 3px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 3px;
-          height: 3px;
-          border-radius: 50%;
-          background: #07A626;
-          opacity: 0.75;
-          pointer-events: none;
+          position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+          width: 3px; height: 3px; border-radius: 50%;
+          background: #07A626; opacity: 0.75; pointer-events: none;
         }
 
-        .sections { display: flex; flex-direction: column; gap: 24px; }
-        .section-letter {
-          font-size: 13px; font-weight: 800;
-          color: var(--section-lbl);
-          letter-spacing: 0.5px;
-          margin-bottom: 10px;
-          padding-bottom: 6px;
-          border-bottom: 1px solid var(--divider);
+        .results-meta {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 12px; color: var(--sub);
+          text-align: center;
         }
+        .results-meta strong { color: var(--heading); font-weight: 700; }
+
         .cat-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
           gap: 8px;
         }
-          
         .cat-card {
           background: var(--tag-bg);
           border: 1px solid var(--tag-bdr);
@@ -341,12 +341,17 @@ const handleSearch = () => {
           transform: translateY(-1px);
         }
         [data-theme="light"] .cat-card:hover { color: #15803d; }
-        .cat-card-arrow {
-          margin-left: auto; opacity: 0; flex-shrink: 0;
-          transition: opacity .15s, transform .15s;
-          color: #07A626;
+        .cat-card-count {
+          margin-left: auto; flex-shrink: 0;
+          font-size: 10px; font-weight: 700;
+          color: var(--sub);
+          background: var(--letter-bg);
+          border: 1px solid var(--tag-bdr);
+          border-radius: 100px;
+          padding: 1px 7px;
         }
-        .cat-card:hover .cat-card-arrow { opacity: 1; transform: translateX(2px); }
+        .cat-card:hover .cat-card-count { color: #07A626; border-color: rgba(7,166,38,.3); }
+
         .skeleton-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -358,9 +363,7 @@ const handleSearch = () => {
           border: 1px solid var(--tag-bdr);
           animation: shimmer 1.4s ease-in-out infinite;
         }
-        @keyframes shimmer {
-          0%,100% { opacity: 1; } 50% { opacity: 0.35; }
-        }
+        @keyframes shimmer { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
         .empty-state {
           text-align: center; padding: 48px 20px;
           color: var(--sub); font-size: 13px;
@@ -369,6 +372,37 @@ const handleSearch = () => {
           display: block; font-size: 15px; font-weight: 700;
           margin-bottom: 4px; color: var(--heading);
         }
+
+        .pagination {
+          display: flex; align-items: center; justify-content: center;
+          gap: 6px; margin-top: 8px; flex-wrap: wrap;
+        }
+        .page-btn {
+          min-width: 32px; height: 32px; padding: 0 8px;
+          display: flex; align-items: center; justify-content: center;
+          background: var(--letter-bg);
+          border: 1px solid var(--letter-bdr);
+          border-radius: 7px;
+          font-size: 12px; font-weight: 700;
+          color: var(--letter-clr);
+          cursor: pointer;
+          font-family: 'Sora', sans-serif;
+          transition: background .2s, border-color .2s, color .2s;
+        }
+        .page-btn:hover:not(:disabled) {
+          background: rgba(7,166,38,.1);
+          border-color: rgba(7,166,38,.3);
+          color: #4ade80;
+        }
+        [data-theme="light"] .page-btn:hover:not(:disabled) { color: #15803d; }
+        .page-btn.active {
+          background: rgba(7,166,38,.15);
+          border-color: rgba(7,166,38,.55);
+          color: #07A626;
+        }
+        .page-btn:disabled { opacity: .35; cursor: not-allowed; }
+        .page-ellipsis { color: var(--sub); font-size: 12px; padding: 0 2px; }
+
         @media (max-width: 480px) {
           .cat-root { padding: 36px 14px 60px; }
           .letter-btn { width: 28px; height: 28px; font-size: 10px; }
@@ -380,7 +414,6 @@ const handleSearch = () => {
                 <Navbar />
 
                 <div className="cat-root">
-
                     <div className="bg-glow" />
                     <div className="dot-grid" />
 
@@ -388,11 +421,11 @@ const handleSearch = () => {
                         <div className="h-10" />
 
                         {/* Header */}
-                       <div className="anim d0" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <p className="cat-heading" style={{ margin: 0 }}>Browse Design Categories <span className="accent">&</span> Visual Archives</p>
+                        <div className="anim d0" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <p className="cat-heading" style={{ margin: 0 }}>Browse Design Categories <span className="accent">&</span> Visual Archives </p>
                             <p className="cat-sub">
-                                Explore an independent educational reference library organized by 0–9 and A–Z. Browse logo categories, 
-original design concepts, and visual resources for research, learning, and creative inspiration.
+                                Every brand in our library, listed once — no duplicates. Browse alphabetically or search
+                                to jump straight to a brand's logo, then explore its full collection.
                             </p>
                         </div>
 
@@ -400,7 +433,7 @@ original design concepts, and visual resources for research, learning, and creat
                         <div className="anim d1">
                             <div
                                 className={`search-bar${focused ? " focused" : ""}`}
-                                onClick={() => document.getElementById("cat-search")?.focus()}
+                                onClick={() => document.getElementById("brand-search")?.focus()}
                             >
                                 <svg className="search-icon" width="15" height="15" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" strokeWidth="2.2"
@@ -409,10 +442,10 @@ original design concepts, and visual resources for research, learning, and creat
                                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                                 </svg>
                                 <input
-                                    id="cat-search"
+                                    id="brand-search"
                                     className="search-input"
                                     type="text"
-                                    placeholder="Search categories…"
+                                    placeholder="Search brands…"
                                     value={searchValue}
                                     onChange={e => setSearchValue(e.target.value)}
                                     onKeyDown={handleKeyDown}
@@ -436,13 +469,10 @@ original design concepts, and visual resources for research, learning, and creat
                             <div className="anim d2">
                                 <div className="letter-nav">
                                     {LETTERS.map(l => {
-                                        const hasData = l === "All"
-                                            ? Object.keys(allCategories).length > 0
-                                            : lettersWithData.has(l);
+                                        const hasData = l === "All" ? true : lettersWithData.has(l);
                                         return (
                                             <button
                                                 key={l}
-                                                ref={el => letterRefs.current[l] = el}
                                                 className={[
                                                     "letter-btn",
                                                     l === "All" ? "all-btn" : "",
@@ -452,9 +482,7 @@ original design concepts, and visual resources for research, learning, and creat
                                                 onClick={() => handleLetterClick(l)}
                                             >
                                                 {l}
-                                                {hasData && l !== "All" && (
-                                                    <span className="letter-dot" />
-                                                )}
+                                                {hasData && l !== "All" && <span className="letter-dot" />}
                                             </button>
                                         );
                                     })}
@@ -462,54 +490,63 @@ original design concepts, and visual resources for research, learning, and creat
                             </div>
                         )}
 
-                        {/* Category sections */}
+                        {/* Results meta */}
+                        {!loading && total > 0 && (
+                            <div className="results-meta anim d2">
+                                <strong>{total.toLocaleString()}</strong> brand{total === 1 ? "" : "s"}
+                                {searchValue ? <> matching "<strong>{searchValue}</strong>"</> : null}
+                            </div>
+                        )}
+
+                        {/* Brand grid */}
                         <div className="anim d3">
                             {loading ? (
-                                <div className="sections">
-                                    {[1, 2, 3].map(s => (
-                                        <div key={s}>
-                                            <div className="section-letter" style={{ width: 24, background: "var(--tag-bg)", height: 14, borderRadius: 4 }} />
-                                            <div className="skeleton-grid">
-                                                {Array.from({ length: 6 }).map((_, i) => (
-                                                    <div key={i} className="skeleton-card" style={{ animationDelay: `${i * 80}ms` }} />
-                                                ))}
-                                            </div>
-                                        </div>
+                                <div className="skeleton-grid">
+                                    {Array.from({ length: 12 }).map((_, i) => (
+                                        <div key={i} className="skeleton-card" style={{ animationDelay: `${i * 60}ms` }} />
                                     ))}
                                 </div>
-                            ) : visible.length === 0 ? (
+                            ) : brands.length === 0 ? (
                                 <div className="empty-state">
-                                    <strong>No categories found</strong>
-                                    Try a different search term
+                                    <strong>No brands found</strong>
+                                    Try a different search term or letter
                                 </div>
                             ) : (
-                                <div className="sections">
-                                    {visible.map(([sectionKey, cats]) => (
-                                        <div key={sectionKey}>
-                                            <div className="section-letter">{sectionKey}</div>
-                                            <div className="cat-grid">
-                                                {cats.map(cat => (
-                                                    <button
-                                                        key={cat.slug}
-                                                        className="cat-card"
-                                                        onClick={() => handleCategoryClick(cat)}
-                                                    >
-                                                        {cat.name}
-                                                        <svg className="cat-card-arrow" width="12" height="12" viewBox="0 0 24 24"
-                                                            fill="none" stroke="currentColor" strokeWidth="2.5"
-                                                            strokeLinecap="round" strokeLinejoin="round">
-                                                            <line x1="5" y1="12" x2="19" y2="12" />
-                                                            <polyline points="12 5 19 12 12 19" />
-                                                        </svg>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
+                                <div className="cat-grid">
+                                    {brands.map(brand => (
+                                        <button
+                                            key={brand.slug}
+                                            className="cat-card"
+                                            onClick={() => handleBrandClick(brand)}
+                                        >
+                                            {brand.name}
+                                            <span className="cat-card-count">{brand.logoCount}</span>
+                                        </button>
                                     ))}
                                 </div>
                             )}
                         </div>
 
+                        {/* Pagination */}
+                        {!loading && totalPages > 1 && (
+                            <div className="pagination anim d3">
+                                <button className="page-btn" onClick={() => goToPage(page - 1)} disabled={page === 1}>‹</button>
+                                {pageNumbers.map((n, i) => {
+                                    const prev = pageNumbers[i - 1];
+                                    const showEllipsis = prev !== undefined && n - prev > 1;
+                                    return (
+                                        <span key={n} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                            {showEllipsis && <span className="page-ellipsis">…</span>}
+                                            <button
+                                                className={`page-btn${n === page ? " active" : ""}`}
+                                                onClick={() => goToPage(n)}
+                                            >{n}</button>
+                                        </span>
+                                    );
+                                })}
+                                <button className="page-btn" onClick={() => goToPage(page + 1)} disabled={page === totalPages}>›</button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

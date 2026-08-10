@@ -11,13 +11,6 @@ const popularSearches = [
   "Finance Icons",
 ];
 
-const formats = [
-  { label: "CDR", cls: "fmt-cdr" },
-  { label: "AI", cls: "fmt-ai" },
-  { label: "SVG", cls: "fmt-svg" },
-  { label: "PNG", cls: "fmt-png" },
-];
-
 export default function Home() {
   const [searchValue, setSearchValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -32,7 +25,6 @@ export default function Home() {
     const t = setTimeout(() => setReady(true), 60);
     return () => clearTimeout(t);
   }, []);
-
 
   const handleSearch = () => {
     const q = searchValue.trim().toLowerCase();
@@ -66,17 +58,18 @@ export default function Home() {
 
     return () => clearTimeout(debounceRef.current);
   }, [searchValue, router]);
+
   return (
     <>
       <style>{`
-     
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         [data-theme="dark"] {
-          --bg:           #09090f;
+          --bg:           #08080d;
+          --bg-2:         #0c0c14;
           --heading:      #ffffff;
-          --sub:          rgba(255,255,255,0.45);
+          --sub:          rgba(255,255,255,0.55);
           --divider:      rgba(255,255,255,0.08);
           --search-bg:    rgba(255,255,255,0.04);
           --search-bdr:   rgba(255,255,255,0.1);
@@ -89,12 +82,13 @@ export default function Home() {
           --tag-bdr:      rgba(255,255,255,0.1);
           --tag-clr:      rgba(255,255,255,0.55);
           --pop-lbl:      rgba(255,255,255,0.25);
-          --dot:          rgba(255,255,255,0.04);
+          --dot:          rgba(255,255,255,0.035);
         }
         [data-theme="light"] {
-          --bg:           #f4f4f8;
+          --bg:           #f7f7fb;
+          --bg-2:         #ffffff;
           --heading:      #0a0a14;
-          --sub:          rgba(0,0,0,0.5);
+          --sub:          rgba(0,0,0,0.58);
           --divider:      rgba(0,0,0,0.1);
           --search-bg:    rgba(255,255,255,0.9);
           --search-bdr:   rgba(0,0,0,0.12);
@@ -107,18 +101,18 @@ export default function Home() {
           --tag-bdr:      rgba(0,0,0,0.1);
           --tag-clr:      rgba(0,0,0,0.55);
           --pop-lbl:      rgba(0,0,0,0.3);
-          --dot:          rgba(0,0,0,0.04);
+          --dot:          rgba(0,0,0,0.035);
         }
 
         .home-root {
           min-height: 50vh;
-          background: var(--bg);
+          background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 100%);
           font-family: var(--font-sora),sans-serif;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 60px 20px 0px;
+          padding: 64px 20px 40px;
           position: relative;
           overflow: hidden;
           transition: background 0.35s;
@@ -131,24 +125,26 @@ export default function Home() {
         .bg-glow::before {
           content: '';
           position: absolute;
-          top: -8%; left: 50%;
+          top: -12%; left: 50%;
           transform: translateX(-50%);
-          width: 600px; height: 400px;
-          background: radial-gradient(ellipse, rgba(7,166,38,.13) 0%, transparent 70%);
+          width: 560px; height: 320px;
+          background: radial-gradient(ellipse, rgba(7,166,38,.10) 0%, transparent 72%);
           border-radius: 50%;
-          animation: glow-pulse 5s ease-in-out infinite;
+          animation: glow-pulse 6s ease-in-out infinite;
         }
         [data-theme="light"] .bg-glow::before {
-          background: radial-gradient(ellipse, rgba(7,166,38,.07) 0%, transparent 70%);
+          background: radial-gradient(ellipse, rgba(7,166,38,.06) 0%, transparent 72%);
         }
         @keyframes glow-pulse {
           0%,100% { opacity:1;  transform:translateX(-50%) scale(1);    }
-          50%      { opacity:.7; transform:translateX(-50%) scale(1.07); }
+          50%      { opacity:.75; transform:translateX(-50%) scale(1.05); }
         }
         .dot-grid {
           position: absolute; inset: 0;
           background-image: radial-gradient(var(--dot) 1px, transparent 1px);
-          background-size: 30px 30px;
+          background-size: 32px 32px;
+          -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 40%, transparent 100%);
+          mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 40%, transparent 100%);
           pointer-events: none; z-index: 0;
         }
 
@@ -161,9 +157,8 @@ export default function Home() {
         .d0 { transition-delay:   0ms; }
         .d1 { transition-delay:  70ms; }
         .d2 { transition-delay: 140ms; }
-        .d3 { transition-delay: 210ms; }
-        .d4 { transition-delay: 280ms; }
-        .d5 { transition-delay: 350ms; }
+        .d4 { transition-delay: 210ms; }
+        .d5 { transition-delay: 280ms; }
         .tag-anim {
           opacity: 0; transform: translateX(-8px);
           transition: opacity .4s cubic-bezier(.22,1,.36,1),
@@ -173,9 +168,9 @@ export default function Home() {
 
         .home-content {
           position: relative; z-index: 1;
-          width: 100%; max-width: 620px;
+          width: 100%; max-width: 960px;
           display: flex; flex-direction: column;
-          align-items: center; gap: 14px;
+          align-items: center; gap: 18px;
         }
 
         /* Badge */
@@ -197,15 +192,15 @@ export default function Home() {
           50%      { opacity:.5; transform:scale(.75); }
         }
 
-        /* Heading */
+        /* Heading — first row */
         .home-heading {
           text-align: center;
-          font-size: clamp(22px, 4vw, 42px);
-          font-weight: 900; line-height: 1.12;
-          letter-spacing: -1.2px;
+          font-size: clamp(18px, 2.6vw, 32px);
+          font-weight: 800; line-height: 1.2;
+          letter-spacing: -0.8px;
           color: var(--heading);
           text-wrap: balance;
-          transition: color 0.35s;
+          transition: color 0.35s, font-size 0.2s;
         }
         .home-heading .accent {
           background: linear-gradient(135deg, #07A626, #34d058);
@@ -214,42 +209,24 @@ export default function Home() {
           background-clip: text;
         }
 
-        /* Sub */
+        /* Sub — second row */
         .home-sub {
           font-family: var(--font-sora), 'DM Sans', sans-serif;
-          font-size: clamp(12px, 1.6vw, 13.5px);
+          font-size: clamp(13px, 1.7vw, 15px);
+          font-weight: 400;
           color: var(--sub); text-align: center;
-          line-height: 1.6; max-width: 400px;
+          line-height: 1.65; max-width: 680px;
           transition: color 0.35s;
         }
-
-        /* Formats row */
-        .meta-row {
-          display: flex; align-items: center;
-          gap: 8px; flex-wrap: wrap; justify-content: center;
-        }
-        .format-badge {
-          padding: 2px 9px; border-radius: 5px;
-          font-size: 10px; font-weight: 700; letter-spacing: .5px;
-          border: 1px solid;
-        }
-        .fmt-cdr { background:rgba(239,68,68,.1);  border-color:rgba(239,68,68,.25);  color:#fca5a5; }
-        .fmt-ai  { background:rgba(234,179,8,.1);  border-color:rgba(234,179,8,.25);  color:#fde68a; }
-        .fmt-svg { background:rgba(34,197,94,.1);  border-color:rgba(34,197,94,.25);  color:#86efac; }
-        .fmt-png { background:rgba(59,130,246,.1); border-color:rgba(59,130,246,.25); color:#93c5fd; }
-        [data-theme="light"] .fmt-cdr { color:#dc2626; }
-        [data-theme="light"] .fmt-ai  { color:#b45309; }
-        [data-theme="light"] .fmt-svg { color:#15803d; }
-        [data-theme="light"] .fmt-png { color:#1d4ed8; }
 
         /* Search */
         .search-bar {
           width: 100%;
           display: flex; align-items: center; gap: 9px;
-          padding: 10px 14px;
+          padding: 11px 15px;
           background: var(--search-bg);
           border: 1.5px solid var(--search-bdr);
-          border-radius: 11px;
+          border-radius: 12px;
           box-shadow: 0 2px 16px rgba(0,0,0,.1);
           transition: border-color .2s, box-shadow .2s, background 0.35s;
           cursor: text;
@@ -307,7 +284,9 @@ export default function Home() {
 
         @media (max-width: 480px) {
           .home-root    { padding: 52px 16px 52px; }
-          .home-content { gap: 12px; }
+          .home-content { gap: 14px; }
+          .home-heading { font-size: 20px; letter-spacing: -0.5px; line-height: 1.3; }
+          .home-sub     { font-size: 12.5px; }
           .search-kbd   { display: none; }
         }
       `}</style>
@@ -318,39 +297,24 @@ export default function Home() {
 
         <div className={`home-content${ready ? " ready" : ""}`}>
           <div className="h-2" />
-          {/* Badge */}
-          <div className="anim d0">
 
-          </div>
-
-          {/* Heading */}
+          {/* Heading — first row */}
           <div className="anim d1">
-
-            <h2 className="home-heading">
+            <h1 className="home-heading">
               CDRLogo – {" "}
               <span className="accent">Vector Logo </span>
-              {" "}Reference Library for Designers  <span className="accent"> &amp;</span> Students
-            </h2>
-
+              {" "}Reference Library for Designers <span className="accent">&amp;</span> Students
+            </h1>
           </div>
 
-          {/* Sub */}
+          {/* Sub — second row */}
           <div className="anim d2">
-            <h2 className="home-sub">
+            <p className="home-sub">
               Explore an independent educational reference library of logo references, visual identities,
               and branding resources for research, learning, and creative inspiration.
-              Access AI, CDR, SVG, and PNG reference files, one-click SVG codes, official website links,
-              and color information through a fast, organized platform.
-            </h2>
-          </div>
-
-          {/* Formats */}
-          <div className="anim d3">
-            <div className="meta-row">
-              {formats.map(f => (
-                <span key={f.label} className={`format-badge ${f.cls}`}>{f.label}</span>
-              ))}
-            </div>
+              Access AI, CDR, SVG, and PNG reference files, one-click SVG codes,
+              official website links, and color information through a fast, organized platform.
+            </p>
           </div>
 
           {/* Search */}
@@ -396,7 +360,7 @@ export default function Home() {
                 <button
                   key={tag}
                   className="popular-tag tag-anim"
-                  style={{ transitionDelay: ready ? `${370 + i * 55}ms` : "0ms" }}
+                  style={{ transitionDelay: ready ? `${300 + i * 55}ms` : "0ms" }}
                   onClick={() => {
                     clearTimeout(debounceRef.current);
                     setSearchValue(tag);

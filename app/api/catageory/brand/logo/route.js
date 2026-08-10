@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "../../../../lib/prisma";
 
-export async function POST(req, { params }) {
+
+export async function GET(req) {
   try {
-    const { slug } = await params;
-    console.log("[POST] slug:", slug);
+    const { searchParams } = new URL(req.url);
+    const slug = searchParams.get("slug");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+
+    console.log("[get-brand] slug:", slug, "page:", page);
 
     if (!slug) {
       return NextResponse.json(
@@ -13,25 +17,27 @@ export async function POST(req, { params }) {
       );
     }
 
-    // "tag-heuer" -> "tag heuer"
     const searchTerm = slug.replace(/-/g, " ").trim();
-    console.log("[POST] searchTerm:", searchTerm);
+
+    console.log("[get-brand] searchTerm:", searchTerm);
 
     const logos = await prisma.logo.findMany({
       where: {
+        publishStatus: "Published",
         brand: {
-          contains: searchTerm,
+          equals: searchTerm,
           mode: "insensitive",
         },
       },
     });
 
-    console.log("[POST] matched logos count:", logos.length);
+    console.log("[get-brand] matched logos count:", logos.length);
 
     if (!logos.length) {
       return NextResponse.json(
         {
           logos: [],
+          totalPages: 1,
           totalCount: 0,
           categoryName: searchTerm,
         },
@@ -41,13 +47,14 @@ export async function POST(req, { params }) {
 
     return NextResponse.json({
       logos,
+      totalPages: 1,
       totalCount: logos.length,
       categoryName: logos[0].brand,
     });
   } catch (error) {
-    console.error("[POST] ERROR:", error);
+    console.error("[get-brand] ERROR:", error);
     return NextResponse.json(
-      { error: "Failed to fetch logos" },
+      { error: "Failed to fetch brand logos" },
       { status: 500 }
     );
   }

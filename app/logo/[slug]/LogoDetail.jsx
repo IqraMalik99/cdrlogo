@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTheme } from "../../context/ThemeContext";
 import Navbar from "../../components/Navbar";
@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import Footer from "../../components/Footer";
 import Image from "next/image";
 
-export default function LogoDetail({ logo: initialLogo }) {
+export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
     const { slug } = useParams();
     const router = useRouter();
     const { dark } = useTheme();
@@ -18,7 +18,7 @@ export default function LogoDetail({ logo: initialLogo }) {
     const [favLoading, setFavLoading] = useState(false);
 
     const [logo, setLogo] = useState(initialLogo || null);
-    const [related, setRelated] = useState([]);
+    const [related, setRelated] = useState(initialRelated || []);
     const [loading, setLoading] = useState(!initialLogo);
     const [error, setError] = useState(null);
 
@@ -37,6 +37,13 @@ export default function LogoDetail({ logo: initialLogo }) {
     const [policyMessage, setPolicyMessage] = useState("");
     const [policySubmitting, setPolicySubmitting] = useState(false);
     const [policyDone, setPolicyDone] = useState(false);
+
+    // ── inline search bar state ─────────────────────────────────────────────
+    const [searchValue, setSearchValue] = useState("");
+    const [searchFocused, setSearchFocused] = useState(false);
+    const searchDebounceRef = useRef(null);
+    const searchFirstRender = useRef(true);
+
     const PANTONE_COLORS = [
         { name: "PANTONE 186 C", hex: "#C8102E" },
         { name: "PANTONE 485 C", hex: "#DA291C" },
@@ -95,6 +102,40 @@ export default function LogoDetail({ logo: initialLogo }) {
         return () => clearTimeout(t);
     }, []);
 
+    // ── inline search bar logic ─────────────────────────────────────────────
+    const doSearch = (query) => {
+        const q = query.trim().toLowerCase();
+        if (!q) return;
+        const slugified = q.replace(/\s+/g, "-");
+        router.push(`/search/${encodeURIComponent(slugified)}`);
+    };
+
+    const handleSearchKeyDown = (e) => {
+        if (e.key === "Enter") {
+            clearTimeout(searchDebounceRef.current);
+            doSearch(searchValue);
+        }
+        if (e.key === "Escape") {
+            clearTimeout(searchDebounceRef.current);
+            setSearchValue("");
+            e.target.blur();
+        }
+    };
+
+    useEffect(() => {
+        if (searchFirstRender.current) {
+            searchFirstRender.current = false;
+            return;
+        }
+        clearTimeout(searchDebounceRef.current);
+        const q = searchValue.trim().toLowerCase();
+        if (!q) return;
+
+        searchDebounceRef.current = setTimeout(() => doSearch(q), 3000);
+        return () => clearTimeout(searchDebounceRef.current);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchValue]);
+
     const handleFavourite = async () => {
         if (!session?.user?.id) { alert("Please sign in to save favourites."); return; }
         if (favLoading) return;
@@ -113,22 +154,31 @@ export default function LogoDetail({ logo: initialLogo }) {
         finally { setFavLoading(false); }
     };
 
+    // ── Fetch logo + related. Server already gives us `initialLogo`, but
+    //    `initialRelated` can legitimately be an empty array (no related logos
+    //    found), so we only SKIP the client fetch when we already have BOTH
+    //    a logo AND a non-empty related list from the server. Otherwise we
+    //    fetch client-side to make sure `related` actually gets populated.
     useEffect(() => {
-        if (!slug || initialLogo) return;   // ← ye add karo: agar server se already logo mil chuka hai to dobara fetch mat karo
-        async function fetchLogo() {
-            setLoading(true); setError(null);
+        if (!slug) return;
+        if (initialLogo && initialRelated && initialRelated.length > 0) return;
+
+        async function fetchLogoData() {
+            setLoading(!initialLogo);
+            setError(null);
             try {
                 const res = await fetch("/api/logo/fetch/slug", {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ slug }),
                 });
                 const data = await res.json();
+                console.log("[LogoDetail] client fetch → related:", data.related || []);
                 setLogo(data.data || data);
                 setRelated(data.related || []);
             } catch (e) { setError(e.message); }
             finally { setLoading(false); }
         }
-        fetchLogo();
+        fetchLogoData();
     }, [slug]);
 
     useEffect(() => {
@@ -156,7 +206,6 @@ export default function LogoDetail({ logo: initialLogo }) {
         { key: "png", label: "PNG", cls: "fmt-png", icon: "PNG", sizeKey: "pngfilesize" },
     ];
 
-    // Only keep formats that actually exist for this logo (has a real, non-zero file size)
     const availableFormats = formatBadges.filter((fmt) => {
         const size = logo?.[fmt.sizeKey];
         return typeof size === "string" && size.trim() !== "" && size !== "0 KB";
@@ -259,12 +308,8 @@ export default function LogoDetail({ logo: initialLogo }) {
     if (error) return <ErrorState dark={dark} message={error} onBack={() => router.back()} />;
     if (!logo) return null;
 
-    // ── parse tags safely ─────────────────────────────────────────────────────
     const logoTags = Array.isArray(logo.tags) ? logo.tags : [];
 
-
-
-    // ── parse category safely (string or array) ────────────────────────────────
     const logoCategories = Array.isArray(logo.category)
         ? logo.category.filter(Boolean)
         : (logo.category ? [logo.category] : []);
@@ -282,12 +327,18 @@ export default function LogoDetail({ logo: initialLogo }) {
     --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.12);
     --heading:#ffffff; --body:rgba(255,255,255,0.7); --muted:rgba(255,255,255,0.4);
     --dot:rgba(255,255,255,0.035); --input-bg:rgba(255,255,255,0.04);
+    --search-bg:rgba(255,255,255,0.04); --search-bdr:rgba(255,255,255,0.1);
+    --search-clr:#ffffff; --search-ph:rgba(255,255,255,0.3);
+    --kbd-clr:rgba(255,255,255,0.2); --kbd-bg:rgba(255,255,255,0.06); --kbd-bdr:rgba(255,255,255,0.1);
   }
   [data-theme="light"] {
     --bg:#f4f4f8; --surface:#ffffff; --surface2:#f8f8fc;
     --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.12);
     --heading:#0a0a14; --body:rgba(0,0,0,0.65); --muted:rgba(0,0,0,0.4);
     --dot:rgba(0,0,0,0.035); --input-bg:rgba(0,0,0,0.03);
+    --search-bg:rgba(255,255,255,0.9); --search-bdr:rgba(0,0,0,0.12);
+    --search-clr:#0a0a14; --search-ph:rgba(0,0,0,0.3);
+    --kbd-clr:rgba(0,0,0,0.3); --kbd-bg:rgba(0,0,0,0.05); --kbd-bdr:rgba(0,0,0,0.1);
   }
 
   .page-container { min-height:100vh; display:flex; flex-direction:column; background:var(--bg); }
@@ -314,6 +365,42 @@ export default function LogoDetail({ logo: initialLogo }) {
   .breadcrumb a:hover { color:#07A626; }
   .breadcrumb-sep { opacity:.4; }
   .breadcrumb-current { color:var(--body); font-weight:600; }
+
+  /* ── inline search bar ─────────────────────────────────────────── */
+  .detail-search-wrap { position:relative; z-index:1; max-width:1100px; margin:14px auto 0; padding:0 24px; }
+  .detail-search-bar {
+    width:100%; display:flex; align-items:center; gap:9px;
+    padding:10px 14px; background:var(--search-bg); border:1.5px solid var(--search-bdr);
+    border-radius:11px; box-shadow:0 2px 16px rgba(0,0,0,.08);
+    transition:border-color .2s, box-shadow .2s, background .35s; cursor:text;
+  }
+  .detail-search-bar.focused {
+    border-color:rgba(7,166,38,.7);
+    box-shadow:0 0 0 3px rgba(7,166,38,.1), 0 0 20px rgba(7,166,38,.06);
+  }
+  .detail-search-icon { color:rgba(128,128,160,0.55); flex-shrink:0; }
+  .detail-search-input {
+    flex:1; min-width:0; background:none; border:none; outline:none;
+    font-size:13.5px; font-family:'Sora',sans-serif; font-weight:500;
+    color:var(--search-clr); caret-color:#07A626; transition:color .3s;
+  }
+  .detail-search-input::placeholder { color:var(--search-ph); }
+  .detail-search-kbd {
+    font-size:10px; font-weight:600; color:var(--kbd-clr); background:var(--kbd-bg);
+    border:1px solid var(--kbd-bdr); border-radius:4px; padding:1px 6px; flex-shrink:0;
+  }
+  .detail-search-clear {
+    background:none; border:none; cursor:pointer; color:var(--muted);
+    font-size:16px; line-height:1; padding:0 2px; flex-shrink:0;
+  }
+  @media (max-width:640px) {
+    .detail-search-wrap { padding:0 16px; margin-top:12px; }
+    .detail-search-kbd { display:none; }
+  }
+  @media (max-width:480px) {
+    .detail-search-bar { padding:9px 12px; border-radius:10px; }
+    .detail-search-input { font-size:13px; }
+  }
 
   .layout {
     position:relative; z-index:1;
@@ -489,7 +576,6 @@ export default function LogoDetail({ logo: initialLogo }) {
   .fav-btn:hover { transform:scale(1.15); }
   .fav-btn.active { background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); }
 
-  /* ── SEO ADDITION: Clickable Tags Section ─────────────────────────────── */
   .tags-section { position:relative; z-index:1; max-width:1100px; margin:32px auto 0; padding:0 24px; }
   .tags-header { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
   .tags-grid { display:flex; flex-wrap:wrap; gap:8px; }
@@ -572,6 +658,39 @@ export default function LogoDetail({ logo: initialLogo }) {
                         )}
                         <span className="breadcrumb-current">{logo.logoName}</span>
                     </nav>
+
+                    {/* ── inline search bar ─────────────────────────────────────────── */}
+                    <div className="detail-search-wrap ">
+                        <div
+                            className={`detail-search-bar${searchFocused ? " focused" : ""}`}
+                            onClick={() => document.getElementById("detail-search-input")?.focus()}
+                        >
+                            <svg className="detail-search-icon" width="15" height="15" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" strokeWidth="2.2"
+                                strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input
+                                id="detail-search-input"
+                                className="detail-search-input"
+                                type="text"
+                                placeholder="Search other logos, brands…"
+                                value={searchValue}
+                                onChange={(e) => setSearchValue(e.target.value)}
+                                onFocus={() => setSearchFocused(true)}
+                                onBlur={() => setSearchFocused(false)}
+                                onKeyDown={handleSearchKeyDown}
+                            />
+                            {searchValue && (
+                                <button
+                                    className="detail-search-clear"
+                                    onClick={(e) => { e.stopPropagation(); setSearchValue(""); }}
+                                >×</button>
+                            )}
+                            <span className="detail-search-kbd">ESC</span>
+                        </div>
+                    </div>
 
                     <div className={`layout${ready ? " ready" : ""}`}>
 
@@ -671,7 +790,6 @@ export default function LogoDetail({ logo: initialLogo }) {
                                 <div className="info-grid">
                                     {[
                                         { icon: "🏷️", label: "Brand", value: logo.brand },
-                                        // { icon: "⚙️", label: "Industry", value: logo.industry },
                                         { icon: "🌍", label: "Country", value: logo.country },
                                         { icon: "📁", label: "Category", value: categoryDisplay },
                                     ]
@@ -860,7 +978,6 @@ export default function LogoDetail({ logo: initialLogo }) {
                         </div>
                     </div>
 
-                    {/* ── SEO ADDITION: Clickable Tags Section ────────────────────────────── */}
                     {logoTags.length > 0 && (
                         <div className="tags-section">
                             <div className="tags-header">

@@ -53,7 +53,7 @@ export default function CategoryGroupClient({ slug, initialCategoryName, initial
   }, [data, searchValue, sort]);
 
   const handleSubClick = (sub) => {
-    router.push(`/category/sub-cat/${encodeURIComponent(sub.slug)}`);
+    router.push(`/categories/${slug}/brands/${encodeURIComponent(sub.slug)}`);
   };
 
   const categoryName = data?.categoryName || initialCategoryName || slug;

@@ -34,7 +34,7 @@ function BrandCard({ cat, index, dark }) {
       onMouseLeave={() => setHov(false)}
       onClick={() => {
         const query = cat.category.toLowerCase();
-        router.push(`/category/${cleanSlug(query)}`);
+        router.push(`/categories/${cleanSlug(query)}`);
       }}
     >
       {hasImages ? (

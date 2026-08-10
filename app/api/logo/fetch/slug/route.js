@@ -11,6 +11,8 @@ export async function POST(req) {
       return Response.json({ success: false, error: "Slug is required" }, { status: 400 });
     }
 
+    console.log(`\n[fetch/slug] ── incoming slug: "${slug}"`);
+
     const logo = await prisma.logo.findUnique({
       where: { slug },
       select: {
@@ -33,7 +35,6 @@ export async function POST(req) {
 
         // ── Taxonomy ────────────────────────────────────────────────────────
         tags: true,
-        brandColors: true,
 
         // ── File URLs ───────────────────────────────────────────────────────
         webpUrl: true,   // public CDN preview
@@ -69,8 +70,6 @@ export async function POST(req) {
 
         // ── Publishing ──────────────────────────────────────────────────────
         publishStatus: true,
-        downloadCount: true,
-        downloadedNumberByPeople: true,
 
         imageObjectSchema: true,
         breadcrumbSchema: true,
@@ -83,51 +82,74 @@ export async function POST(req) {
     });
 
     if (!logo) {
+      console.log(`[fetch/slug] ✗ no logo found for slug "${slug}"`);
       return Response.json({ success: false, error: "Logo not found" }, { status: 404 });
     }
 
+    console.log(
+      `[fetch/slug] ✓ found logo: id=${logo.id} brand="${logo.brand}" category=${JSON.stringify(
+        logo.category
+      )} tags=${JSON.stringify(logo.tags)}`
+    );
+
     const published = { in: ["published", "Published"] };
     const logoTags = Array.isArray(logo.tags) ? logo.tags : [];
+    const logoCategories = Array.isArray(logo.category) ? logo.category : [];
 
-    // ── Related: 1. same brand ───────────────────────────────────────────────
+    // ── Related: 1. same brand (case-insensitive) ───────────────────────────
     const byName = logo.brand
       ? await prisma.logo.findMany({
-        where: { brand: logo.brand, slug: { not: slug }, publishStatus: published },
-        select: {
-          slug: true, logoName: true, brand: true,
-          webpUrl: true, brandColors: true, downloadedNumberByPeople: true,
-        },
-        take: 5,
-        orderBy: { downloadedNumberByPeople: "desc" },
-      })
+          where: {
+            brand: { equals: logo.brand, mode: "insensitive" }, // ← fuzzy/case-insensitive fix
+            slug: { not: slug },
+            publishStatus: published,
+          },
+          select: {
+            slug: true, logoName: true, brand: true,
+            webpUrl: true,
+          },
+          take: 5,
+          orderBy: { downloadedNumberByPeople: "desc" },
+        })
       : [];
 
-    const usedSlugs = new Set(byName.map(l => l.slug));
+    console.log(
+      `[fetch/slug] step 1 (same brand, case-insensitive): matched ${byName.length} → ${byName
+        .map((l) => l.slug)
+        .join(", ") || "(none)"}`
+    );
 
-    // ── Related: 2. same category ────────────────────────────────────────────
-    //    category is Prisma String[] — equals here matches the exact same
-    //    array (same elements, same order) as the original logo's category.
+    const usedSlugs = new Set(byName.map((l) => l.slug));
+
+    // ── Related: 2. overlapping category (hasSome, not exact-array equals) ──
     const rem1 = 5 - byName.length;
-    const byCategory = rem1 > 0
-      ? await prisma.logo.findMany({
-        where: {
-          category: { equals: logo.category },
-          slug: { not: slug },
-          publishStatus: published,
-          NOT: { slug: { in: [...usedSlugs] } },
-        },
-        select: {
-          slug: true, logoName: true, brand: true,
-          webpUrl: true, brandColors: true, downloadedNumberByPeople: true,
-        },
-        take: rem1,
-        orderBy: { downloadedNumberByPeople: "desc" },
-      })
-      : [];
+    const byCategory =
+      rem1 > 0 && logoCategories.length > 0
+        ? await prisma.logo.findMany({
+            where: {
+              category: { hasSome: logoCategories }, // ← fixed: any overlap, not exact array match
+              slug: { not: slug },
+              publishStatus: published,
+              NOT: { slug: { in: [...usedSlugs] } },
+            },
+            select: {
+              slug: true, logoName: true, brand: true,
+              webpUrl: true,
+            },
+            take: rem1,
+            orderBy: { downloadedNumberByPeople: "desc" },
+          })
+        : [];
 
-    byCategory.forEach(l => usedSlugs.add(l.slug));
+    console.log(
+      `[fetch/slug] step 2 (overlapping category, hasSome): matched ${byCategory.length} → ${byCategory
+        .map((l) => l.slug)
+        .join(", ") || "(none)"}`
+    );
 
-    // ── Related: 3. overlapping tags ─────────────────────────────────────────
+    byCategory.forEach((l) => usedSlugs.add(l.slug));
+
+    // ── Related: 3. overlapping tags (case-insensitive fuzzy compare) ───────
     const rem2 = 5 - byName.length - byCategory.length;
     let byTags = [];
     if (rem2 > 0 && logoTags.length > 0) {
@@ -139,23 +161,42 @@ export async function POST(req) {
         },
         select: {
           slug: true, logoName: true, brand: true,
-          webpUrl: true, brandColors: true, downloadedNumberByPeople: true,
+          webpUrl: true,
           tags: true,
         },
         orderBy: { downloadedNumberByPeople: "desc" },
         take: rem2 * 10,
       });
+
+      const normLogoTags = logoTags.map((t) => String(t).trim().toLowerCase());
+
       byTags = candidates
-        .filter(l => (Array.isArray(l.tags) ? l.tags : []).some(t => logoTags.includes(t)))
+        .filter((l) => {
+          const candidateTags = (Array.isArray(l.tags) ? l.tags : []).map((t) =>
+            String(t).trim().toLowerCase()
+          );
+          return candidateTags.some((t) => normLogoTags.includes(t)); // ← fuzzy/case-insensitive tag match
+        })
         .slice(0, rem2);
     }
 
+    console.log(
+      `[fetch/slug] step 3 (overlapping tags, case-insensitive): matched ${byTags.length} → ${byTags
+        .map((l) => l.slug)
+        .join(", ") || "(none)"}`
+    );
+
     const related = [...byName, ...byCategory, ...byTags];
 
-    return Response.json({ success: true, data: logo, related });
+    console.log(
+      `[fetch/slug] ── total related: ${related.length}/5 → ${
+        related.map((l) => l.slug).join(", ") || "(none)"
+      }\n`
+    );
 
+    return Response.json({ success: true, data: logo, related });
   } catch (err) {
-    console.error("[fetch/slug]", err);
+    console.error("[fetch/slug] ✗ ERROR:", err);
     return Response.json(
       { success: false, error: "Server error", message: err.message },
       { status: 500 }

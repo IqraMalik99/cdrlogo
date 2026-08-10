@@ -1,11 +1,12 @@
-import CategoriesClient from "./client.jsx";
+import BrandsClient from "./client.jsx";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com";
 
 export async function generateMetadata() {
-  const title = "Browse Logo Categories A-Z | Free Vector Logo Downloads - CDRLogo";
-  const description = "Browse logo categories from A to Z. Find CDR, SVG, AI and PNG vector logo files organized by brand, industry and category for designers and print professionals.";
-  const url = `${baseUrl}/category`;
+  const title = "Browse Logo Brands A-Z | Free Vector Logo Downloads - CDRLogo";
+  const description =
+    "Browse every logo brand from A to Z. Find CDR, SVG, AI and PNG vector logo files organized alphabetically by brand for designers and print professionals.";
+  const url = `${baseUrl}/brands`;
   const image = `${baseUrl}/og-image.jpg`;
 
   return {
@@ -23,7 +24,7 @@ export async function generateMetadata() {
       url,
       siteName: "CDRLogo",
       type: "website",
-      images: [{ url: image, width: 1200, height: 630, alt: "CDRLogo Categories" }],
+      images: [{ url: image, width: 1200, height: 630, alt: "CDRLogo Brands" }],
     },
     twitter: {
       card: "summary_large_image",
@@ -37,9 +38,10 @@ export async function generateMetadata() {
 const collectionSchema = {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
-  name: "Browse Logo Categories A-Z",
-  description: "Browse logo categories from A to Z. Find CDR, SVG, AI and PNG vector logo files organized by brand and industry.",
-  url: `${baseUrl}/category`,
+  name: "Browse Logo Brands A-Z",
+  description:
+    "Browse every logo brand from A to Z. Find CDR, SVG, AI and PNG vector logo files organized alphabetically by brand.",
+  url: `${baseUrl}/brands`,
 };
 
 const breadcrumbSchema = {
@@ -47,11 +49,11 @@ const breadcrumbSchema = {
   "@type": "BreadcrumbList",
   itemListElement: [
     { "@type": "ListItem", position: 1, name: "Home", item: baseUrl },
-    { "@type": "ListItem", position: 2, name: "Categories", item: `${baseUrl}/category` },
+    { "@type": "ListItem", position: 2, name: "Brands", item: `${baseUrl}/brands` },
   ],
 };
 
-export default function CategoryPage() {
+export default function Page() {
   return (
     <>
       <script
@@ -63,9 +65,9 @@ export default function CategoryPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       <h1 className="cat-heading-seo">
-        Browse Design Categories &amp; Visual Archives
+        Browse Logo Brands A-Z
       </h1>
-      <CategoriesClient />
+      <BrandsClient />
     </>
   );
 }

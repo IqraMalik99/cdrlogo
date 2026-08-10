@@ -22,19 +22,20 @@ async function fetchLogo(slug) {
       }
     );
 
-    if (!res.ok) return null;
+    if (!res.ok) return { logo: null, related: [] };
 
     const json = await res.json();
     const logo = json.data || json;
+    const related = Array.isArray(json.related) ? json.related : [];
 
-    console.log("[fetchLogo]", slug, logo);
+    console.log("[fetchLogo]", slug, "logo:", !!logo, "related:", related.length);
 
     // If API returned an error object, return null
-    if (!logo || logo.error || !logo.slug) return null;
+    if (!logo || logo.error || !logo.slug) return { logo: null, related: [] };
 
-    return logo;
+    return { logo, related };
   } catch {
-    return null;
+    return { logo: null, related: [] };
   }
 }
 
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }) {
   const { slug } = await params;
 
   try {
-    const logo = await fetchLogo(slug);
+    const { logo } = await fetchLogo(slug);
 
     if (!logo) {
       return {
@@ -116,12 +117,15 @@ export async function generateMetadata({ params }) {
 export default async function Page({ params }) {
   const { slug } = await params;
   let logo = null;
+  let related = [];
   let imageObjectSchema = null;
   let breadcrumbSchema = null;
   let faqSchema = null;
 
   try {
-    logo = await fetchLogo(slug);
+    const result = await fetchLogo(slug);
+    logo = result.logo;
+    related = result.related;
     if (logo) {
       if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
         // Merge fixed global licensing metadata into every logo page's ImageObject schema.
@@ -179,7 +183,7 @@ export default async function Page({ params }) {
           {`${logo.logoName} – PNG SVG Vector | cdrlogo.com`}
         </h1>
       }
-    <LogoDetail logo={logo} />
+    <LogoDetail logo={logo} initialRelated={related} />
     </>
   );
 }

@@ -84,6 +84,7 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   const fetchLogos = useCallback(async () => {
     if (!slug) return;
@@ -99,6 +100,7 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
       const data = await res.json();
       setLogos(data.logos ?? []);
       setTotalPages(data.totalPages ?? 1);
+      setTotalCount(data.totalCount ?? data.logos?.length ?? 0);
       setCategoryName(data.categoryName ?? slug);
     } catch (err) {
       setError(err.message);
@@ -113,7 +115,7 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
 
   return (<>
     <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -141,6 +143,9 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
           --page-active-color: #4ade80;
           --page-active-border: rgba(7,166,38,0.45);
           --error-color:    #f87171;
+          --header-glow:    rgba(7,166,38,0.12);
+          --stat-bg:        rgba(255,255,255,0.04);
+          --stat-border:    rgba(255,255,255,0.08);
         }
         [data-theme="light"] {
           --page-bg:        #f4f4f8;
@@ -166,21 +171,64 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
           --page-active-color: #15803d;
           --page-active-border: rgba(7,166,38,0.35);
           --error-color:    #dc2626;
+          --header-glow:    rgba(7,166,38,0.06);
+          --stat-bg:        rgba(255,255,255,0.9);
+          --stat-border:    rgba(0,0,0,0.08);
         }
 
         .logos-page { min-height: 100vh; background: var(--page-bg); font-family: 'Sora', sans-serif; padding: 0px 0 60px; transition: background 0.35s; }
         .logos-container { max-width: 1200px; margin: 0 auto; padding: 24px 24px 0; }
 
-        .page-header { margin-bottom: 20px; }
-        .back-link {
-          display: inline-flex; align-items: center; gap: 6px;
-          font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600;
-          color: var(--text-secondary); text-decoration: none; cursor: pointer;
-          margin-bottom: 10px; border: none; background: none; padding: 0;
+        .page-header { margin-bottom: 28px; position: relative; }
+        .header-glow {
+          position: absolute; top: -20px; left: -40px;
+          width: 320px; height: 160px;
+          background: radial-gradient(ellipse, var(--header-glow) 0%, transparent 70%);
+          pointer-events: none; z-index: 0;
         }
-        .back-link:hover { color: #4ade80; }
-        .page-title { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1; text-transform: capitalize; }
-        .page-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+        .breadcrumb {
+          display: flex; align-items: center; gap: 6px;
+          font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+          color: var(--text-muted); margin-bottom: 16px; position: relative; z-index: 1;
+        }
+        .breadcrumb button {
+          display: inline-flex; align-items: center; gap: 5px;
+          background: none; border: none; cursor: pointer; padding: 0;
+          color: var(--text-secondary); font-family: 'DM Sans', sans-serif;
+          font-size: 12px; font-weight: 600; transition: color .15s;
+        }
+        .breadcrumb button:hover { color: #4ade80; }
+        .breadcrumb .sep { opacity: 0.4; }
+        .breadcrumb .current { color: var(--text-primary); }
+
+        .header-main {
+          display: flex; align-items: flex-end; justify-content: space-between;
+          gap: 20px; flex-wrap: wrap; position: relative; z-index: 1;
+        }
+        .header-title-block { display: flex; align-items: center; gap: 14px; }
+        .header-icon {
+          width: 46px; height: 46px; flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(7,166,38,0.12); border: 1px solid rgba(7,166,38,0.25);
+          border-radius: 13px; color: #07A626;
+        }
+        .page-title {
+          font-size: 26px; font-weight: 900; color: var(--text-primary);
+          letter-spacing: -0.6px; line-height: 1.1; text-transform: capitalize;
+        }
+        .page-subtitle {
+          font-family: 'DM Sans', sans-serif; font-size: 13px;
+          color: var(--text-secondary); margin-top: 4px;
+        }
+        .header-stat {
+          display: flex; flex-direction: column; align-items: flex-end;
+          gap: 2px; padding: 10px 18px;
+          background: var(--stat-bg); border: 1px solid var(--stat-border);
+          border-radius: 12px; flex-shrink: 0;
+        }
+        .header-stat-num { font-size: 22px; font-weight: 900; color: var(--text-primary); line-height: 1; }
+        .header-stat-lbl { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.6px; color: var(--text-muted); text-transform: uppercase; }
+        .header-stat.loading .header-stat-num { color: var(--text-muted); }
 
         .logos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 36px; }
 
@@ -232,7 +280,13 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
         @media (max-width:640px) {
           .logos-page { padding: 12px 0 40px; }
           .logos-container { padding: 14px 12px 0; }
-          .page-title { font-size: 20px; }
+          .page-header { margin-bottom: 20px; }
+          .header-main { align-items: flex-start; }
+          .header-icon { width: 38px; height: 38px; border-radius: 11px; }
+          .header-icon svg { width: 18px; height: 18px; }
+          .page-title { font-size: 19px; }
+          .header-stat { padding: 8px 14px; }
+          .header-stat-num { font-size: 18px; }
           .logos-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
           .card-image { height: 105px; }
           .card-name { font-size: 13px; }
@@ -246,14 +300,44 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
     <div className="logos-page">
       <div className="logos-container">
 
+        <Navbar />
+        <div className="h-20"></div>
+
         <div className="page-header">
-          <Navbar />
-          <div className="h-20"></div>
-          <button className="back-link" onClick={() => history.back()}>
-            ← Back to categories
-          </button>
-          <p className="page-title" style={{ fontSize: 24, fontWeight: 800 }}>{categoryName || slug}</p>
-          <p className="page-subtitle">Browse logos in this category</p>
+          <div className="header-glow" />
+
+          <div className="breadcrumb">
+            <button onClick={() => history.back()}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Categories
+            </button>
+            <span className="sep">/</span>
+            <span className="current">{categoryName || slug}</span>
+          </div>
+
+          <div className="header-main">
+            <div className="header-title-block">
+              <div className="header-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+              </div>
+              <div>
+                <p className="page-title">{categoryName || slug}</p>
+                <p className="page-subtitle">Browse logos in this category</p>
+              </div>
+            </div>
+
+            <div className={`header-stat${loading ? " loading" : ""}`}>
+              <div className="header-stat-num">{loading ? "—" : totalCount.toLocaleString()}</div>
+              <div className="header-stat-lbl">Logos</div>
+            </div>
+          </div>
         </div>
 
         {error ? (

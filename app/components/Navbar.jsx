@@ -11,7 +11,7 @@ const STATIC_NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Brands", href: "/brands" },
   { label: "Logo Templates", href: "/template" },
-  { label: "Categories", href: "/category" },
+  { label: "Categories", href: "/categories" },
   { label: "Blog", href: "/blog" },
   { label: "Contact", href: "/contact-us" },
   { label: "Request Logo", href: "/request" },
@@ -32,6 +32,9 @@ export default function Navbar() {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+
+  // Login-required popup (shown when a logged-out user tries to upload)
+  const [loginRequiredOpen, setLoginRequiredOpen] = useState(false);
 
   const dropRef = useRef(null);
   const { data: session, status } = useSession();
@@ -54,7 +57,6 @@ export default function Navbar() {
   }, []);
 
   // ── Account menu items shown in the avatar dropdown / mobile menu ──────
-  // (Upload Logo removed from here — it's its own standalone button)
   const accountItems = [
     {
       href: "/profile",
@@ -104,7 +106,13 @@ export default function Navbar() {
     },
   ];
 
+  // Opens the upload modal — but if the person isn't logged in,
+  // shows the "login required" popup instead.
   function openUpload() {
+    if (!isLogged) {
+      setLoginRequiredOpen(true);
+      return;
+    }
     setUploadError("");
     setUploadFile(null);
     setUploadOpen(true);
@@ -270,7 +278,7 @@ export default function Navbar() {
         [data-theme="dark"] .login-btn { color: #4ade80; }
         [data-theme="dark"] .login-btn:hover { color: #86efac; }
 
-        /* Upload Logo button — standalone, solid green, only visible when logged in */
+        /* Upload Logo button — standalone, solid green, now visible whether logged in or not */
         .upload-logo-btn {
           display: flex; align-items: center; gap: 6px;
           padding: 8px 16px;
@@ -285,7 +293,7 @@ export default function Navbar() {
         }
         .upload-logo-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
 
-        /* Wraps Upload Logo + Avatar so both share one outside-click boundary */
+        /* Wraps Upload Logo + Avatar/Login so both share one outside-click boundary */
         .account-actions { display: flex; align-items: center; gap: 8px; position: relative; }
 
         /* Avatar button */
@@ -417,6 +425,7 @@ export default function Navbar() {
           font-size: 14px; font-weight: 600;
           text-decoration: none; font-family: var(--font-sora), sans-serif;
           transition: filter 0.2s;
+          cursor: pointer; width: 100%;
         }
         .mobile-upload-btn:hover { filter: brightness(1.08); }
 
@@ -501,7 +510,7 @@ export default function Navbar() {
           color: var(--link-color);
         }
 
-        /* Upload Logo modal */
+        /* Upload Logo modal (also reused for Login Required popup) */
         .upload-modal-overlay {
           position: fixed; inset: 0; z-index: 300;
           background: rgba(0,0,0,0.5);
@@ -558,6 +567,7 @@ export default function Navbar() {
           padding: 8px 16px; border-radius: 9px; font-size: 13.5px; font-weight: 600;
           cursor: pointer; font-family: var(--font-sora), sans-serif; border: none;
           transition: filter 0.2s, opacity 0.2s;
+          text-decoration: none;
         }
         .upload-cancel-btn {
           background: var(--drop-hover); color: var(--drop-text);
@@ -570,6 +580,20 @@ export default function Navbar() {
         .upload-submit-btn:hover { filter: brightness(1.08); }
         .upload-cancel-btn:disabled, .upload-submit-btn:disabled {
           opacity: 0.6; cursor: not-allowed;
+        }
+
+        /* Login Required popup body */
+        .login-required-body {
+          display: flex; flex-direction: column; align-items: center; gap: 10px;
+          padding: 12px 4px 4px; text-align: center;
+        }
+        .login-required-icon {
+          width: 44px; height: 44px; border-radius: 50%;
+          background: rgba(7,166,38,0.12); border: 1px solid rgba(7,166,38,0.25);
+          display: flex; align-items: center; justify-content: center; color: #07A626;
+        }
+        .login-required-text {
+          font-size: 13.5px; color: var(--drop-sub); line-height: 1.6; margin: 0;
         }
 
         @media (max-width: 900px) {
@@ -629,16 +653,27 @@ export default function Navbar() {
               </div>
             )}
 
-            {/* Desktop: Upload Logo + Avatar both toggle the same account
-                dropdown, and share one outside-click ref so it opens/closes
-                correctly from either button. */}
-            {!isLoading && isLogged ? (
-              <div className="account-actions" ref={dropRef}>
-                <button type="button" className="upload-logo-btn" onClick={() => setDropOpen(v => !v)}>
-                  {uploadLogoIcon}
-                  Upload Logo
-                </button>
+            {/* Desktop: Upload Logo is ALWAYS visible now.
+                Clicking it while logged out opens the Login Required popup
+                (via openUpload's internal check). Avatar + dropdown only
+                render when logged in; otherwise a plain Login link shows. */}
+            <div className="account-actions" ref={dropRef}>
+              <button
+                type="button"
+                className="upload-logo-btn"
+                onClick={() => {
+                  if (!isLogged) {
+                    setLoginRequiredOpen(true);
+                  } else {
+                    setDropOpen(v => !v);
+                  }
+                }}
+              >
+                {uploadLogoIcon}
+                Upload Logo
+              </button>
 
+              {!isLoading && isLogged && (
                 <div className="avatar-wrap">
                   <button
                     className="avatar-btn"
@@ -694,16 +729,18 @@ export default function Navbar() {
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : !isLoading ? (
-              <Link href="/login" className="login-btn">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-                Login
-              </Link>
-            ) : null}
+              )}
+
+              {!isLoading && !isLogged && (
+                <Link href="/login" className="login-btn">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  Login
+                </Link>
+              )}
+            </div>
 
             {/* Hamburger */}
             <button
@@ -748,19 +785,21 @@ export default function Navbar() {
             </div>
           )}
 
+          {/* Upload Logo — ALWAYS visible on mobile now.
+              openUpload() itself checks isLogged and shows the Login
+              Required popup automatically when needed. */}
+          <button
+            type="button"
+            className="mobile-upload-btn"
+            onClick={() => { setMenuOpen(false); openUpload(); }}
+          >
+            {uploadLogoIcon}
+            Upload Logo
+          </button>
+
           {/* Logged in */}
           {isLogged ? (
             <>
-              {/* Upload Logo — standalone, mobile. No account items nested inside it. */}
-              <button
-                type="button"
-                className="mobile-upload-btn"
-                onClick={() => { setMenuOpen(false); openUpload(); }}
-              >
-                {uploadLogoIcon}
-                Upload Logo
-              </button>
-
               <div className="mobile-user-card">
                 <div className="mobile-avatar">{initial}</div>
                 <div>
@@ -858,6 +897,55 @@ export default function Navbar() {
               <button type="button" className="upload-submit-btn" onClick={submitUpload} disabled={uploading}>
                 {uploading ? "Uploading…" : "Upload"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Login Required popup (shown when logged-out user tries to upload) ── */}
+      {loginRequiredOpen && (
+        <div className="upload-modal-overlay" onMouseDown={() => setLoginRequiredOpen(false)}>
+          <div className="upload-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="upload-modal-header">
+              <h3>Login Required</h3>
+              <button
+                type="button"
+                className="upload-modal-close"
+                aria-label="Close"
+                onClick={() => setLoginRequiredOpen(false)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="login-required-body">
+              <div className="login-required-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+              <p className="login-required-text">
+                You need to be logged in to upload a logo. Please sign in to continue.
+              </p>
+            </div>
+
+            <div className="upload-modal-actions">
+              <button type="button" className="upload-cancel-btn" onClick={() => setLoginRequiredOpen(false)}>
+                Cancel
+              </button>
+              <Link
+                href="/login"
+                className="upload-submit-btn"
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                onClick={() => setLoginRequiredOpen(false)}
+              >
+                Go to Login
+              </Link>
             </div>
           </div>
         </div>
