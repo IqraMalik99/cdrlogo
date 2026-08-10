@@ -40,7 +40,7 @@ export async function POST(req, { params }) {
     }
 
     return NextResponse.json({
-      logos,
+      logos: logos||[],
       totalCount: logos.length,
       categoryName: logos[0].brand,
     });

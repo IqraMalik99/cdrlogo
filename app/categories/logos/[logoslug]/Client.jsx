@@ -96,7 +96,7 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ page }),
 });
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      if (!res.ok) throw new Error(`No logos found for category`);
       const data = await res.json();
       setLogos(data.logos ?? []);
       setTotalPages(data.totalPages ?? 1);
@@ -342,8 +342,8 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
 
         {error ? (
           <div className="error-state">
-            <p>Failed to load logos: {error}</p>
-            <button onClick={fetchLogos}>Try again</button>
+             <p className="text-green-700">{error}</p>
+            
           </div>
         ) : (
           <div className="logos-grid">
