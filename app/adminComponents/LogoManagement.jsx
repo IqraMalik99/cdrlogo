@@ -88,27 +88,27 @@ const Field = ({ label, k, type = "text", options, form, setForm, inputStyle, mu
 // ── Edit Modal ────────────────────────────────────────────────────────────────
 function EditModal({ logo, dark, onClose, onSave, categories = [] }) {
   const [form, setForm] = useState({
-    logoName:        logo.logoName        ?? "",
-    brand:           logo.brand           ?? "",
-    category:        logo.category        ?? "",
-    industry:        logo.industry        ?? "",
-    country:         logo.country         ?? "",
-    website:         logo.website         ?? "",
-    description:     logo.description     ?? "",
-    publishStatus:   logo.publishStatus   ?? "Draft",
-    downloadCount:   logo.downloadCount   ?? "",
-    metaTitle:       logo.metaTitle       ?? "",
+    logoName: logo.logoName ?? "",
+    brand: logo.brand ?? "",
+    category: Array.isArray(logo.category) ? (logo.category[0] ?? "") : (logo.category ?? ""),
+    industry: logo.industry ?? "",
+    country: logo.country ?? "",
+    website: logo.website ?? "",
+    description: logo.description ?? "",
+    publishStatus: logo.publishStatus ?? "Draft",
+    downloadCount: logo.downloadCount ?? "",
+    metaTitle: logo.metaTitle ?? "",
     metaDescription: logo.metaDescription ?? "",
-    altText:         logo.altText         ?? "",
-    focusKeywords:   logo.focusKeywords   ?? "",
+    altText: logo.altText ?? "",
+    focusKeywords: logo.focusKeywords ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState(null);
 
-  const bg      = dark ? "#0f1117" : "#ffffff";
-  const border  = dark ? "#1e2535" : "#e2e8f0";
-  const text    = dark ? "#e2e8f0" : "#1e293b";
-  const muted   = dark ? "#64748b" : "#94a3b8";
+  const bg = dark ? "#0f1117" : "#ffffff";
+  const border = dark ? "#1e2535" : "#e2e8f0";
+  const text = dark ? "#e2e8f0" : "#1e293b";
+  const muted = dark ? "#64748b" : "#94a3b8";
   const inputBg = dark ? "#0f1117" : "#ffffff";
 
   const inputStyle = {
@@ -127,7 +127,7 @@ function EditModal({ logo, dark, onClose, onSave, categories = [] }) {
       const res = await fetch(`/api/logo/admin`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: logo._id, ...form }),
+        body: JSON.stringify({ id: logo.id, ...form }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const updated = await res.json();
@@ -182,11 +182,11 @@ function EditModal({ logo, dark, onClose, onSave, categories = [] }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <TwoCol>
                 <Field label="LOGO NAME" k="logoName" {...fieldProps} />
-                <Field label="BRAND"     k="brand"    {...fieldProps} />
-                <Field label="CATEGORY"  k="category" {...fieldProps} options={categoryOptions} />
-                <Field label="INDUSTRY"  k="industry" {...fieldProps} />
-                <Field label="COUNTRY"   k="country"  {...fieldProps} />
-                <Field label="WEBSITE"   k="website"  {...fieldProps} type="url" />
+                <Field label="BRAND" k="brand"    {...fieldProps} />
+                <Field label="CATEGORY" k="category" {...fieldProps} options={categoryOptions} />
+                <Field label="INDUSTRY" k="industry" {...fieldProps} />
+                <Field label="COUNTRY" k="country"  {...fieldProps} />
+                <Field label="WEBSITE" k="website"  {...fieldProps} type="url" />
               </TwoCol>
             </div>
           </div>
@@ -195,7 +195,7 @@ function EditModal({ logo, dark, onClose, onSave, categories = [] }) {
           <div>
             <SectionLabel label="Publishing" border={border} muted={muted} />
             <TwoCol>
-              <Field label="STATUS"         k="publishStatus" {...fieldProps} options={["Published", "Draft"]} />
+              <Field label="STATUS" k="publishStatus" {...fieldProps} options={["Published", "Draft"]} />
               <Field label="DOWNLOAD LIMIT" k="downloadCount" {...fieldProps} />
             </TwoCol>
           </div>
@@ -210,7 +210,7 @@ function EditModal({ logo, dark, onClose, onSave, categories = [] }) {
           <div>
             <SectionLabel label="SEO" border={border} muted={muted} />
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <Field label="META TITLE"       k="metaTitle"       {...fieldProps} />
+              <Field label="META TITLE" k="metaTitle"       {...fieldProps} />
               <Field label="META DESCRIPTION" k="metaDescription" type="textarea" {...fieldProps} />
             </div>
           </div>
@@ -249,16 +249,17 @@ function EditModal({ logo, dark, onClose, onSave, categories = [] }) {
 // ── Delete Confirm Modal ──────────────────────────────────────────────────────
 function DeleteConfirm({ logo, dark, onClose, onDeleted }) {
   const [deleting, setDeleting] = useState(false);
-  const bg     = dark ? "#0f1117" : "#ffffff";
+  const bg = dark ? "#0f1117" : "#ffffff";
   const border = dark ? "#1e2535" : "#e2e8f0";
-  const text   = dark ? "#e2e8f0" : "#1e293b";
-  const muted  = dark ? "#64748b" : "#94a3b8";
+  const text = dark ? "#e2e8f0" : "#1e293b";
+  const muted = dark ? "#64748b" : "#94a3b8";
 
   const handleDelete = async () => {
     setDeleting(true);
     try {
       const res = await fetch(`/api/logo/admin`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: logo.id }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -358,15 +359,15 @@ function LogoSection({
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  const surface    = dark ? "#141924" : "#ffffff";
-  const border     = dark ? "#1e2535" : "#e2e8f0";
-  const text       = dark ? "#e2e8f0" : "#1e293b";
-  const muted      = dark ? "#64748b" : "#94a3b8";
-  const headClr    = dark ? "#475569" : "#94a3b8";
+  const surface = dark ? "#141924" : "#ffffff";
+  const border = dark ? "#1e2535" : "#e2e8f0";
+  const text = dark ? "#e2e8f0" : "#1e293b";
+  const muted = dark ? "#64748b" : "#94a3b8";
+  const headClr = dark ? "#475569" : "#94a3b8";
   const rowHoverBg = dark ? "#141924" : "#FFFFFF";
-  const badgeBg    = status === "Published" ? "rgba(34,197,94,0.1)" : "rgba(100,116,139,0.12)";
+  const badgeBg = status === "Published" ? "rgba(34,197,94,0.1)" : "rgba(100,116,139,0.12)";
   const badgeBorder = status === "Published" ? "rgba(34,197,94,0.25)" : "rgba(100,116,139,0.25)";
-  const badgeColor  = status === "Published" ? "#4ade80" : "#94a3b8";
+  const badgeColor = status === "Published" ? "#4ade80" : "#94a3b8";
 
   const fetchLogos = useCallback(async () => {
     setLoading(true); setError(null);
@@ -376,7 +377,7 @@ function LogoSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           page, limit: PER_PAGE, status,
-          ...(search         && { search:   search         }),
+          ...(search && { search: search }),
           ...(categoryFilter && { category: categoryFilter }),
         }),
       });
@@ -397,7 +398,7 @@ function LogoSection({
 
   const pageNums = buildPages(totalPages, page);
   const showFrom = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
-  const showTo   = Math.min(page * PER_PAGE, total);
+  const showTo = Math.min(page * PER_PAGE, total);
 
   return (
     <div style={{ marginBottom: 28 }}>
@@ -612,11 +613,11 @@ export default function LogoManagement({ dark = true }) {
   const [refreshSignal, setRefreshSignal] = useState(0);
   const debounceRef = useRef(null);
 
-  const bg      = dark ? "#0f1117" : "#FFFFFF";
+  const bg = dark ? "#0f1117" : "#FFFFFF";
   const surface = dark ? "#141924" : "#ffffff";
-  const border  = dark ? "#1e2535" : "#e2e8f0";
-  const text    = dark ? "#e2e8f0" : "#1e293b";
-  const muted   = dark ? "#64748b" : "#94a3b8";
+  const border = dark ? "#1e2535" : "#e2e8f0";
+  const text = dark ? "#e2e8f0" : "#1e293b";
+  const muted = dark ? "#64748b" : "#94a3b8";
   const inputBg = dark ? "#0f1117" : "#ffffff";
 
   const handleSearchChange = (v) => {
@@ -626,7 +627,7 @@ export default function LogoManagement({ dark = true }) {
   };
 
   const handleCategoriesLoaded = useCallback((cats) => {
-   setCategories((prev) => (prev.length > 0 ? prev : Array.from(new Set(cats))));
+    setCategories((prev) => (prev.length > 0 ? prev : Array.from(new Set(cats))));
   }, []);
 
   const handleStatusToggle = async (logo) => {

@@ -2,19 +2,19 @@ import { prisma } from "../../../lib/prisma";
 
 export async function POST(req) {
   try {
-    const body     = await req.json();
-    const page     = Number(body.page)  || 1;
-    const limit    = Number(body.limit) || 10;
-    const skip     = (page - 1) * limit;
-    const search   = body.search   ?? "";
+    const body = await req.json();
+    const page = Number(body.page) || 1;
+    const limit = Number(body.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = body.search ?? "";
     const category = body.category ?? "";
-    const status   = body.status   ?? "";
+    const status = body.status ?? "";
 
     // ── Where clause (filters) ─────────────────────────────────────────────
     const where = {
-      ...(search   && { logoName:      { contains: search,   mode: "insensitive" } }),
-      ...(category && { category:      { equals:   category } }),
-      ...(status   && { publishStatus: { equals:   status   } }),
+      ...(search && { logoName: { contains: search, mode: "insensitive" } }),
+      ...(category && { category: { has: category } }),
+      ...(status && { publishStatus: { equals: status } }),
     };
 
     // ── Logos + count ──────────────────────────────────────────────────────
@@ -26,32 +26,32 @@ export async function POST(req) {
         orderBy: { updatedAt: "desc" },
         select: {
           // identifiers & avatar
-          id:                       true,
-          logoName:                 true,
-          slug:                     true,
-          webpUrl:                  true,
+          id: true,
+          logoName: true,
+          slug: true,
+          webpUrl: true,
 
           // core info — for edit modal pre-fill
-          brand:                    true,
-          category:                 true,
-          industry:                 true,
-          country:                  true,
-          website:                  true,
-          description:              true,
+          brand: true,
+          category: true,
+          industry: true,
+          country: true,
+          website: true,
+          description: true,
 
           // publishing — for edit modal pre-fill
-          publishStatus:            true,
-          downloadCount:            true,
+          publishStatus: true,
+          downloadCount: true,
 
           // SEO — for edit modal pre-fill
-          metaTitle:                true,
-          metaDescription:          true,
-          altText:                  true,
+          metaTitle: true,
+          metaDescription: true,
+          altText: true,
 
           // stats & dates — for table display
           downloadedNumberByPeople: true,
-          createdAt:                true,
-          updatedAt:                true,
+          createdAt: true,
+          updatedAt: true,
         },
       }),
       prisma.logo.count({ where }),
@@ -64,11 +64,11 @@ export async function POST(req) {
       : [];
 
     return Response.json({
-      success:    true,
+      success: true,
       page,
       totalPages: Math.ceil(total / limit),
       totalLogos: total,
-      data:       logos,
+      data: logos,
       categories: categoryNames,
     });
 
@@ -181,12 +181,12 @@ export async function DELETE(req) {
     const logo = await prisma.logo.findUnique({
       where: { id },
       select: {
-        slug:    true,
-        svgUrl:  true,
-        pngUrl:  true,
+        slug: true,
+        svgUrl: true,
+        pngUrl: true,
         webpUrl: true,
-        aiUrl:   true,
-        cdrUrl:  true,
+        aiUrl: true,
+        cdrUrl: true,
       },
     });
 
@@ -206,11 +206,11 @@ export async function DELETE(req) {
     }
 
     const keyMap = {
-      svg:  urlToKey(logo.svgUrl),
-      png:  urlToKey(logo.pngUrl),
+      svg: urlToKey(logo.svgUrl),
+      png: urlToKey(logo.pngUrl),
       webp: urlToKey(logo.webpUrl),
-      ai:   urlToKey(logo.aiUrl),
-      cdr:  urlToKey(logo.cdrUrl),
+      ai: urlToKey(logo.aiUrl),
+      cdr: urlToKey(logo.cdrUrl),
     };
 
     console.log("[DELETE] 🗂️  R2 keys resolved:", keyMap);
@@ -248,8 +248,8 @@ export async function DELETE(req) {
         console.error(
           `[DELETE] ❌ R2 failed to delete ${r2Response.Errors.length} file(s):`,
           r2Response.Errors.map((e) => ({
-            key:     e.Key,
-            code:    e.Code,
+            key: e.Key,
+            code: e.Code,
             message: e.Message,
           }))
         );
@@ -266,8 +266,8 @@ export async function DELETE(req) {
   } catch (error) {
     console.error("[DELETE] 💥 Unexpected error:", {
       message: error.message,
-      stack:   error.stack,
-      name:    error.name,
+      stack: error.stack,
+      name: error.name,
     });
     return Response.json({ error: "Failed to delete logo" }, { status: 500 });
   }
