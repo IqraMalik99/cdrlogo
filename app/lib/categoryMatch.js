@@ -1,6 +1,4 @@
-// ── Shared category + brand matching logic ─────────────────────────────────
-// Used by BOTH the bulk-upload route and the /api/debug/category-match route,
-// so the debug endpoint always reflects exactly what production does.
+
 
 function generateSlugFromName(name) {
   return String(name || "")
@@ -12,10 +10,6 @@ function generateSlugFromName(name) {
     .replace(/^-|-$/g, "");
 }
 
-// Parses website.categories JSON into full entries: { name, subname, brand,
-// country, etype, synonyms, ... }. `name` = main category, `subname` = sub
-// category, `brand`/`country` are the real-world facts we look up instead of
-// ever asking the LLM to generate them.
 function extractCategoryEntries(categoriesJson) {
   if (!categoriesJson) return [];
   let list = categoriesJson;
@@ -58,8 +52,7 @@ function extractCategoryEntries(categoriesJson) {
     .filter((c) => c && c.name);
 }
 
-// Builds "Main Category -> Set(Sub Categories)" from the entries above, used
-// both for the GPT prompt and to validate GPT's chosen main/sub pair.
+
 function buildCategoryTree(entries) {
   const tree = new Map();
   for (const e of entries) {
@@ -98,32 +91,16 @@ function wordsOf(s) {
   return n ? n.split(" ").filter(Boolean) : [];
 }
 
-// Fuzzy, case-insensitive word-overlap match: true if ANY whole word is
-// shared between the two labels. Kept for sub_category VALIDATION against
-// the GPT taxonomy tree (findClosestSubCategory below) — NOT used anymore
-// for candidate/category filtering in findCategoryMatch, which now requires
-// an EXACT match (see exactLabelMatch further down).
+
 function hasWordOverlap(a, b) {
   const wordsA = new Set(wordsOf(a));
   if (!wordsA.size) return false;
   return wordsOf(b).some((w) => wordsA.has(w));
 }
 
-// Generic connector/stop words that shouldn't count on their own when
-// scoring how well two CATEGORY LABELS (not brands) match each other —
-// e.g. "and", "of" appearing in both "Rugby & Football" and "Sailing & Football"
-// shouldn't be treated as a meaningful signal.
 const CATEGORY_STOPWORDS = new Set(["and", "of", "the", "for", "in", "on", "by", "a", "an"]);
 
-// Scores how well a candidate sub-category label matches GPT's returned
-// sub-category string, using fraction-of-words-shared (same style as
-// fuzzyBrandScore below) rather than requiring an exact string match.
-// This is what fixes the old bug where a correct main_category was reset to
-// "template" just because sub_category wording didn't match byte-for-byte.
-//   1.0        = identical after normalization
-//   0.15–0.99  = partial word overlap, scaled by how much of the candidate
-//                label's own words are present in GPT's string
-//   0          = no meaningful overlap at all
+
 function fuzzySubCategoryScore(candidateSub, gptSub) {
   const aWords = wordsOf(candidateSub).filter((w) => !CATEGORY_STOPWORDS.has(w));
   const bWords = new Set(wordsOf(gptSub).filter((w) => !CATEGORY_STOPWORDS.has(w)));
@@ -525,7 +502,196 @@ function buildCategoryTreeFromText(text) {
   return tree;
 }
 
+// ── LLM-based brand selection among EXACT category candidates ─────────────
+// Instead of scoring candidate.brand strings against logoName with fuzzy
+// word-overlap, hand the LLM the logo name + the full candidate row list
+// (brand, synonyms, country, industry) and let it pick by REAL brand
+// identity. This needs an OpenAI client, so it's async and takes `openai`.
+async function selectBrandWithLLM({ openai, logoName, candidates }) {
+  if (!candidates.length) return { match: null, reasoning: "" };
+
+  const rows = candidates.map((c, i) => ({
+    index: i,
+    brand: c.brand || "",
+    synonyms: Array.isArray(c.synonyms) ? c.synonyms : [],
+    country: c.country || "",
+    industry: c.etype || "",
+  }));
+
+  const prompt = `You are matching a logo name to the correct real-world brand from a fixed list of candidate brand records already narrowed down to the right category.
+
+Logo Name: ${logoName}
+
+Candidate brand records:
+${rows.map(r => `${r.index}: brand="${r.brand}" | synonyms=[${r.synonyms.join(", ")}] | country="${r.country}" | industry="${r.industry}"`).join("\n")}
+
+TASK:
+Using your real-world knowledge of brands, decide which ONE candidate record (if any) is genuinely the brand behind "${logoName}". Match by real-world identity — the candidate's brand or one of its synonyms should actually refer to the same real company/brand as the logo name, not just share letters or words.
+
+Rules:
+- Return the index of the single best-matching candidate, or -1 if NONE of the candidates are actually the real brand.
+- Do not force a match if you're not confident — return -1 instead.
+- Never pick a candidate just because it "sounds close"; it must be the same real-world brand.
+
+Return ONLY valid JSON: { "reasoning": "one short sentence", "index": <number> }`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You match logo names to real-world brands from a fixed candidate list, using genuine brand knowledge — not string/spelling similarity. Return only JSON.",
+        },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const raw = completion.choices[0]?.message?.content || "{}";
+    let parsed = {};
+    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+
+    const idx = Number.isInteger(parsed.index) ? parsed.index : parseInt(parsed.index, 10);
+    if (Number.isInteger(idx) && idx >= 0 && idx < candidates.length) {
+      return { match: candidates[idx], reasoning: parsed.reasoning || "" };
+    }
+    return { match: null, reasoning: parsed.reasoning || "" };
+  } catch (err) {
+    console.warn(`[selectBrandWithLLM] Failed: ${err.message}`);
+    return { match: null, reasoning: "" };
+  }
+}
+
+// ── findCategoryMatch, but brand pick delegated to the LLM ────────────────
+// STEP 1 is identical to findCategoryMatch (exact main/sub filter). STEP 2
+// replaces fuzzyBrandScore with selectBrandWithLLM.
+async function findCategoryMatchLLM(openai, entries, mainCategory, subCategory, logoName) {
+  const log = [];
+
+  console.log(`\n[findCategoryMatchLLM] ══════════════════════════════════════`);
+  console.log(`  logoName      : "${logoName}"`);
+  console.log(`  mainCategory  : "${mainCategory}"`);
+  console.log(`  subCategory   : "${subCategory}"`);
+
+  if (!mainCategory || !subCategory) {
+    log.push("No mainCategory/subCategory provided — skipping DB lookup.");
+    return { match: null, candidates: [], log };
+  }
+
+  // STEP 1 — EXACT category match (unchanged)
+  const candidates = entries.filter(
+    (e) => exactLabelMatch(e.name, mainCategory) && exactLabelMatch(e.subname || "", subCategory)
+  );
+
+  log.push(`EXACT match → main="${mainCategory}" sub="${subCategory}" → ${candidates.length} DB record(s).`);
+  console.log(`  candidates found: ${candidates.length}`);
+
+  if (!candidates.length) {
+    log.push('No DB records exist for this EXACT main+sub pair — brand will fall back to "Other {sub_category}".');
+    return { match: null, candidates, log };
+  }
+
+  candidates.forEach((c, i) => {
+    console.log(`    ${i + 1}. brand="${c.brand || "(unknown)"}" | synonyms=[${(c.synonyms || []).join(", ")}] | country="${c.country || "(unknown)"}"`);
+  });
+
+  // STEP 2 — LLM picks the real brand among candidates
+  const { match, reasoning } = await selectBrandWithLLM({ openai, logoName, candidates });
+
+  if (reasoning) console.log(`  [brand:llm] reasoning: ${reasoning}`);
+
+  if (match) {
+    log.push(`LLM brand match → brand="${match.brand}" (reasoning: ${reasoning}).`);
+    console.log(`  → SELECTED: brand="${match.brand}"\n`);
+    return { match, candidates, log };
+  }
+
+  log.push(`LLM found no confident brand match among candidates — brand falls back to "Other {sub_category}".`);
+  console.log(`  → NO confident LLM match. Brand falls back to "Other ${subCategory}".\n`);
+  return { match: null, candidates, log };
+}
+
+// ── URL validity guard ──────────────────────────────────────────────────
+// Rejects anything that isn't a well-formed http(s) URL with a real-looking
+// hostname — protects resolveOfficialWebsite() from an LLM response that
+// isn't a proper URL, even when it claimed to be confident.
+function isPlausibleUrl(value) {
+  if (!value || typeof value !== "string") return false;
+  try {
+    const u = new URL(value.trim());
+    return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+
+async function resolveOfficialWebsite({ openai, logoName, brand }) {
+  if (!brand) return { website: "", reasoning: "" };
+
+  const prompt = `You are identifying the REAL, OFFICIAL website of a specific brand.
+
+Logo Name : ${logoName}
+Brand     : ${brand}
+
+TASK:
+Using your own knowledge, recall the brand's actual official website — the
+root domain the company itself owns and operates (e.g. "https://nike.com",
+not a Wikipedia page, news article, social media profile, marketplace
+listing, or fan site).
+
+RULES:
+- Only return a domain you are NEAR-CERTAIN is correct.
+- If you are unsure, or if this brand/logo name is too generic/obscure to
+  know for certain, return an empty string — do NOT guess a domain that
+  "looks right" (e.g. brand.com) without being sure it's real.
+- Never return a subpage, search results URL, or social media link.
+- Return the bare root domain with https:// only (no trailing path).
+
+Return ONLY valid JSON:
+{
+  "confident": true or false,
+  "reasoning": "one short sentence",
+  "website": "https://example.com" or ""
+}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You identify official brand websites from genuine knowledge only. You never guess or fabricate a plausible-looking domain. When uncertain, you return an empty string. Return only JSON.",
+        },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const raw = completion.choices[0]?.message?.content || "{}";
+    let parsed = {};
+    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+
+    const confident = parsed.confident === true;
+    const website = confident && isPlausibleUrl(parsed.website) ? String(parsed.website).trim() : "";
+
+    if (parsed.reasoning) console.log(`  [website:llm] reasoning: ${parsed.reasoning}`);
+
+    return { website, reasoning: parsed.reasoning || "" };
+  } catch (err) {
+    console.warn(`[resolveOfficialWebsite] Failed: ${err.message}`);
+    return { website: "", reasoning: "" };
+  }
+}
+
 export {
+  isPlausibleUrl,
+  resolveOfficialWebsite,
   extractCategoryEntries,
   buildCategoryTree,
   buildCategoryTreeFromText,
@@ -543,4 +709,5 @@ export {
   classifyMainSubCategory,
   validateMainSubAgainstTree,
   generateSlugFromName,
+  findCategoryMatchLLM
 };

@@ -45,34 +45,6 @@ function isTemplateCategory(value) {
   return false;
 }
 
-/**
- * Returns true if the FIRST item of logo.category starts with "other"
- * (case-insensitive). Tolerates the same array / JSON-stringified-array /
- * plain-string shapes as isTemplateCategory.
- */
-function firstCategoryStartsWithOther(value) {
-  let firstItem = null;
-
-  if (Array.isArray(value)) {
-    firstItem = value[0];
-  } else if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) firstItem = parsed[0];
-      } catch {
-        firstItem = trimmed;
-      }
-    } else {
-      firstItem = trimmed;
-    }
-  }
-
-  if (firstItem == null) return false;
-  return !String(firstItem).trim().toLowerCase().startsWith("other");
-}
-
 // --- Route handler -----------------------------------------------------------
 
 export async function POST(req) {
@@ -90,12 +62,11 @@ export async function POST(req) {
     const limitNum = Math.max(1, Number(website?.limit) || 8);
     console.log(`📦 Limit: ${limitNum}`);
 
+    // Query only logos whose category array contains "template"
     const candidates = await prisma.logo.findMany({
       where: {
         publishStatus: "Published",
-        NOT: {
-          category: { has: "template" },
-        },
+        category: { has: "template" },
       },
       select: {
         id: true,
@@ -110,18 +81,18 @@ export async function POST(req) {
       orderBy: { createdAt: "desc" },
     });
 
-    const nonTemplateLogos = candidates.filter(
-      (logo) =>
-        !isTemplateCategory(logo.category) &&
-        !firstCategoryStartsWithOther(logo.category)
+    // Defensive re-check in JS, in case category is stored as a stringified
+    // array / plain string rather than a native array (same tolerance as before)
+    const templateLogos = candidates.filter((logo) =>
+      isTemplateCategory(logo.category)
     );
-    console.log(`🏷️ Non-template, non-"other"-first logos found: ${nonTemplateLogos.length}`);
+    console.log(`🏷️ Template logos found: ${templateLogos.length}`);
 
     const trimmedSearch = String(search || "").trim();
 
     const finalResults = trimmedSearch
-      ? searchFilter(nonTemplateLogos, trimmedSearch)
-      : nonTemplateLogos;
+      ? searchFilter(templateLogos, trimmedSearch)
+      : templateLogos;
 
     const total = finalResults.length;
 
