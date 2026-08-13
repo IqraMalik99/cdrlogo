@@ -1021,7 +1021,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                                 }
                                             </div>
                                             <div className="related-body">
-                                                <div className="related-name">{rel.brand || rel.logoName}</div>
+                                                <div className="related-name"> {rel.logoName || rel.brand}</div>
                                                 <div className="related-formats">
                                                     <span className="rf-tag rf-ai">AI</span>
                                                     <span className="rf-tag rf-cdr">CDR</span>
