@@ -1,4 +1,3 @@
-
 import { prisma } from "../../../lib/prisma";
 
 function slugify(str = "") {
@@ -22,33 +21,35 @@ export async function GET(req) {
 
     const published = { in: ["published", "Published"] };
 
-    // ── 1. Group at the DB level: exact-string brand + count of logos ───────
-    //    This is cheap (aggregated in SQL) — no need to pull every logo row.
-    const grouped = await prisma.logo.groupBy({
-      by: ["brand"],
+    // ── 1. Pull only the `category` array field for every published logo ───
+    //    `category` is a String[] with (typically) a single item, but we
+    //    don't assume that — we flatten whatever length it is.
+    const logos = await prisma.logo.findMany({
       where: {
         publishStatus: published,
-        brand: { not: null },
+        category: { isEmpty: false },
       },
-      _count: true,
+      select: { category: true },
     });
 
-    console.log(`[brand/list] groupBy returned ${grouped.length} distinct exact-string brands`);
+    console.log(`[category/list] scanned ${logos.length} logos with a category`);
 
-    // ── 2. Case-insensitive merge ─────────────────────────────────────────
-    //    "Nike", "nike", "NIKE" all fold into one entry. The casing that
-    //    appears on the most logos becomes the display name.
-    const merged = new Map(); // lowercased brand -> { variants: Map<casing, count>, total }
-    for (const g of grouped) {
-      const raw = (g.brand || "").trim();
-      if (!raw) continue;
-      const key = raw.toLowerCase();
-      const count = typeof g._count === "number" ? g._count : g._count?._all || 0;
+    // ── 2. Flatten + case-insensitive merge ─────────────────────────────
+    //    "Fashion", "fashion", "FASHION" all fold into one entry. The
+    //    casing that appears on the most logos becomes the display name.
+    const merged = new Map(); // lowercased category -> { variants: Map<casing, count>, total }
+    for (const logo of logos) {
+      const cats = Array.isArray(logo.category) ? logo.category : [];
+      for (const c of cats) {
+        const raw = (c || "").trim();
+        if (!raw) continue;
+        const key = raw.toLowerCase();
 
-      if (!merged.has(key)) merged.set(key, { variants: new Map(), total: 0 });
-      const entry = merged.get(key);
-      entry.total += count;
-      entry.variants.set(raw, (entry.variants.get(raw) || 0) + count);
+        if (!merged.has(key)) merged.set(key, { variants: new Map(), total: 0 });
+        const entry = merged.get(key);
+        entry.total += 1;
+        entry.variants.set(raw, (entry.variants.get(raw) || 0) + 1);
+      }
     }
 
     let allBrands = [...merged.values()].map((entry) => {
@@ -67,10 +68,10 @@ export async function GET(req) {
     allBrands.sort((a, b) => a.name.localeCompare(b.name));
 
     console.log(
-      `[brand/list] merged into ${allBrands.length} unique (case-insensitive) brands`
+      `[category/list] merged into ${allBrands.length} unique (case-insensitive) categories`
     );
 
-    // ── 3. Which letters actually have brands — used to render nav dots ────
+    // ── 3. Which letters actually have categories — used to render nav dots ─
     const lettersWithDataSet = new Set();
     allBrands.forEach((b) => {
       const first = b.name.charAt(0).toUpperCase();
@@ -82,14 +83,14 @@ export async function GET(req) {
     if (search) {
       const q = search.toLowerCase();
       filtered = allBrands.filter((b) => b.name.toLowerCase().includes(q));
-      console.log(`[brand/list] search="${search}" matched ${filtered.length}`);
+      console.log(`[category/list] search="${search}" matched ${filtered.length}`);
     } else if (letterParam.toLowerCase() !== "all") {
       filtered = allBrands.filter((b) => {
         const first = b.name.charAt(0).toUpperCase();
         if (letterParam === "0-9") return /[0-9]/.test(first);
         return first === letterParam.toUpperCase();
       });
-      console.log(`[brand/list] letter="${letterParam}" matched ${filtered.length}`);
+      console.log(`[category/list] letter="${letterParam}" matched ${filtered.length}`);
     }
 
     // ── 5. Paginate ──────────────────────────────────────────────────────
@@ -100,9 +101,12 @@ export async function GET(req) {
     const pageItems = filtered.slice(start, start + limit);
 
     console.log(
-      `[brand/list] page ${safePage}/${totalPages} → returning ${pageItems.length}/${total}`
+      `[category/list] page ${safePage}/${totalPages} → returning ${pageItems.length}/${total}`
     );
 
+    // NOTE: response keys are intentionally kept identical to brand/list
+    // (brands, totalUniqueBrands, lettersWithData) so the existing frontend
+    // component can consume this endpoint without any changes.
     return Response.json({
       success: true,
       brands: pageItems,
@@ -114,7 +118,7 @@ export async function GET(req) {
       lettersWithData: [...lettersWithDataSet],
     });
   } catch (err) {
-    console.error("[brand/list] ✗ ERROR:", err);
+    console.error("[category/list] ✗ ERROR:", err);
     return Response.json(
       { success: false, error: "Server error", message: err.message },
       { status: 500 }

@@ -45,7 +45,7 @@ export default function BrandsClient() {
             params.set("page", String(pageNum));
             params.set("limit", String(PAGE_LIMIT));
 
-            const res = await fetch(`/api/brand/list?${params.toString()}`, { method: "GET" });
+            const res = await fetch(`/api/sub-cat/list?${params.toString()}`, { method: "GET" });
             const data = await res.json();
             console.log("[BrandsClient] fetched", { letter, pageNum, query, count: data.brands?.length, total: data.total });
 
@@ -508,7 +508,7 @@ export default function BrandsClient() {
                                 </div>
                             ) : brands.length === 0 ? (
                                 <div className="empty-state">
-                                    <strong>No brands found</strong>
+                                    <strong>No Categories found</strong>
                                     Try a different search term or letter
                                 </div>
                             ) : (

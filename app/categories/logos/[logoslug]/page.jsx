@@ -4,9 +4,12 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com";
 
 async function getCategoryData(logoslug) {
   try {
-    const res = await fetch(`${baseUrl}/api/catageory/get-brands/${encodeURIComponent(logoslug)}?page=1`, {
-      cache: "no-store",
-    });
+    // Matches the actual route at /api/catageory/[slug]/route.js, which
+    // supports GET with ?page=&limit= as well as POST with a JSON body.
+    const res = await fetch(
+      `${baseUrl}/api/catageory/${encodeURIComponent(logoslug)}?page=1`,
+      { cache: "no-store" }
+    );
     if (!res.ok) return null;
     return res.json();
   } catch {
