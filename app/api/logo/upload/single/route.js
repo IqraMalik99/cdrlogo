@@ -4,16 +4,22 @@ import sharp from "sharp";
 import OpenAI from "openai";
 import { uploadToR2 } from "../../../../lib/uploadToR2";
 import { prisma } from "../../../../lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../../auth/[...nextauth]/route";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { r2 } from "../../../../lib/r2";
+import {
+  extractCategoryEntries,
+  findCategoryMatchLLM,
+  findCategoryMatch,
+  buildCategoryTreeFromText,
+  validateMainSubAgainstTree,
+  resolveOfficialWebsite,
+} from "../../../../lib/categoryMatch";
+import { CATEGORY_TAXONOMY_TEXT } from "../../../../lib/Categorytaxonomytext";
 
-export const runtime = "nodejs";
-export const maxDuration = 60; // seconds — raise further (up to plan ceiling) if still timing out
-
-let openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ── mime helpers ──────────────────────────────────────────────────────────────
-let MIME = {
+const MIME = {
   svg: "image/svg+xml",
   ai: "application/postscript",
   cdr: "application/cdr",
@@ -32,11 +38,11 @@ function mime(filename) {
 }
 
 function sanitizeFilename(filename) {
-  let lastDot = filename.lastIndexOf(".");
-  let name = lastDot !== -1 ? filename.slice(0, lastDot) : filename;
-  let extension = lastDot !== -1 ? filename.slice(lastDot) : "";
+  const lastDot = filename.lastIndexOf(".");
+  const name = lastDot !== -1 ? filename.slice(0, lastDot) : filename;
+  const extension = lastDot !== -1 ? filename.slice(lastDot) : "";
 
-  let cleanName = name
+  const cleanName = name
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "-")
@@ -47,6 +53,18 @@ function sanitizeFilename(filename) {
   return `${cleanName}${extension.toLowerCase()}`;
 }
 
+function stripTrailingSlash(url) {
+  return url.replace(/\/+$/, "");
+}
+function stripSpecialChars(name) {
+  if (!name) return name;
+  return name
+    .normalize("NFD")                  // decomposes é → e + ́ (combining accent mark)
+    .replace(/[\u0300-\u036f]/g, "")    // removes just the accent marks, keeps the base letter
+    .replace(/[^a-zA-Z0-9\s]/g, "")     // now safe to strip everything except plain letters/numbers/spaces
+    .replace(/\s+/g, " ")
+    .trim();
+}
 // ── XML escape ────────────────────────────────────────────────────────────────
 function escapeXml(str) {
   return String(str)
@@ -57,8 +75,8 @@ function escapeXml(str) {
     .replace(/'/g, "&apos;");
 }
 
-// ── Per-char advance-width table for Arial Bold (em units at 1000 UPM) ───────
-let ARIAL_BOLD_W = {
+// ── Arial Bold width table ────────────────────────────────────────────────────
+const ARIAL_BOLD_W = {
   " ": 0.278, "!": 0.333, '"': 0.474, "#": 0.556, "$": 0.556, "%": 0.889,
   "&": 0.722, "'": 0.278, "(": 0.333, ")": 0.333, "*": 0.389, "+": 0.584,
   ",": 0.278, "-": 0.333, ".": 0.278, "/": 0.278, "0": 0.556, "1": 0.556,
@@ -76,42 +94,30 @@ let ARIAL_BOLD_W = {
   "t": 0.333, "u": 0.611, "v": 0.556, "w": 0.778, "x": 0.556, "y": 0.556,
   "z": 0.500, "{": 0.389, "|": 0.280, "}": 0.389, "~": 0.584,
 };
-let FALLBACK_W = 0.62;
+const FALLBACK_W = 0.62;
 
 function measureText(text, fontSize) {
   let w = 0;
-  for (let ch of text) w += (ARIAL_BOLD_W[ch] ?? FALLBACK_W) * fontSize;
+  for (const ch of text) w += (ARIAL_BOLD_W[ch] ?? FALLBACK_W) * fontSize;
   return Math.ceil(w);
 }
 
-// ── Pixel-perfect watermark ───────────────────────────────────────────────────
+// ── Watermark ─────────────────────────────────────────────────────────────────
 async function applyWatermark(buffer, wm) {
-  // Safety cap — protects against unexpectedly huge PNGs regardless of source,
-  // even though svg-convo already caps its own output resolution.
-  const MAX_DIM = 3000;
-  let meta = await sharp(buffer).metadata();
-
-  if (Math.max(meta.width || 0, meta.height || 0) > MAX_DIM) {
-    buffer = await sharp(buffer)
-      .resize({ width: MAX_DIM, height: MAX_DIM, fit: "inside", withoutEnlargement: true })
-      .toBuffer();
-    meta = await sharp(buffer).metadata();
-  }
-
   if (!wm?.enabled || !wm?.text?.trim()) return buffer;
 
-  let W = meta.width;
-  let H = meta.height;
+  const meta = await sharp(buffer).metadata();
+  const W = meta.width;
+  const H = meta.height;
 
-  let fontSize = Math.max(1, wm.fontSize ?? Math.floor(W * 0.04));
-  let opacity = Math.min(1, Math.max(0, (wm.opacity ?? 30) / 100));
-  let color = wm.color || "#ffffff";
-  let position = wm.position || "center";
+  const fontSize = Math.max(1, wm.fontSize ?? Math.floor(W * 0.04));
+  const opacity = Math.min(1, Math.max(0, (wm.opacity ?? 30) / 100));
+  const color = wm.color || "#ffffff";
+  const position = wm.position || "center";
 
-  let textW = measureText(wm.text, fontSize);
-  let textH = Math.ceil(fontSize * 1.15);
-
-  let pad = Math.max(8, Math.floor(Math.min(W, H) * 0.015));
+  const textW = measureText(wm.text, fontSize);
+  const textH = Math.ceil(fontSize * 1.15);
+  const pad = Math.max(8, Math.floor(Math.min(W, H) * 0.015));
 
   let tx, ty;
   switch (position) {
@@ -128,18 +134,10 @@ async function applyWatermark(buffer, wm) {
   tx = Math.max(0, Math.min(tx, W - textW));
   ty = Math.max(0, Math.min(ty, H - textH));
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-  <text
-    x="${tx}"
-    y="${ty}"
-    text-anchor="start"
-    dominant-baseline="hanging"
-    font-size="${fontSize}"
-    font-weight="bold"
-    font-family="Arial, sans-serif"
-    fill="${color}"
-    opacity="${opacity.toFixed(4)}"
-    letter-spacing="0"
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <text x="${tx}" y="${ty}" text-anchor="start" dominant-baseline="hanging"
+    font-size="${fontSize}" font-weight="bold" font-family="Arial, sans-serif"
+    fill="${color}" opacity="${opacity.toFixed(4)}" letter-spacing="0"
   >${escapeXml(wm.text)}</text>
 </svg>`;
 
@@ -148,7 +146,7 @@ async function applyWatermark(buffer, wm) {
     .toBuffer();
 }
 
-// ── file size formatter ────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatSize(bytes) {
   if (!bytes || bytes === 0) return "0 KB";
   if (bytes < 1024) return `${bytes} B`;
@@ -156,7 +154,14 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-// ── Generate slug from logo name ─────────────────────────────────────────────
+function logoNameFromFolderName(folderName) {
+  return folderName
+    .replace(/^\d+\s+/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
 function generateSlugFromName(name) {
   return name
     .toLowerCase()
@@ -167,7 +172,6 @@ function generateSlugFromName(name) {
     .replace(/^-|-$/g, "");
 }
 
-// ── Normalize a logo name for fuzzy comparison ────────────────────────────────
 function normalizeName(name) {
   return name
     .toLowerCase()
@@ -178,113 +182,19 @@ function normalizeName(name) {
     .trim();
 }
 
-// ── Extract significant words for DB pre-filtering ───────────────────────────
 function getSignificantWords(name) {
-  let stop = new Set(["logo", "version", "the", "and", "of", "new", "old"]);
+  const stop = new Set(["logo", "version", "the", "and", "of", "new", "old"]);
   return name
     .toLowerCase()
     .replace(/\b(19|20)\d{2}\b/g, "")
     .split(/[^a-z0-9]+/)
-    .filter(w => w && !stop.has(w) && !/^v\.?\d+$/.test(w) && !/^\d+$/.test(w));
+    .filter((w) => w && !stop.has(w) && !/^v\.?\d+$/.test(w) && !/^\d+$/.test(w));
 }
 
-// ── Extract usable category names from the website record's categories JSON ──
-function extractCategoryNames(categoriesJson) {
-  if (!categoriesJson) return [];
-  let list = categoriesJson;
-  if (typeof list === "string") {
-    try { list = JSON.parse(list); } catch { return []; }
-  }
-  if (!Array.isArray(list)) return [];
-  return list
-    .map((c) => {
-      if (typeof c === "string") return { name: c, slug: generateSlugFromName(c) };
-      if (c && typeof c === "object" && (c.name || c.title || c.label)) return {
-        name: c.name || c.title || c.label || "",
-        slug: c.slug || generateSlugFromName(c.name || c.title || c.label || ""),
-      };
-      return null;
-    })
-    .filter((c) => c && c.name);
-}
 
-// ── Find related logos by fuzzy/normalized name match ────────────────────────
-async function findRelatedLogos(logoName) {
-  let words = getSignificantWords(logoName);
-  if (!words.length) return { related: [], exactNormalizedMatches: [] };
 
-  let candidates = await prisma.logo.findMany({
-    where: {
-      OR: words.map(w => ({ logoName: { contains: w, mode: "insensitive" } })),
-    },
-    select: {
-      logoName: true,
-      metaTitle: true,
-      metaDescription: true,
-      description: true,
-      tags: true,
-      category: true,
-      brand: true,
-      website: true,
-      country: true,
-      industry: true,
-      slug: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
-
-  let targetNorm = normalizeName(logoName);
-  let exactNormalizedMatches = candidates.filter(
-    c => normalizeName(c.logoName) === targetNorm
-  );
-  let related = candidates.slice(0, 10);
-
-  return { related, exactNormalizedMatches };
-}
-
-// ── Generate next version name ────────────────────────────────────────────────
-function generateVersionedName(logoName, exactNormalizedMatches) {
-  let usedVersions = new Set();
-
-  for (let match of exactNormalizedMatches) {
-    let m = match.logoName.match(/\bv(?:ersion)?\.?\s*(\d+)\b/i);
-    if (m) {
-      usedVersions.add(parseInt(m[1], 10));
-    } else {
-      usedVersions.add(1);
-    }
-  }
-
-  let next = 1;
-  while (usedVersions.has(next)) next++;
-  if (next === 1 && usedVersions.has(1)) next = 2;
-
-  let cleanBase = logoName
-    .replace(/\b(19|20)\d{2}\b/g, "")
-    .replace(/\bversion\s*\d+\b/gi, "")
-    .replace(/\bv\.?\s*\d+\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return `${cleanBase} V${next}`;
-}
-
-// ── OpenAI call with 1 retry ──────────────────────────────────────────────────
-async function callOpenAIWithRetry(params, retries = 1) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await openai.chat.completions.create(params);
-    } catch (err) {
-      if (attempt === retries) throw err;
-      console.warn(`[OpenAI] Attempt ${attempt + 1} failed, retrying...`);
-      await new Promise(r => setTimeout(r, 1000));
-    }
-  }
-}
-
-// ── Banned words/phrases — mirror the prompt's banned-word lists. ───────────
-let BANNED_PHRASES = [
+// ── Banned phrases & educational phrases ─────────────────────────────────────
+const BANNED_PHRASES = [
   "free download",
   "free",
   "download",
@@ -315,7 +225,7 @@ let BANNED_PHRASES = [
   "for your brand",
 ];
 
-let EDUCATIONAL_PHRASES = [
+const EDUCATIONAL_PHRASES = [
   "educational use",
   "educational reference",
   "reference use",
@@ -326,8 +236,8 @@ let EDUCATIONAL_PHRASES = [
 
 function containsBannedPhrase(text) {
   if (!text) return null;
-  let lower = String(text).toLowerCase();
-  for (let phrase of BANNED_PHRASES) {
+  const lower = String(text).toLowerCase();
+  for (const phrase of BANNED_PHRASES) {
     if (lower.includes(phrase)) return phrase;
   }
   return null;
@@ -335,15 +245,15 @@ function containsBannedPhrase(text) {
 
 function hasEducationalPhrase(text) {
   if (!text) return false;
-  let lower = String(text).toLowerCase();
-  return EDUCATIONAL_PHRASES.some(p => lower.includes(p));
+  const lower = String(text).toLowerCase();
+  return EDUCATIONAL_PHRASES.some((p) => lower.includes(p));
 }
 
-// ── Validate a parsed AI response against the hard rules ────────────────────
+// ── Validate AI response against hard rules ───────────────────────────────────
 function validateAIContent(parsed, { usedTitles = [], usedOpeners = [] } = {}) {
-  let violations = [];
+  const violations = [];
 
-  let fieldsToScanForBannedWords = {
+  const fieldsToScan = {
     meta_title: parsed.meta_title,
     meta_description: parsed.meta_description,
     main_description: parsed.main_description,
@@ -355,37 +265,39 @@ function validateAIContent(parsed, { usedTitles = [], usedOpeners = [] } = {}) {
     image_object_description: parsed.image_object_description,
   };
 
-  for (let [field, value] of Object.entries(fieldsToScanForBannedWords)) {
-    let hit = containsBannedPhrase(value);
+  for (const [field, value] of Object.entries(fieldsToScan)) {
+    const hit = containsBannedPhrase(value);
     if (hit) violations.push(`${field} contains banned phrase: "${hit}"`);
   }
 
   if (Array.isArray(parsed.faq)) {
     parsed.faq.forEach((qa, i) => {
-      let hit = containsBannedPhrase(qa?.answer);
+      const hit = containsBannedPhrase(qa?.answer);
       if (hit) violations.push(`faq[${i}].answer contains banned phrase: "${hit}"`);
     });
   }
 
-  if (!hasEducationalPhrase(parsed.meta_description)) {
+  if (!hasEducationalPhrase(parsed.meta_description))
     violations.push("meta_description missing required educational/reference/research phrase");
-  }
-  if (!hasEducationalPhrase(parsed.main_description)) {
+  if (!hasEducationalPhrase(parsed.main_description))
     violations.push("main_description missing required educational/reference phrase");
-  }
-  if (!hasEducationalPhrase(parsed.og_description)) {
+  if (!hasEducationalPhrase(parsed.og_description))
     violations.push("og_description missing required educational/reference phrase");
-  }
-  if (!hasEducationalPhrase(parsed.twitter_description)) {
+  if (!hasEducationalPhrase(parsed.twitter_description))
     violations.push("twitter_description missing required educational/reference phrase");
-  }
 
-  if (parsed.meta_title && usedTitles.some(t => t && t.trim().toLowerCase() === String(parsed.meta_title).trim().toLowerCase())) {
+  if (
+    parsed.meta_title &&
+    usedTitles.some(
+      (t) => t && t.trim().toLowerCase() === String(parsed.meta_title).trim().toLowerCase()
+    )
+  ) {
     violations.push("meta_title is identical to a previous page's meta_title");
   }
+
   if (parsed.main_description) {
-    let opener = String(parsed.main_description).split(/[.!?]/)[0].trim().toLowerCase();
-    if (opener && usedOpeners.some(o => o && o.trim().toLowerCase() === opener)) {
+    const opener = String(parsed.main_description).split(/[.!?]/)[0].trim().toLowerCase();
+    if (opener && usedOpeners.some((o) => o && o.trim().toLowerCase() === opener)) {
       violations.push("main_description opening sentence duplicates a previous page's opening sentence");
     }
   }
@@ -393,38 +305,21 @@ function validateAIContent(parsed, { usedTitles = [], usedOpeners = [] } = {}) {
   return violations;
 }
 
-// ── Build BreadcrumbList schema in code (reliable URLs) ──────────────────────
+// ── Schema builders ───────────────────────────────────────────────────────────
 function buildBreadcrumbSchema({ brand, logoName, canonicalUrl }) {
-  let brandLabel = (brand && brand.trim()) ? brand.trim() : "Logos";
-  let brandSlug = generateSlugFromName(brandLabel);
-
+  const brandLabel = (brand && brand.trim()) ? brand.trim() : "Logos";
+  const brandSlug = generateSlugFromName(brandLabel);
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "Home",
-        "item": "https://www.cdrlogo.com",
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "name": "All Logos",
-        "item": `https://www.cdrlogo.com/logos`,
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
-        "name": logoName,
-        "item": canonicalUrl,
-      },
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.cdrlogo.com" },
+      { "@type": "ListItem", "position": 2, "name": "Logos", "item": `https://www.cdrlogo.com/logos` },
+      { "@type": "ListItem", "position": 3, "name": logoName, "item": canonicalUrl },
     ],
   };
 }
 
-// ── Build ImageObject schema (static parts in code, description from LLM) ───
 function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, description }) {
   if (!imageUrl) return {};
   return {
@@ -433,16 +328,15 @@ function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, descr
     "contentUrl": imageUrl,
     "url": imageUrl,
     "name": `${logoName}`,
-    "description": description || `${logoName}  image on cdrlogo.com`,
+    "description": description || `${logoName} logo image on cdrlogo.com`,
     "representativeOfPage": true,
     ...(brand ? { "creator": { "@type": "Organization", "name": brand } } : {}),
     "mainEntityOfPage": canonicalUrl,
   };
 }
 
-// ── Build FAQ schema from LLM-generated Q&A pairs ────────────────────────────
 function buildFaqSchema(faqPairs) {
-  if (!Array.isArray(faqPairs) || !faqPairs.length) return {};
+  if (!Array.isArray(faqPairs) || !faqPairs.length) return {};  // {} not []
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -454,17 +348,97 @@ function buildFaqSchema(faqPairs) {
   };
 }
 
-// ── OpenAI: generate SEO content + tags + full OG/Twitter fields ─────────────
-async function generateAIContent({
-  logoName, userCategory, availableCategories, relatedLogos, canonicalUrl,
-}) {
-  let isVariant = relatedLogos.length > 0;
+// ── DB: find related / exact matches ─────────────────────────────────────────
+async function findRelatedLogos(logoName) {
+  const words = getSignificantWords(logoName);
+  if (!words.length) return { related: [], exactNormalizedMatches: [] };
 
-  let STYLE_LETTERS = ["A", "B", "C", "D"];
-  let forcedStyle = STYLE_LETTERS[Math.floor(Math.random() * 4)];
+  const candidates = await prisma.logo.findMany({
+    where: {
+      OR: words.map((w) => ({ logoName: { contains: w, mode: "insensitive" } })),
+    },
+    select: {
+      logoName: true,
+      metaTitle: true,
+      metaDescription: true,
+      description: true,
+      tags: true,
+      category: true,
+      brand: true,
+      website: true,
+      country: true,
+      industry: true,
+      slug: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  const targetNorm = normalizeName(logoName);
+  const exactNormalizedMatches = candidates.filter(
+    (c) => normalizeName(c.logoName) === targetNorm
+  );
+
+  return { related: candidates.slice(0, 10), exactNormalizedMatches };
+}
+function stripAccents(text) {
+  if (!text) return text;
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+// ── Auto-version name ─────────────────────────────────────────────────────────
+function generateVersionedName(logoName, exactNormalizedMatches) {
+  const usedVersions = new Set();
+
+  for (const match of exactNormalizedMatches) {
+    const m = match.logoName.match(/\bv(?:ersion)?\.?\s*(\d+)\b/i);
+    if (m) usedVersions.add(parseInt(m[1], 10));
+    else usedVersions.add(1);
+  }
+
+  let next = 1;
+  while (usedVersions.has(next)) next++;
+  if (next === 1 && usedVersions.has(1)) next = 2;
+
+  const cleanBase = logoName
+    .replace(/\b(19|20)\d{2}\b/g, "")
+    .replace(/\bversion\s*\d+\b/gi, "")
+    .replace(/\bv\.?\s*\d+\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return `${cleanBase} V${next}`;
+}
+
+// ── OpenAI with 1 retry ───────────────────────────────────────────────────────
+async function callOpenAIWithRetry(params, retries = 1) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await openai.chat.completions.create(params);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      console.warn(`[OpenAI] Attempt ${attempt + 1} failed, retrying in 1s...`);
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+}
+
+// ── AI content generation (identical prompt to single-upload) ─────────────────
+async function generateAIContent({
+  logoName,
+  userCategory,
+  availableCategories,
+  relatedLogos,
+  canonicalUrl,
+}) {
+  const isVariant = relatedLogos.length > 0;
+
+  const STYLE_LETTERS = ["A", "B", "C", "D"];
+  const forcedStyle = STYLE_LETTERS[Math.floor(Math.random() * 4)];
   console.log(`  [style] Forced style for this logo: STYLE ${forcedStyle}`);
 
-  let relatedContext = isVariant
+  const relatedContext = isVariant
     ? relatedLogos
       .slice(0, 5)
       .map(
@@ -474,15 +448,150 @@ async function generateAIContent({
       .join("\n\n")
     : "";
 
-  let usedOpeners = isVariant
+  const usedOpeners = isVariant
     ? relatedLogos
-      .map(r => (r.description || "").split(/[.!?]/)[0].trim())
+      .map((r) => (r.description || "").split(/[.!?]/)[0].trim())
       .filter(Boolean)
     : [];
+  const hasCategoryList = availableCategories.length > 0;
+  const categoryTree = buildCategoryTreeFromText(CATEGORY_TAXONOMY_TEXT);
+  // NOTE: categoryTreeLines() no longer used to build the prompt — GPT now
+  // gets CATEGORY_TAXONOMY_TEXT verbatim (imported above). categoryTree is
+  // still needed here for validating GPT's answer against real values.
 
-  let hasCategoryList = availableCategories.length > 0;
+  // ── STEP 1: category-only call — main_category + sub_category ONLY. ───────
+  // This is deliberately separated from the content call so brand/country can
+  // be resolved from our own records (findCategoryMatch) BEFORE any SEO copy
+  // is written, instead of letting GPT guess brand/country itself.
+  let mainCategory = "";
+  let subCategory = "";
 
-  let systemPrompt = `You are a senior SEO specialist generating metadata for cdrlogo.com, a professional logo reference archive website.
+  if (hasCategoryList) {
+    console.log("iqra", logoName, CATEGORY_TAXONOMY_TEXT);
+    const categoryPrompt = `You are classifying a logo NAME into the closest matching entry in a fixed taxonomy.
+
+You have NO image and NO extra context. You only have the logo name and your own knowledge of real-world brands.
+
+Logo Name: ${logoName}
+
+Main Category → Sub Categories (this is the COMPLETE list — copy values verbatim, never invent):
+${CATEGORY_TAXONOMY_TEXT}
+
+STEP 1 — IDENTIFY THE REAL BRAND FIRST (do this before looking at the taxonomy):
+Using your own knowledge, recall what "${logoName}" is actually known for in the real world — what does this company/brand MAKE, SELL, or DO? Think about its actual products or services, not what the word sounds like or evokes.
+
+Example of this reasoning pattern (do not copy — just the approach):
+- "Dove" → known for soap and skincare products → this is a Beauty & Cosmetics company, NOT a bird.
+- "Amazon" → known for online retail and cloud computing → this is E-commerce / Cloud Computing, NOT the river or rainforest.
+- "Puma" → known for athletic footwear and apparel → this is Sportswear, NOT the animal.
+
+The word itself is often NOT the industry. Your job in Step 1 is to recall the ACTUAL products/services of the real brand behind this name — the way a person who has actually used or seen this brand in stores/ads would know it.
+
+STEP 2 — MATCH TO TAXONOMY:
+Once you know what the brand actually does (from Step 1), scan the full taxonomy above and find the sub_category that matches those REAL products/services — not the sub_category that matches the literal word.
+
+STEP 3 — VERIFY:
+Confirm the sub_category you picked is listed under the main_category you picked in the taxonomy. Fix the pairing if not.
+
+RULES:
+- main_category and sub_category MUST be copied EXACTLY (verbatim) from the taxonomy — never invented, never outside the list.
+- Always return both fields — pick the closest real match even for less-familiar names, but base it on Step 1's real-world identification, not on the word's surface meaning or theme.
+- If truly nothing is known about the brand behind the name, fall back to the taxonomy entry matching the literal meaning of the word only as a last resort — and say so explicitly in your reasoning.
+
+Return ONLY valid JSON:
+
+{
+  "brand_identity": "what this brand is actually known for making/selling/doing in the real world (Step 1 result)",
+  "reasoning": "why this taxonomy entry matches that real-world identity",
+  "main_category": "...",
+  "sub_category": "..."
+}`;
+
+    try {
+      const catCompletion = await callOpenAIWithRetry({
+        model: "gpt-5.4-mini",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: `You classify logo names into a fixed taxonomy. Your core skill is knowing what real brands actually make, sell, or do — not guessing from what a word sounds like or evokes.
+
+You ALWAYS perform two separate steps: (1) recall what the real-world brand behind this name is actually known for — its actual products, services, or industry, based on genuine brand knowledge (e.g. Canon = cameras/printers, not artillery; Dove = soap, not bird; Puma = sportswear, not animal) — THEN (2) match that real identity to the closest taxonomy entry.
+
+You never classify based on the literal/surface meaning of the word when you know the real brand behind it. Literal-word matching is only a last resort for names with no identifiable real brand.
+
+main_category and sub_category are copied EXACTLY from the provided taxonomy, never invented. Both fields are always required.
+
+Return ONLY JSON, no markdown, no commentary.`
+          },
+          { role: "user", content: categoryPrompt },
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      const catRaw = catCompletion.choices[0]?.message?.content || "{}";
+      let catParsed = {};
+      try { catParsed = JSON.parse(catRaw); } catch { catParsed = {}; }
+      mainCategory = (catParsed.main_category && String(catParsed.main_category).trim()) || "template";
+      subCategory = (catParsed.sub_category && String(catParsed.sub_category).trim()) || "";
+      if (catParsed.reasoning) console.log(`  [ai:category] reasoning: ${catParsed.reasoning}`);
+      // ── RAW LLM PICK — exactly what GPT returned, before any validation ──
+      console.log(`  [ai:category] RAW pick from LLM → main_category: "${mainCategory}" | sub_category: "${subCategory}"`);
+    } catch (err) {
+      console.warn(`  [ai:category] Failed, defaulting to "template": ${err.message}`);
+      mainCategory = "template";
+      subCategory = "";
+    }
+  }
+  const mainCategoryFromLLM = mainCategory;
+  const subCategoryFromLLM = subCategory;
+
+  ({ mainCategory, subCategory } = validateMainSubAgainstTree(
+    categoryTree,
+    mainCategoryFromLLM,
+    subCategoryFromLLM
+  ));
+
+  if (mainCategoryFromLLM !== mainCategory || subCategoryFromLLM !== subCategory) {
+    console.log(`  [ai:category] VALIDATION CHANGED IT → main: "${mainCategoryFromLLM}" → "${mainCategory}" | sub: "${subCategoryFromLLM}" → "${subCategory}"`);
+  } else {
+    console.log(`  [ai:category] VALIDATED pick unchanged → main: "${mainCategory}" | sub: "${subCategory}"`);
+  }
+
+  // ── Brand resolution: EXACT category match + LLM-based brand match ────────
+  // main_category/sub_category are matched EXACTLY (case-insensitive,
+  // accent/whitespace-normalized) against website.categories (DB). Among the
+  // resulting candidates, the LLM picks whichever candidate's brand/synonyms
+  // genuinely refer to the same real-world brand as the logo name.
+  const { match: categoryMatch, log: matchLog } = await findCategoryMatchLLM(
+    openai,
+    availableCategories,
+    mainCategory,
+    subCategory,
+    logoName
+  );
+  matchLog.forEach((l) => console.log(`  [brand:fuzzy] ${l}`));
+  console.log(
+    `  [category] main: "${mainCategory}" | sub: "${subCategory}" | matched: ${categoryMatch ? `${categoryMatch.brand} / ${categoryMatch.country || "(no country)"}` : "none"}`
+  );
+
+  const resolvedBrand = categoryMatch?.brand || "";
+  const resolvedCountry = categoryMatch?.country || "";
+  const resolvedIndustry = categoryMatch?.etype || "";
+  // Website: category rows don't carry a url, so this is a dedicated
+  // single-purpose LLM call (isolated from the 15-field content prompt for
+  // reliability), gated by a strict confidence rule + isPlausibleUrl() so a
+  // guess can never silently slip through.
+  const { website: resolvedWebsite, reasoning: websiteReasoning } = await resolveOfficialWebsite({
+    openai,
+    logoName,
+    brand: resolvedBrand,
+  });
+  console.log(`  [website:llm] brand="${resolvedBrand}" → website="${resolvedWebsite || "(none)"}"`);
+  const websiteFromDB = false;
+
+  // ── System prompt ─────────────────────────────────────────────────────────
+  const systemPrompt = `You are a senior SEO specialist generating metadata for cdrlogo.com, a professional logo reference archive website.
 
 Your purpose is to generate SEO content for logo pages while following STRICT compliance rules.
 
@@ -517,22 +626,14 @@ NEVER sound like:
 BRAND IDENTIFICATION RULES
 ==================================================
 
-1. Identify the real-world brand from logo name when confidence is HIGH.
+1. Brand, country, and industry are FIXED facts supplied to you for every
+   logo — never identify, guess, or override them yourself.
 
-2. Identify official website ONLY if highly confident.
+2. Website is normally a FIXED fact too. On the rare occasion it is marked
+   UNKNOWN, you may fill it in yourself — but ONLY under the strict
+   confidence rule given in the user prompt. If in doubt, leave it blank.
 
-3. Identify real specific industry.
-
-4. Identify country of brand origin.
-
-5. If confidence is LOW (<90%):
-
-brand = ""
-website = ""
-industry = "Logo Design & Graphics"
-country = "Worldwide"
-
-6. NEVER invent fake companies.
+3. NEVER invent fake companies, websites, or facts not given to you.
 
 ==================================================
 GLOBAL ABSOLUTE BANNED WORDS
@@ -628,7 +729,8 @@ Note: main_description has ADDITIONAL banned words beyond this global list
 — see the "MAIN_DESCRIPTION — ABSOLUTE BANNED WORDS" section in the user
 prompt. Both lists apply simultaneously.`;
 
-  let userPrompt = `Generate complete SEO metadata for this logo page.
+  // ── User prompt (identical to single-upload) ──────────────────────────────
+  const userPrompt = `Generate complete SEO metadata for this logo page.
 
 ==================================================
 LOGO DETAILS
@@ -637,19 +739,21 @@ LOGO DETAILS
 Logo Name     : ${logoName}
 Canonical URL : ${canonicalUrl}
 
-${hasCategoryList
-      ? `Category: Select UP TO 3 categories from the list below, based strictly on relevancy to this logo's brand/industry name.
-- Try to select exactly 3 if there are  genuinely relevant matches.
-- If fewer than 3 are relevant, select only those that are (do NOT force irrelevant categories).
-- If NOT EVEN ONE category from the list is relevant, return exactly ["template"] as the category array.
-- Copy category names verbatim from this list — do not modify or invent names:
-${availableCategories.map((c) => `- ${c.name}`).join("\n")}`
-      : `Category: Use your best classification for this logo's industry.`
-    }
+Category (already decided — do not change, do not output a category field):
+- Main Category : ${mainCategory}
+- Sub Category  : ${subCategory}
 
-Brand   : UNKNOWN — infer real brand if confidently identifiable donot guess.
-Website : UNKNOWN - infer real website if confidently identifiable donot guess but try to find out.
-Industry: UNKNOWN — infer specific industry sector
+Brand   : ${resolvedBrand || ""} (FIXED — from our own records, not generated by you. Use exactly this string, do not alter, translate, or second-guess it.)
+Country : ${resolvedCountry || "Worldwide"} (FIXED — from our own records, not generated by you. Use exactly this string.)
+Industry: ${resolvedIndustry || "Logo Design & Graphics"} (FIXED — from our own records, not generated by you. Use exactly this string.)
+Website : ${websiteFromDB
+      ? `${resolvedWebsite} (FIXED — from our own records, not generated by you. Use exactly this string.)`
+      : `UNKNOWN — not on record. You may fill in "website_used" ONLY if you are highly confident (near-certain) of the brand's real, official website domain. If there is any doubt at all, return "website_used": "".`}
+
+IMPORTANT: Do not output brand_used / country_used / industry_used at all —
+brand, country, and industry are FIXED facts, never generated by you.
+${websiteFromDB ? `website_used is also fixed — just echo "${resolvedWebsite}" back exactly.` : `website_used is the ONLY field you determine yourself, and only under the strict confidence rule above — never guess, never fabricate, never use a placeholder-looking domain.`}
+
 
 ${isVariant ? `
 ==================================================
@@ -672,7 +776,7 @@ MANDATORY RULES FOR THIS VARIANT:
 2. meta_description MUST use different sentence structure and different educational/reference phrasing.
 3. main_description's first sentence MUST open differently from every sentence listed above.
 4. og_title, og_description, twitter_title, twitter_description must each differ in wording from previous fields.
-5. tags: keep core brand/format tags but vary the 3 to 4 context-specific tags important **dont use these tags #logo, #PNG, #SVG, #vector. #cdrlogo.com **.
+5. tags: keep core brand/format tags but vary the 4 context-specific tags. important **dont use these tags in tags [logo,png,svg,vector,cdrlogo,cdrlogo.com] **
 ` : ""}
 
 ==================================================
@@ -691,7 +795,7 @@ MANDATORY RULES:
 3. Must include minimum TWO of: PNG, SVG, Vector.
 4. If the generated title would be identical or near-identical to a previous page's meta_title, add a distinguishing qualifier (color, file variant, edition).
 
-STRICTLY FORBIDDEN: Free, Download, Free Download
+STRICTLY FORBIDDEN: Free, Download, Free Download,PNG ,SVG, Vector, cdrlogo.com , cdrlogo
 
 --------------------------------------------------
 meta_description (140–155 chars HARD LIMIT)
@@ -705,10 +809,10 @@ Must contain AT LEAST ONE EXACT PHRASE:
 STRICTLY FORBIDDEN: commercial projects, business use, branding needs, marketing language
 
 --------------------------------------------------
-⚠️ MAIN_DESCRIPTION (120–160 words)  — ABSOLUTE BANNED WORDS (HIGHEST PRIORITY)
+⚠️ MAIN_DESCRIPTION 120–160 words  — ABSOLUTE BANNED WORDS (HIGHEST PRIORITY)
 ==================================================
 
-STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION  — MANDATORY
+STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION 120–160 words  — MANDATORY
 ==================================================
 
 This logo has been externally assigned: STYLE ${forcedStyle}
@@ -719,28 +823,43 @@ main_description using STYLE ${forcedStyle} below. Do NOT use any other
 style. Do NOT blend multiple styles together. Do NOT default to the style
 that "feels most natural" — use STYLE ${forcedStyle}, exactly as described.
 
+Each style below lists several example openers. These are illustrations of
+the PATTERN only — do not copy any of them verbatim. Pick a different
+sentence skeleton and vocabulary than the examples shown, and vary word
+choice, clause order, and sentence length so the final paragraph reads as
+freshly written rather than templated.
+
 STYLE A — Format-first:
 Start with the file formats as the subject.
-Example: "PNG, SVG, AI, and CDR files of the [Logo Name]
-are archived here as scalable vector assets for reference use."
+Vary the verb and structure each time — do not default to the same phrasing.
+Examples of the PATTERN (do not copy wording):
+- "PNG, SVG, AI, and CDR files of the [Logo Name] are archived here as scalable vector assets for reference use."
+- "Archived in PNG, SVG, AI, and CDR, the [Logo Name] is stored here as a set of scalable vector files for research reference."
+- "Scalable vector versions of the [Logo Name] — spanning PNG, SVG, AI, and CDR — are catalogued on this page for design study."
 
 STYLE B — Brand-first (requires confirmed brand, industry, AND country):
 Start with the brand as the subject.
-Example: "[Brand], a [industry] company from [country],
-is represented here through its [Logo Name], archived
-in PNG, SVG, AI, and CDR scalable vector formats."
+Vary the verb and structure each time — do not default to the same phrasing.
+Examples of the PATTERN (do not copy wording):
+- "[Brand], a [industry] company from [country], is represented here through its [Logo Name], archived in PNG, SVG, AI, and CDR scalable vector formats."
+- "Originating in [country], [Brand] operates within the [industry] sector; its [Logo Name] is catalogued here in PNG, SVG, AI, and CDR vector form for reference use."
+- "The [Logo Name] belongs to [Brand], a [country]-based name in [industry], and is preserved on this page across PNG, SVG, AI, and CDR vector formats."
 
 STYLE C — Archive-purpose-first:
 Start with the archive purpose as the subject.
-Example: "This entry documents the [Logo Name] for
-research and educational reference, available in PNG,
-SVG, AI, and CDR vector file formats."
+Vary the verb and structure each time — do not default to the same phrasing.
+Examples of the PATTERN (do not copy wording):
+- "This entry documents the [Logo Name] for research and educational reference, available in PNG, SVG, AI, and CDR vector file formats."
+- "Compiled as part of this reference archive, the [Logo Name] can be studied here in PNG, SVG, AI, and CDR vector formats."
+- "For educational and research reference, this page catalogues the [Logo Name] across PNG, SVG, AI, and CDR scalable vector files."
 
 STYLE D — Industry-context-first (requires confirmed industry AND country):
 Start with the industry as the subject.
-Example: "Within the [industry] sector, the [Logo Name]
-is preserved here as scalable vector artwork in PNG,
-SVG, AI, and CDR formats for educational study."
+Vary the verb and structure each time — do not default to the same phrasing.
+Examples of the PATTERN (do not copy wording):
+- "Within the [industry] sector, the [Logo Name] is preserved here as scalable vector artwork in PNG, SVG, AI, and CDR formats for educational study."
+- "The [industry] sector in [country] is represented on this page by the [Logo Name], catalogued in PNG, SVG, AI, and CDR vector formats for reference use."
+- "As an example from the [industry] field, the [Logo Name] is archived in PNG, SVG, AI, and CDR vector formats for research and design study."
 
 FALLBACK RULE (applies ONLY if the assigned style is STYLE B or STYLE D):
 STYLE B and STYLE D require a confidently identified brand, industry, AND
@@ -755,6 +874,14 @@ REGARDLESS OF STYLE:
    the same sentence skeleton — that still counts as a repeated template.
 3. Vary WHERE brand context, format list, and educational phrase appear
    within the sentence.
+4. Vary sentence length and rhythm across the paragraph — mix at least one
+   short sentence (under 12 words) with at least one longer sentence, rather
+   than writing several similarly-sized sentences back to back.
+5. Use varied, precise vocabulary rather than repeating the same connector
+   words (e.g. "archived", "catalogued", "documented", "preserved",
+   "compiled", "recorded" are all acceptable alternatives — do not default
+   to the same one every time).
+6. Do not open two consecutive sentences with the same word or clause type.
 
 ==================================================
 
@@ -767,7 +894,7 @@ BANNED LIST:
 Free Download, High Quality, High Resolution, Best Logo, Premium,
 Amazing, Beautiful, Professional Design, Modern red/blue/green
 (or any color/style description), Click here, Download now,
-100% free, No copyright, HD logo, World best, Top quality,
+100% free, No copyright, HD logo, World best, Top quality
 Marketing/promotional language of any kind.
 
 SELF-CHECK BEFORE RETURNING main_description:
@@ -799,7 +926,8 @@ Cover:
 * available formats (PNG, SVG, AI, CDR)
 
 Word count:
-45–100 words.
+120–160 words
+
 
 --------------------------------------------------
 alt_text (LOCKED FORMAT)
@@ -883,6 +1011,15 @@ Must mention: brand name, at least one of: logo / image / file.
 STRICTLY FORBIDDEN: Free, Download, marketing language.
 
 --------------------------------------------------
+website_used — STRICT RULE
+--------------------------------------------------
+
+- Only return a real, currently-existing official domain.
+- Must be the brand's own root domain — not a Wikipedia page, social media profile, marketplace listing, or unrelated site.
+- If you are not near-certain, return "".
+- Never fabricate a domain that "looks right" (e.g. guessing brandname.com without verifying it's correct).
+
+--------------------------------------------------
 faq (EXACTLY 3 Q&A PAIRS)
 --------------------------------------------------
 
@@ -900,8 +1037,12 @@ Return as array: [{ "question": "...", "answer": "..." }, ...]
 FINAL OUTPUT FIELDS
 --------------------------------------------------
 
-brand_used, website_used, industry_used, country_used
-
+website_used only.
+(brand, industry, and country are FIXED FACTS given to you above — never
+include brand_used / country_used / industry_used in your JSON output. This
+section no longer decides main_category/sub_category either — that was
+already decided in a separate step before this prompt.)
+===========================================
 ==================================================
 FINAL SELF VALIDATION
 ==================================================
@@ -910,14 +1051,11 @@ BEFORE RETURNING: Scan ALL fields. If ANY banned word found OR
 educational phrase missing from meta_description / og_description /
 twitter_description / main_description — REGENERATE internally.
 
-Return ONLY VALID JSON:
+Return ONLY VALID JSON (no "category", "brand_used", "country_used", or
+"industry_used" fields — those are all decided outside of you):
 
 {
-  "category": ["...", "...", "...", "...", "..."],
-  "brand_used": "...",
   "website_used": "...",
-  "country_used": "...",
-  "industry_used": "...",
   "meta_title": "...",
   "meta_description": "...",
   "main_description": "...",
@@ -935,609 +1073,404 @@ Return ONLY VALID JSON:
   ]
 }`;
 
-  let messages = [
+  const messages = [
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
   ];
 
-  let completion = await callOpenAIWithRetry({
+  const completion = await callOpenAIWithRetry({
     model: "gpt-4.1-mini",
     temperature: 0.6,
     messages,
     response_format: { type: "json_object" },
   });
 
-  let raw = completion.choices[0]?.message?.content || "{}";
+  const raw = completion.choices[0]?.message?.content || "{}";
   let parsed;
   try { parsed = JSON.parse(raw); } catch { parsed = {}; }
 
-  // ── Resolve category ───────────────────────────────────────────────────────
-  let rawCategories = parsed.category;
-  if (typeof rawCategories === "string") rawCategories = [rawCategories];
-  if (!Array.isArray(rawCategories)) rawCategories = [];
+  // ── Resolve category ──────────────────────────────────────────────────────
+  // logo.category is a single-element array containing ONLY the sub category
+  // (main_category / sub_category were already decided deterministically in
+  // STEP 1 above — GPT's "category" output, if any, is ignored here).
+  const finalCategoryValue = mainCategory === "template" ? "template" : subCategory;
+  const resolvedCategories = [finalCategoryValue];
 
-  let resolvedCategories = [];
-  if (hasCategoryList) {
-    for (let cat of rawCategories) {
-      let match = availableCategories.find(
-        (c) => c.name.toLowerCase() === String(cat).trim().toLowerCase()
-      );
-      if (match) resolvedCategories.push(match.name);
-    }
-    resolvedCategories = resolvedCategories.slice(0, 5);
-    if (resolvedCategories.length === 0) resolvedCategories = ["template"];
-  } else {
-    resolvedCategories = rawCategories.slice(0, 5).map(String).filter(Boolean);
-  }
+  // ── Resolve brand / country / industry / website ──────────────────────────
+  // brand/country/industry are FULLY deterministic — always taken from our
+  // own records (resolvedBrand/resolvedCountry/resolvedIndustry, computed
+  // above via findCategoryMatchLLM). GPT never generates these.
+  //
+  // Website: prefer the DB record (resolvedWebsite / websiteFromDB, computed
+  // above). ONLY when the DB has nothing on file do we fall back to GPT's
+  // website_used — and even then, only if it passes isPlausibleUrl() (a real
+  // http(s) URL with a hostname). Anything else (blank, malformed, or a
+  // low-confidence guess GPT should have left empty per the prompt) resolves
+  // to "" rather than being trusted.
+  const brand = stripSpecialChars(resolvedBrand);
+  const country = resolvedCountry || "Worldwide";
+  const industry = resolvedIndustry || "Logo Design & Graphics";
+  const website = resolvedWebsite || "";
 
-  // ── Resolve brand / country / industry / website (AI-inferred only) ──────
-  let resolvedBrand = (parsed.brand_used && String(parsed.brand_used).trim()) || "";
-  let resolvedCountry = (parsed.country_used && String(parsed.country_used).trim()) || "Worldwide";
-  let resolvedIndustry = (parsed.industry_used && String(parsed.industry_used).trim()) || "Logo Design & Graphics";
-  let resolvedWebsite = (parsed.website_used && String(parsed.website_used).trim()) || "";
+
+  // ── Field fallbacks (educational-tone, banned-word-free) ─────────────────
+  const metaTitle = stripAccents(parsed.meta_title) ||
+    `${logoName} — PNG SVG vector file on cdrlogo.com`;
+  const metaDescription = stripAccents(parsed.meta_description) ||
+    `${logoName}  available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`;
+  const description = stripAccents(parsed.main_description) ||
+    `The ${logoName}  is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`;
+  const altText = stripAccents(parsed.alt_text) ||
+    `${logoName} — PNG SVG vector file on cdrlogo.com`;
+  const tags = Array.isArray(parsed.tags) && parsed.tags.length
+    ? parsed.tags.map(t => stripAccents(String(t)))
+    : [logoName, "PNG", "SVG", "vector", "cdrlogo.com"];
+
+  const ogTitle = stripAccents((parsed.og_title && String(parsed.og_title).trim())) ||
+    `${logoName} — PNG & SVG Vector`;
+  const ogDescription = stripAccents(parsed.og_description) ||
+    `${logoName} available in PNG and SVG vector format for educational reference and research purposes.`;
+  const twitterTitle = stripAccents((parsed.twitter_title && String(parsed.twitter_title).trim())) ||
+    `${logoName} — PNG SVG Vector`;
+  const twitterDescription = stripAccents((parsed.twitter_description && String(parsed.twitter_description).trim())) ||
+    `${logoName} in PNG and SVG vector format for educational reference and research use.`;
+  const imageObjectDescription = stripAccents(parsed.image_object_description) ||
+    `${logoName} image on cdrlogo.com`;
+  const faqPairs = Array.isArray(parsed.faq) ? parsed.faq : [];
+
+
 
   return {
     category: resolvedCategories,
-    brand: resolvedBrand,
-    website: resolvedWebsite,
-    country: resolvedCountry,
-    industry: resolvedIndustry,
-
-    metaTitle: parsed.meta_title || `${logoName} — PNG SVG vector file on cdrlogo.com`,
-    metaDescription: parsed.meta_description || `${logoName} available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`,
-    description: parsed.main_description || `The ${logoName} is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`,
-    altText: parsed.alt_text || `${logoName} — PNG SVG vector file on cdrlogo.com`,
-    tags: Array.isArray(parsed.tags) && parsed.tags.length
-      ? parsed.tags
-      : [logoName, "PNG", "SVG", "vector", "cdrlogo.com"],
-
-    ogTitle: parsed.og_title || `${logoName} — PNG & SVG Vector`,
-    ogDescription: parsed.og_description || `${logoName} available in PNG and SVG vector format for educational reference and research purposes.`,
-    twitterTitle: parsed.twitter_title || `${logoName} — PNG SVG Vector`,
-    twitterDescription: parsed.twitter_description || `${logoName} in PNG and SVG vector format for educational reference and research use.`,
-
-    imageObjectDescription: parsed.image_object_description || `${logoName} image on cdrlogo.com`,
-    faq: Array.isArray(parsed.faq) ? parsed.faq : [],
-
+    mainCategory,
+    subCategory: finalCategoryValue,
+    brand,
+    website,
+    country,
+    industry,
+    metaTitle,
+    metaDescription,
+    description,
+    altText,
+    tags,
+    ogTitle,
+    ogDescription,
+    twitterTitle,
+    twitterDescription,
+    imageObjectDescription,
+    faqPairs,
     isVariant,
     relatedSlugs: relatedLogos.map((r) => r.slug).filter(Boolean),
   };
 }
 
-// ── Route handler ─────────────────────────────────────────────────────────────
-export async function POST(req) {
-  console.log("\n========== UPLOAD-LOGO START ==========");
-  let startTime = Date.now();
-  let session = await getServerSession(authOptions);
-  let sessionUser = null;
-  if (session?.user?.email) {
-    sessionUser = await prisma.user.findUnique({ where: { email: session.user.email } });
-  }
+// ── Process one logo folder ───────────────────────────────────────────────────
+async function processOneLogoFolder({ folderName, folderFiles, sharedFields, watermark }) {
+  const rawLogoName = stripSpecialChars(logoNameFromFolderName(folderName));
+  console.log(`\n  ── Processing folder: "${folderName}" → "${rawLogoName}"`);
 
   try {
-    let formData = await req.formData();
-    console.log("[1] ✓ Form data received");
+    // ── Step A: resolve final name & slug (auto-versioning) ──────────────────
+    const { related, exactNormalizedMatches } = await findRelatedLogos(rawLogoName);
 
-    // ── 1. pull fields ────────────────────────────────────────────────────────
-    let slug = formData.get("slug")?.trim();
-    let logoName = formData.get("logoName")?.trim();
-    let brand = formData.get("brand") || "";
-    let website = formData.get("website") || "";
+    let finalLogoName = stripSpecialChars(rawLogoName);
+    let versioned = false;
 
-    // FIX: default categoryRaw to "template" when the caller never sends one
-    // (the public upload page never sends a "category" field at all — only
-    // the admin panel does). Without this, an empty categoryRaw produced
-    // category = [""] (an array containing one empty string) whenever the
-    // AI-generation step failed and fell through to the manual fallback.
-    let categoryRaw = formData.get("category") || "";
-    if (!categoryRaw.trim()) categoryRaw = "template";
-    let category = categoryRaw.toLowerCase().trim() === "template" ? ["template"] : [categoryRaw];
-
-    let industry = formData.get("industry") || "";
-    let country = formData.get("country") || "";
-    let license = formData.get("license") || "";
-    let publishStatus = formData.get("publishStatus") || "Draft";
-    let downloadCount = formData.get("downloadCount") || "unlimited";
-    let altText = formData.get("altText") || "";
-
-    // ── Owner resolution ───────────────────────────────────────────────────
-    // Rules:
-    //  - Unauthenticated  → reject (401), no DB write happens.
-    //  - Non-admin user   → owner is ALWAYS forced to their own session id.
-    //                       Client-submitted "owner" field is ignored entirely
-    //                       (prevents a normal user from uploading as someone else).
-    //                       publishStatus is forced to "Draft" too.
-    //  - Admin user       → owner defaults to the admin's OWN session id.
-    //                       An explicit "owner" field in formData can override
-    //                       this (e.g. an admin panel uploading on behalf of
-    //                       another user), but only for admins, and it's logged
-    //                       clearly so any override is auditable.
-    let requestedOwner = formData.get("owner");
-    let owner;
-
-    console.log("[0] Resolving owner...");
-    console.log(`    session email        : ${session?.user?.email || "none"}`);
-    console.log(`    sessionUser found     : ${sessionUser ? `yes (id: ${sessionUser.id}, role: ${sessionUser.role})` : "no"}`);
-    console.log(`    requested owner (raw) : ${requestedOwner ? `"${requestedOwner}"` : "(not provided)"}`);
-
-    if (!sessionUser) {
-      console.log("[0] ❌ Unauthenticated upload attempt — rejecting");
-      return NextResponse.json({ error: "You must be logged in to upload a logo." }, { status: 401 });
+    if (exactNormalizedMatches.length > 0) {
+      finalLogoName = generateVersionedName(rawLogoName, exactNormalizedMatches);
+      versioned = true;
+      console.log(`  [name] Auto-versioned: "${rawLogoName}" → "${finalLogoName}"`);
     }
 
-    if (sessionUser.role !== "admin") {
-      owner = sessionUser.id;
-      publishStatus = "Draft";
-      console.log(`[0] ✓ Non-admin user — owner forced to session id: "${owner}" (any requested owner value ignored)`);
-      console.log(`[0] ✓ publishStatus forced to "Draft" for non-admin upload`);
-    } else {
-      owner = requestedOwner || sessionUser.id;
-      if (requestedOwner && requestedOwner !== sessionUser.id) {
-        console.log(`[0] ⚠ Admin (${sessionUser.id}) is uploading on behalf of owner "${requestedOwner}" — explicit override in effect`);
-      } else {
-        console.log(`[0] ✓ Admin user — owner set to admin's own session id: "${owner}"`);
-      }
-    }
+    const finalSlug = generateSlugFromName(finalLogoName);
+    const canonicalUrl = stripTrailingSlash(`https://www.cdrlogo.com/logo/${finalSlug}`);
+    console.log(`  [slug] ${finalSlug}`);
 
-    let description = formData.get("description") || "";
-    let metaTitle = formData.get("metaTitle") || "";
-    let metaDescription = formData.get("metaDescription") || "";
+    // ── Step B: AI content generation ────────────────────────────────────────
+    const aiContent = await generateAIContent({
+      logoName: stripSpecialChars(finalLogoName),
+      userCategory: sharedFields.category,
+      availableCategories: sharedFields.availableCategories,
+      relatedLogos: related,
+      canonicalUrl,
+    });
 
-    let brandColors = [];
-    try { brandColors = JSON.parse(formData.get("brandColors") || "[]"); } catch { }
+    console.log(`  [ai] main: "${aiContent.mainCategory}" | sub: "${aiContent.subCategory}" | brand: "${aiContent.brand}" | website: "${aiContent.website || "(none)"}" | country: "${aiContent.country}" | industry: "${aiContent.industry}"`);
+    console.log(`  [ai] metaTitle (${aiContent.metaTitle.length} chars): "${aiContent.metaTitle.substring(0, 60)}"`);
+    console.log(`  [ai] ogTitle: "${aiContent.ogTitle}" | twitterTitle: "${aiContent.twitterTitle}"`);
+    console.log(`  [ai] tags: ${aiContent.tags.length} | faq pairs: ${aiContent.faqPairs.length}`);
 
-    let useAI = formData.get("useAI") !== "false";
-
-    console.log("[1a] Parsed form fields:");
-    console.log(`  slug: "${slug}"`);
-    console.log(`  logoName: "${logoName}"`);
-    console.log(`  brand: "${brand}" (only used if AI generation is disabled/fails)`);
-    console.log(`  category: "${category}"`);
-    console.log(`  useAI: ${useAI}`);
-    console.log(`  owner (final): "${owner}"`);
-
-    if (!slug) {
-      console.log("[1b] ❌ VALIDATION FAILED: slug is required");
-      return NextResponse.json({ error: "slug is required." }, { status: 400 });
-    }
-    if (!logoName) {
-      console.log("[1b] ❌ VALIDATION FAILED: logoName is required");
-      return NextResponse.json({ error: "logoName is required." }, { status: 400 });
-    }
-    console.log("[1b] ✓ Basic validation passed");
-
-    // ── 2. collect ZIP files ──────────────────────────────────────────────────
-    console.log("[2] Collecting ZIP files...");
-    let zipFiles = formData.getAll("files");
-    if (!zipFiles.length) {
-      console.log("[2] ❌ No ZIP files found");
-      return NextResponse.json({ error: "No ZIP file uploaded." }, { status: 400 });
-    }
-    console.log(`[2] ✓ Found ${zipFiles.length} ZIP file(s)`);
-
-    // ── 3. fetch watermark settings + category list from DB ──────────────────
-    console.log("[3] Fetching website settings...");
-    let websiteRecord = await prisma.website.findFirst();
-    let watermark = websiteRecord?.watermark ?? null;
-    console.log(`[3] ✓ Watermark config: ${watermark?.enabled ? "ENABLED" : "DISABLED"}`);
-
-    let availableCategories = categoryRaw.toLowerCase().trim() === "template"
-      ? []
-      : extractCategoryNames(websiteRecord?.categories);
-    console.log(`[3] ✓ Available categories for AI selection: ${availableCategories.length}`);
-
-    // ── 4. AI content generation ──────────────────────────────────────────────
-    let tags = [];
-    let aiMeta = { isVariant: false };
-    let finalLogoName = logoName;
-    let finalSlug = slug;
-    let relatedSlugs = [];
-
-    let canonicalUrl = `https://www.cdrlogo.com/logo/${slug}`;
-
-    let ogTitle = "";
-    let ogDescription = "";
-    let ogImageUrl = "";
-    let twitterTitle = "";
-    let twitterDescription = "";
-    let twitterCardType = "summary_large_image";
-
-    let imageObjectSchema = {};
-    let breadcrumbSchema = {};
-    let faqSchema = [];
-    let imageObjectDescription = "";
-    let faqPairs = [];
-
-    if (useAI) {
-      console.log("[4] AI GENERATION ENABLED - Starting process...");
-      try {
-        console.log(`[4a] Finding related logos for "${logoName}"...`);
-        let { related, exactNormalizedMatches } = await findRelatedLogos(logoName);
-        console.log(`[4a] ✓ Found ${related.length} related logo(s), ${exactNormalizedMatches.length} exact normalized match(es)`);
-
-        if (exactNormalizedMatches.length > 0) {
-          console.log(`[4b] Exact matches found — auto-versioning LOGO NAME...`);
-          exactNormalizedMatches.forEach((m, i) => {
-            console.log(`     ${i + 1}. "${m.logoName}"`);
-          });
-          finalLogoName = generateVersionedName(logoName, exactNormalizedMatches);
-          finalSlug = generateSlugFromName(finalLogoName);
-          console.log(`[4b] ✓ Logo name: "${logoName}" → "${finalLogoName}"`);
-          console.log(`[4b] ✓ Slug: "${slug}" → "${finalSlug}"`);
-
-          let versionedSlugExists = await prisma.logo.findUnique({ where: { slug: finalSlug } });
-          if (versionedSlugExists) {
-            console.log(`[4b] ❌ Auto-versioned slug "${finalSlug}" already exists`);
-            return NextResponse.json(
-              { error: `Auto-versioned slug "${finalSlug}" is already taken. Please upload again or check existing logos.` },
-              { status: 409 }
-            );
-          }
-          canonicalUrl = `https://www.cdrlogo.com/logo/${finalSlug}`;
-        } else {
-          console.log(`[4b] No exact matches — this is a new logo, no versioning needed`);
-        }
-
-        console.log(`[4c] Calling OpenAI (gpt-4.1-mini, temp=0.6)...`);
-        let aiContent = await generateAIContent({
-          logoName: finalLogoName,
-          userCategory: categoryRaw,
-          availableCategories,
-          relatedLogos: related,
-          canonicalUrl,
-        });
-        console.log(`[4c] ✓ AI response received`);
-        console.log(`     - category: ${JSON.stringify(aiContent.category)}`);
-        console.log(`     - brand_used: "${aiContent.brand}"`);
-        console.log(`     - website_used: "${aiContent.website}"`);
-        console.log(`     - industry_used: "${aiContent.industry}"`);
-        console.log(`     - country_used: "${aiContent.country}"`);
-        console.log(`     - meta_title (${aiContent.metaTitle.length} chars): "${aiContent.metaTitle.substring(0, 60)}"`);
-        console.log(`     - og_title: "${aiContent.ogTitle}"`);
-        console.log(`     - twitter_title: "${aiContent.twitterTitle}"`);
-        console.log(`     - tags: ${aiContent.tags.length} generated`);
-        console.log(`     - faq pairs: ${aiContent.faq.length} generated`);
-
-        aiMeta = {
-          isVariant: aiContent.isVariant,
-          relatedCount: related.length,
-          originalLogoName: logoName,
-          finalLogoName,
-          versioned: finalLogoName !== logoName,
-          brandUsed: aiContent.brand,
-          websiteUsed: aiContent.website,
-          industryUsed: aiContent.industry,
-          countryUsed: aiContent.country,
-        };
-
-        brand = aiContent.brand;
-        website = aiContent.website;
-        industry = aiContent.industry;
-        country = aiContent.country;
-
-        category = categoryRaw.toLowerCase().trim() === "template"
-          ? ["template"]
-          : (Array.isArray(aiContent.category) && aiContent.category.length > 0
-            ? aiContent.category
-            : ["template"]);
-
-        metaTitle = aiContent.metaTitle;
-        metaDescription = aiContent.metaDescription;
-        description = aiContent.description;
-        altText = aiContent.altText;
-        if (aiContent.tags.length) tags = aiContent.tags;
-
-        ogTitle = aiContent.ogTitle;
-        ogDescription = aiContent.ogDescription;
-        twitterTitle = aiContent.twitterTitle;
-        twitterDescription = aiContent.twitterDescription;
-
-        imageObjectDescription = aiContent.imageObjectDescription;
-        faqPairs = aiContent.faq;
-
-        if (aiContent.relatedSlugs.length) relatedSlugs = aiContent.relatedSlugs;
-        console.log(`[4d] ✓ AI content applied to logo`);
-
-      } catch (aiErr) {
-        console.error("[4] ❌ AI generation failed:", aiErr.message);
-        await prisma.log.create({
-          data: {
-            who: "api:upload-logo",
-            content: `AI generation error for "${logoName}": ${aiErr?.message}`,
-          },
-        });
-        console.log("[4] ⚠ Falling back to manually entered fields");
-        // FIX: reset category on the fallback path too — without this line,
-        // a public-upload request (which never sends "category") could end
-        // up saving category as [""] if the OpenAI call failed here.
-        category = ["template"];
-        if (!brand || !brand.trim()) brand = "cdrlogo.com";
-        if (!website || !website.trim()) website = "";
-        if (!industry || !industry.trim()) industry = "Logo Design & Graphics";
-        if (!country || !country.trim()) country = "Worldwide";
-        try { tags = JSON.parse(formData.get("tags") || "[]"); } catch { }
-        ogTitle = `${logoName} — PNG & SVG Vector`;
-        ogDescription = `${logoName} available in PNG and SVG vector format for educational reference and research purposes.`;
-        twitterTitle = `${logoName} — PNG SVG Vector`;
-        twitterDescription = `${logoName} in PNG and SVG vector format for educational reference and research use.`;
-        imageObjectDescription = `${logoName} image on cdrlogo.com`;
-        faqPairs = [];
-      }
-    } else {
-      console.log("[4] AI DISABLED - Using manual fields only");
-      if (!brand || !brand.trim()) brand = "cdrlogo.com";
-      if (!website || !website.trim()) website = "";
-      if (!industry || !industry.trim()) industry = "Logo Design & Graphics";
-      if (!country || !country.trim()) country = "Worldwide";
-      try { tags = JSON.parse(formData.get("tags") || "[]"); } catch { }
-      ogTitle = metaTitle || `${logoName} — PNG & SVG Vector`;
-      ogDescription = metaDescription || `${logoName} available in PNG and SVG vector format for educational reference purposes.`;
-      twitterTitle = ogTitle;
-      twitterDescription = ogDescription.substring(0, 140);
-      imageObjectDescription = `${logoName} image on cdrlogo.com`;
-      faqPairs = [];
-    }
-
-    if (!description) {
-      console.log("[4] ❌ No description found");
-      return NextResponse.json({ error: "description is required (AI generation may have failed)." }, { status: 400 });
-    }
-    console.log("[4] ✓ Description present");
-
-    // ── 5. process every ZIP ──────────────────────────────────────────────────
-    console.log("[5] Processing ZIP contents...");
-    let publicFiles = [];
-    let privateFiles = [];
+    // ── Step C: classify & process files ─────────────────────────────────────
+    const publicFiles = [];
+    const separateFiles = [];
     let svgContent = null;
-    let fileSizes = { svg: 0, png: 0, ai: 0, cdr: 0 };
+    const fileSizes = { svg: 0, png: 0, ai: 0, cdr: 0 };
 
-    for (let zipFile of zipFiles) {
-      let arrayBuffer = await zipFile.arrayBuffer();
-      let zip = new AdmZip(Buffer.from(arrayBuffer));
+    for (const { filename, buffer: fileBuffer } of folderFiles) {
+      const safeFilename = sanitizeFilename(filename);
+      const fileExt = ext(safeFilename);
 
-      for (let entry of zip.getEntries()) {
-        if (entry.isDirectory) continue;
+      if (fileExt === "html" || fileExt === "htm") {
+        console.log(`  [skip] Ignoring HTML file: ${safeFilename}`);
+        continue;
+      }
 
-        let filename = entry.entryName.split("/").pop();
-        filename = sanitizeFilename(filename);
-        let fileExt = ext(filename);
-        let fileBuffer = entry.getData();
-        let fileSize = (fileBuffer.length / 1024).toFixed(2);
+      const fileSize = (fileBuffer.length / 1024).toFixed(2);
+      console.log(`  [file] ${filename} → ${safeFilename} (${fileSize} KB)`);
 
-        console.log(`     - ${filename} (${fileSize} KB)`);
+      if (fileExt === "svg") {
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        fileSizes.svg = fileBuffer.length;
+        if (!svgContent) svgContent = fileBuffer.toString("utf-8");
 
-        if (fileExt === "svg") {
-          privateFiles.push({
-            key: `separate/${finalSlug}/${filename}`,
-            buffer: fileBuffer,
-            contentType: mime(filename),
-          });
-          fileSizes.svg = fileBuffer.length;
-          if (!svgContent) svgContent = fileBuffer.toString("utf-8");
-          console.log(`       → private SVG stored (${fileSize} KB)`);
+      } else if (fileExt === "png") {
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        fileSizes.png = fileBuffer.length;
 
-        } else if (fileExt === "png") {
-          privateFiles.push({
-            key: `separate/${finalSlug}/${filename}`,
-            buffer: fileBuffer,
-            contentType: mime(filename),
-          });
-          fileSizes.png = fileBuffer.length;
+        const watermarked = await applyWatermark(fileBuffer, watermark);
+        const webpBuffer = await sharp(watermarked).webp({ quality: 90 }).toBuffer();
+        const webpName = safeFilename.replace(/\.png$/i, ".webp");
+        publicFiles.push({ key: `public/${finalSlug}/${webpName}`, buffer: webpBuffer, contentType: "image/webp" });
 
-          let watermarked = await applyWatermark(fileBuffer, watermark);
-          let webpBuffer = await sharp(watermarked).webp({ quality: 90 }).toBuffer();
-          let webpName = filename.replace(/\.png$/i, ".webp");
-          publicFiles.push({
-            key: `public/${finalSlug}/${webpName}`,
-            buffer: webpBuffer,
-            contentType: "image/webp",
-          });
-          console.log(`       → private PNG (${fileSize} KB) + public WebP (${(webpBuffer.length / 1024).toFixed(2)} KB)`);
+      } else if (fileExt === "ai") {
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        fileSizes.ai = fileBuffer.length;
 
-        } else if (fileExt === "ai") {
-          privateFiles.push({
-            key: `separate/${finalSlug}/${filename}`,
-            buffer: fileBuffer,
-            contentType: mime(filename),
-          });
-          fileSizes.ai = fileBuffer.length;
-          console.log(`       → private AI stored (${fileSize} KB)`);
+      } else if (fileExt === "cdr") {
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
+        fileSizes.cdr = fileBuffer.length;
 
-        } else if (fileExt === "cdr") {
-          privateFiles.push({
-            key: `separate/${finalSlug}/${filename}`,
-            buffer: fileBuffer,
-            contentType: mime(filename),
-          });
-          fileSizes.cdr = fileBuffer.length;
-          console.log(`       → private CDR stored (${fileSize} KB)`);
-
-        } else {
-          privateFiles.push({
-            key: `private/${finalSlug}/${filename}`,
-            buffer: fileBuffer,
-            contentType: mime(filename),
-          });
-          console.log(`       → private misc file (${fileSize} KB)`);
-        }
+      } else {
+        // koi aur file type ho to bhi "separate" mein hi — koi "private" folder nahi
+        separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
       }
     }
-    console.log(`[5] ✓ ZIP processing complete: ${publicFiles.length} public, ${privateFiles.length} private`);
 
-    // ── 6. upload everything to R2 ────────────────────────────────────────────
-    console.log("[6] Uploading files to R2...");
-    let allUploads = [...publicFiles, ...privateFiles];
 
-    let uploadResults = await Promise.all(
+    // ── Step D: upload to R2 ──────────────────────────────────────────────────
+    const allUploads = [...publicFiles, ...separateFiles];
+    const uploadResults = await Promise.all(
       allUploads.map(async ({ key, buffer, contentType }) => {
         try {
-          console.log(`     Uploading: ${key}`);
           return await uploadToR2({ fileBuffer: buffer, fileName: key, mimeType: contentType });
         } catch (err) {
-          console.error(`     ❌ Failed to upload: ${key} — ${err.message}`);
+          console.error(`  [r2] ❌ Failed: ${key} — ${err.message}`);
           return null;
         }
       })
     );
 
-    let urlMap = {};
+    const urlMap = {};
     allUploads.forEach(({ key }, i) => { urlMap[key] = uploadResults[i]; });
 
-    let failedUploads = allUploads.filter((_, i) => !uploadResults[i]);
-    if (failedUploads.length) {
-      console.warn(`[6] ⚠ ${failedUploads.length} file(s) failed to upload: ${failedUploads.map(f => f.key).join(", ")}`);
-    }
-    console.log(`[6] ✓ Upload complete (${allUploads.length - failedUploads.length}/${allUploads.length} succeeded)`);
-
-    let findUrl = (predicate) => {
-      let match = allUploads.find(predicate);
+    const findUrl = (pred) => {
+      const match = allUploads.find(pred);
       return match ? urlMap[match.key] : null;
     };
 
-    let svgUrl = findUrl(f => f.key.endsWith(".svg"));
-    let pngUrl = findUrl(f => f.key.endsWith(".png"));
-    let webpUrl = findUrl(f => f.key.endsWith(".webp"));
-    let aiUrl = findUrl(f => f.key.endsWith(".ai"));
-    let cdrUrl = findUrl(f => f.key.endsWith(".cdr"));
+    const svgUrl = findUrl((f) => f.key.endsWith(".svg"));
+    const pngUrl = findUrl((f) => f.key.endsWith(".png"));
+    const webpUrl = findUrl((f) => f.key.endsWith(".webp"));
+    const aiUrl = findUrl((f) => f.key.endsWith(".ai"));
+    const cdrUrl = findUrl((f) => f.key.endsWith(".cdr"));
 
-    console.log("[6a] Resolved file URLs:");
-    if (svgUrl) console.log(`     SVG: ${svgUrl}`);
-    if (pngUrl) console.log(`     PNG: ${pngUrl}`);
-    if (webpUrl) console.log(`     WebP (public): ${webpUrl}`);
-    if (aiUrl) console.log(`     AI: ${aiUrl}`);
-    if (cdrUrl) console.log(`     CDR: ${cdrUrl}`);
+    // ogImageUrl — public WebP is the OG/Twitter card image
+    const ogImageUrl = webpUrl || null;
+    console.log(`  [urls] webp: ${webpUrl || "null"} | ogImageUrl: ${ogImageUrl || "null"}`);
 
-    ogImageUrl = webpUrl || null;
-    console.log(`[6b] ogImageUrl set to: ${ogImageUrl || "null (no WebP available)"}`);
-
-    console.log("[6c] Building schema JSON-LD...");
-
-    imageObjectSchema = buildImageObjectSchema({
+    // ── Step E: build schema JSON-LD ──────────────────────────────────────────
+    const imageObjectSchema = buildImageObjectSchema({
       imageUrl: ogImageUrl,
       logoName: finalLogoName,
-      brand,
+      brand: aiContent.brand,
       canonicalUrl,
-      description: imageObjectDescription,
+      description: aiContent.imageObjectDescription,
     });
 
-    breadcrumbSchema = buildBreadcrumbSchema({
-      brand,
+    const breadcrumbSchema = buildBreadcrumbSchema({
+      brand: aiContent.brand,
       logoName: finalLogoName,
       canonicalUrl,
     });
 
-    faqSchema = buildFaqSchema(faqPairs);
+    const faqSchema = buildFaqSchema(aiContent.faqPairs);
 
-    console.log(`[6c] ✓ imageObjectSchema: ${Object.keys(imageObjectSchema).length ? "built" : "empty (no image)"}`);
-    console.log(`[6c] ✓ breadcrumbSchema: built (Home > ${brand || "Logos"} > ${finalLogoName})`);
-    console.log(`[6c] ✓ faqSchema: ${faqSchema.length} question(s)`);
+    console.log(`  [schema] imageObject: ${Object.keys(imageObjectSchema).length ? "built" : "empty"} | breadcrumb: built | faq: ${faqSchema.length} question(s)`);
 
-    // ── 7. save to DB ─────────────────────────────────────────────────────────
-    console.log("[7] Saving logo to database...");
-    console.log(`     Final logo name : "${finalLogoName}"`);
-    console.log(`     Final slug      : "${finalSlug}"`);
-    console.log(`     Owner           : "${owner}"`);
-    console.log(`     Category        : ${JSON.stringify(category)}`);
-    console.log(`     Brand           : "${brand}"`);
-    console.log(`     Website         : "${website}"`);
-    console.log(`     Industry        : "${industry}"`);
-    console.log(`     Country         : "${country}"`);
-    console.log(`     canonicalUrl    : "${canonicalUrl}"`);
-    console.log(`     ogTitle         : "${ogTitle}"`);
-    console.log(`     ogDescription   : "${ogDescription?.substring(0, 60)}..."`);
-    console.log(`     ogImageUrl      : "${ogImageUrl || "null"}"`);
-    console.log(`     ogType          : "website"`);
-    console.log(`     twitterTitle    : "${twitterTitle}"`);
-    console.log(`     twitterCardType : "${twitterCardType}"`);
-    console.log(`     Tags (${tags.length}): ${tags.slice(0, 5).join(", ")}${tags.length > 5 ? "..." : ""}`);
-
-    let logo = await prisma.logo.create({
+    // ── Step F: save to DB ────────────────────────────────────────────────────
+    const logo = await prisma.logo.create({
       data: {
+        owner: "admin",
         logoName: finalLogoName,
-        owner,
         slug: finalSlug,
-        brand,
-        website,
-        category,
-        industry,
-        country,
-        license,
-        description,
-        tags,
-        brandColors,
-        publishStatus,
-        downloadCount,
+        brand: aiContent.brand,
+        website: aiContent.website,
+        // Single-element array: just the sub category (or ["template"]).
+        // sharedFields.category === "template" is a manual override that
+        // forces template regardless of what the classifier picked.
+        category: sharedFields.category.toLowerCase().trim() === "template"
+          ? ["template"]
+          : aiContent.category,
+        industry: aiContent.industry,
+        country: aiContent.country,
+        license: sharedFields.license,
+        description: aiContent.description,
+        tags: aiContent.tags,
+        brandColors: sharedFields.brandColors,
+        publishStatus: sharedFields.publishStatus,
+        downloadCount: sharedFields.downloadCount,
         svgUrl,
         pngUrl,
         webpUrl,
         aiUrl,
         cdrUrl,
         svgContent,
-        metaTitle,
-        metaDescription: metaDescription.trim(),
-        altText,
+        metaTitle: aiContent.metaTitle,
+        metaDescription: aiContent.metaDescription,
+        altText: aiContent.altText,
         svgfilesize: formatSize(fileSizes.svg),
         pngfilesize: formatSize(fileSizes.png),
         aifilesize: formatSize(fileSizes.ai),
         cdrfilesize: formatSize(fileSizes.cdr),
 
+        // ── SEO / social ────────────────────────────────────────────────────
         canonicalUrl,
-        ogTitle,
-        ogDescription,
+        ogTitle: aiContent.ogTitle,
+        ogDescription: aiContent.ogDescription,
         ogImageUrl,
         ogType: "website",
-        twitterTitle,
-        twitterDescription,
+        twitterTitle: aiContent.twitterTitle,
+        twitterDescription: aiContent.twitterDescription,
         twitterImage: ogImageUrl,
-        twitterCardType,
+        twitterCardType: "summary_large_image",
 
+        // ── Schema JSON-LD ───────────────────────────────────────────────────
         imageObjectSchema,
         breadcrumbSchema,
         faqSchema,
       },
     });
-    console.log(`[7] ✓ Logo saved to DB with ID: ${logo.id} (owner: "${logo.owner}")`);
+
+    console.log(`  [db] ✓ Saved ID: ${logo.id}`);
+
+    return {
+      success: true,
+      logoName: finalLogoName,
+      slug: finalSlug,
+      versioned,
+      originalName: rawLogoName,
+      category: aiContent.category,
+      brand: aiContent.brand,
+      website: aiContent.website,
+      country: aiContent.country,
+      industry: aiContent.industry,
+      canonicalUrl,
+      ogImageUrl,
+      id: logo.id,
+    };
+
+  } catch (err) {
+    console.error(`  [error] ❌ "${rawLogoName}": ${err.message}`);
+    return {
+      success: false,
+      logoName: rawLogoName,
+      slug: generateSlugFromName(rawLogoName),
+      error: err.message,
+    };
+  }
+}
+
+
+
+export const maxDuration = 60;
+
+export async function POST(req) {
+  console.log("\n========== SINGLE-FOLDER UPLOAD START ==========");
+  const startTime = Date.now();
+
+  try {
+    // ── Parse multipart/form-data instead of JSON ──────────────────────────
+    const formData = await req.formData();
+
+    const folderName = (formData.get("logoName") || "").toString().trim();
+
+    // per requirement: category is always taken as "" here (classifier decides)
+    const category = "";
+
+    const license = (formData.get("license") || "Educational").toString();
+    const publishStatus = (formData.get("publishStatus") || "Draft").toString();
+    const downloadCount = (formData.get("downloadCount") || "unlimited").toString();
+
+    let brandColors = [];
+    try {
+      const rawColors = formData.get("brandColors");
+      if (rawColors) brandColors = JSON.parse(rawColors);
+    } catch {
+      brandColors = [];
+    }
+
+    if (!folderName) {
+      return NextResponse.json({ error: "logoName is required." }, { status: 400 });
+    }
+
+    const uploadedFiles = formData.getAll("files");
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      return NextResponse.json({ error: "Please upload at least one ZIP file." }, { status: 400 });
+    }
+
+    console.log(`[1] Received ${uploadedFiles.length} zip file(s) for logoName: "${folderName}"`);
+
+    // ── Extract entries from each uploaded ZIP (same filtering rules as before) ──
+    const folderFiles = [];
+    for (const uploaded of uploadedFiles) {
+      if (!uploaded || typeof uploaded === "string") continue;
+
+      const arrayBuffer = await uploaded.arrayBuffer();
+      const zipBuffer = Buffer.from(arrayBuffer);
+      const zip = new AdmZip(zipBuffer);
+      const entries = zip.getEntries();
+
+      for (const entry of entries) {
+        if (entry.isDirectory) continue;
+        const parts = entry.entryName.split("/").filter(Boolean);
+        const filename = parts[parts.length - 1];
+        if (!filename || filename.startsWith(".")) continue;
+        folderFiles.push({ filename, buffer: entry.getData() });
+      }
+    }
+
+    if (folderFiles.length === 0) {
+      return NextResponse.json({ error: `No files found in uploaded ZIP(s) for "${folderName}".` }, { status: 400 });
+    }
+
+    const websiteRecord = await prisma.website.findFirst();
+    const watermark = websiteRecord?.watermark ?? null;
+
+    // ── Categories come from website.categories (DB) ──────────────────────
+    const availableCategories = category.toLowerCase().trim() === "template"
+      ? []
+      : extractCategoryEntries(websiteRecord?.categories);
+
+    console.log(`[categories] website.findFirst() → ${availableCategories.length} categories loaded from DB`);
+
+    const sharedFields = { category, license, publishStatus, downloadCount, brandColors, availableCategories };
+
+    const result = await processOneLogoFolder({ folderName, folderFiles, sharedFields, watermark });
 
     await prisma.log.create({
       data: {
-        who: "api:upload-logo",
-        content: `Logo uploaded: ${finalSlug} (name: "${finalLogoName}", owner: "${owner}")${aiMeta.versioned ? ` [auto-versioned from "${logoName}"]` : ""}${aiMeta.isVariant ? ` (AI variant, ${aiMeta.relatedCount} related)` : useAI ? " (AI-generated)" : " (manual)"}`,
+        who: "api:bulk-upload-logo",
+        content: result.success
+          ? `Bulk upload ✓ "${result.logoName}" (slug: ${result.slug})`
+          : `Bulk upload ❌ "${result.logoName}": ${result.error}`,
       },
     });
 
-    let duration = Date.now() - startTime;
-    console.log(`\n========== UPLOAD-LOGO SUCCESS ==========`);
-    console.log(`Total time  : ${duration}ms`);
-    console.log(`Final Slug  : "${finalSlug}"`);
-    console.log(`Logo Name   : "${finalLogoName}"${aiMeta.versioned ? ` (auto-versioned from "${logoName}")` : ""}`);
-    console.log(`Owner       : "${owner}"`);
-    console.log(`Files       : ${allUploads.length} total (${publicFiles.length} public, ${privateFiles.length} private)`);
-    console.log(`==========================================\n`);
-
-    return NextResponse.json({
-      message: "Logo uploaded successfully!",
-      logo,
-      ai: aiMeta,
-      files: {
-        public: publicFiles.map(f => ({ key: f.key, url: urlMap[f.key] })),
-        private: privateFiles.map(f => ({ key: f.key, url: urlMap[f.key] })),
-      },
-    });
+    console.log(`Duration: ${Date.now() - startTime}ms`);
+    return NextResponse.json(result);
 
   } catch (error) {
-    let duration = Date.now() - startTime;
-    console.error(`\n========== UPLOAD-LOGO ERROR ==========`);
-    console.error(`Time elapsed : ${duration}ms`);
-    console.error(`Error        : ${error.message}`);
-    console.error(`Stack        : ${error.stack}`);
-    console.error(`========================================\n`);
-
-    await prisma.log.create({
-      data: {
-        who: "api:upload-logo",
-        content: `Upload error: ${error?.message}`,
-      },
-    });
+    console.error("Error:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

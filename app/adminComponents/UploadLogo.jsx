@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, Plus, X, Globe, BarChart2, RefreshCw, Tag, Loader2 } from "lucide-react";
 
-const COLORS_INIT = ["#3B82F6", "#1E3A5F", "#FBFAFC"];
+const COLORS_INIT = [];
 
 
 
@@ -290,8 +290,7 @@ export default function UploadLogo({ dark }) {
   // ── submit ────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!form.logoName.trim()) return setSubmitResult({ ok: false, message: "Logo Name is required." });
-    if (!form.slug.trim()) return setSubmitResult({ ok: false, message: "Slug is required." });
-    if (!form.category) return setSubmitResult({ ok: false, message: "Category is required." });
+    if (!form.slug.trim()) return setSubmitResult({ ok: false, message: "Slug is required." }); 
     if (files.length === 0) return setSubmitResult({ ok: false, message: "Please upload at least one ZIP file." });
 
     setSubmitting(true);
@@ -458,55 +457,7 @@ export default function UploadLogo({ dark }) {
                   </button>
                 )}
               </div>
-              <div style={colStyle}>
-                <label style={labelStyle}>Category <span style={{ color: green }}>*</span></label>
-                <select
-                  style={{
-                    ...inputStyle,
-                    appearance: "none",
-                    background: isTemplate ? (dark ? "#0a0d12" : "#e8ecf0") : inputBg,
-                    color: isTemplate ? muted : text,
-                    cursor: isTemplate ? "not-allowed" : "pointer",
-                  }}
-                  value={form.category}
-                  onChange={setField("category")}
-                  disabled={isTemplate}
-                >
-                  <option value="">Select category</option>
-                  {categories.map(c => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
 
-                <div style={{ marginTop: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => setIsTemplate(p => !p)}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "5px 12px", borderRadius: 99,
-                      border: `1px solid ${isTemplate ? "#a855f7" + "66" : border}`,
-                      background: isTemplate ? "rgba(168,85,247,0.12)" : "transparent",
-                      color: isTemplate ? "#a855f7" : muted,
-                      fontSize: 12, fontWeight: 700,
-                      cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {isTemplate && (
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2.5 2.5L8 3" stroke="#a855f7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    Template
-                  </button>
-                  {isTemplate && (
-                    <span style={{ marginLeft: 8, fontSize: 11, color: muted }}>
-                      Category set to <strong style={{ color: text }}>template</strong>
-                    </span>
-                  )}
-                </div>
-              </div>
               <div style={colStyle}>
                 <label style={labelStyle}>
                   Slug
@@ -609,25 +560,7 @@ export default function UploadLogo({ dark }) {
           </div>
         </div>
 
-        {/* ── Brand Colors ── */}
-        <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 20 }}>
-          <h3 style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: text }}>Brand Colors</h3>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            {colors.map(c => (
-              <div key={c} style={{ display: "flex", alignItems: "center", gap: 5, background: dark ? "#1e2535" : "#f1f5f9", borderRadius: 99, padding: "4px 10px 4px 6px", border: `1px solid ${border}` }}>
-                <div style={{ width: 16, height: 16, borderRadius: "50%", background: c, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: text, fontWeight: 500 }}>{c}</span>
-                <button onClick={() => removeColor(c)} style={{ background: "none", border: "none", cursor: "pointer", color: muted, padding: 0, display: "flex" }}><X size={12} /></button>
-              </div>
-            ))}
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <input type="color" value={newColor} onChange={e => setNewColor(e.target.value)} style={{ width: 28, height: 28, border: "none", borderRadius: 6, cursor: "pointer", background: "none" }} />
-              <button onClick={addColor} style={{ display: "flex", alignItems: "center", gap: 4, background: greenDim, border: `1px solid ${green}44`, borderRadius: 99, padding: "4px 12px", color: green, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                <Plus size={12} /> Add Color
-              </button>
-            </div>
-          </div>
-        </div>
+
 
         {/* ── Tags ── */}
         <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 20 }}>

@@ -104,7 +104,7 @@ export const metadata = {
 // it fast and avoids the self-fetch-during-render problem above.
 
 export default function page() {
-  return (
+return (
     <>
       <script
         type="application/ld+json"
@@ -119,31 +119,54 @@ export default function page() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       <Navbar />
-      <h1
-        style={{
-          position: "absolute",
-          width: "1px",
-          height: "1px",
-          padding: 0,
-          margin: "-1px",
-          overflow: "hidden",
-          clip: "rect(0, 0, 0, 0)",
-          clipPath: "inset(50%)",
-          whiteSpace: "nowrap",
-          border: 0,
-        }}
-      >
-        {`Free Vector Logo Downloads — CDR, SVG, AI & PNG Files`}
-      </h1>
+
+ 
       <Home />
       <PantoneColorPicker />
       <LogosPage />
-      <Recent/>
+      <Recent />
       <BrandCategories />
       <HomeCatageory />
       <TrendingLogos />
       <TopBrands />
       <Footer />
+ 
+      <style>
+        {`
+          .hero-heading-wrap {
+            padding: 28px 20px 0;
+          }
+ 
+          .home-heading {
+            text-align: center;
+            font-size: clamp(18px, 2.6vw, 32px);
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.8px;
+            text-wrap: balance;
+            font-family: var(--font-sora), sans-serif;
+            max-width: 960px;
+            margin: 0 auto;
+            color: #0a0a14;
+            transition: color 0.35s;
+          }
+          [data-theme="dark"] .home-heading {
+            color: #ffffff;
+          }
+ 
+          .home-heading .accent {
+            background: linear-gradient(135deg, #07A626, #34d058);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+          }
+ 
+          @media (max-width: 480px) {
+            .hero-heading-wrap { padding: 20px 16px 0; }
+            .home-heading { font-size: 20px; letter-spacing: -0.5px; line-height: 1.3; }
+          }
+        `}
+      </style>
     </>
   )
 }

@@ -313,8 +313,23 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
     const logoCategories = Array.isArray(logo.category)
         ? logo.category.filter(Boolean)
         : (logo.category ? [logo.category] : []);
-    const primaryCategory = logoCategories[0] || "";
+
+    // Logos filed under the "template" category should not surface
+    // Brand / Country / Category / Website details anywhere on the page.
+    const categoryIsTemplate = logoCategories.some(
+        (c) => String(c).trim().toLowerCase() === "template"
+    );
+
+    const primaryCategory = categoryIsTemplate ? "" : (logoCategories[0] || "");
     const categoryDisplay = logoCategories.join(", ");
+
+    const infoCells = categoryIsTemplate
+        ? []
+        : [
+            { icon: "🏷️", label: "Brand", value: logo.brand },
+            { icon: "🌍", label: "Country", value: logo.country },
+            { icon: "📁", label: "Category", value: categoryDisplay },
+        ].filter((item) => item.value && item.value.trim() !== "");
 
     return (
         <>
@@ -745,7 +760,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                             <div className="meta-value">{formatDate(logo.createdAt)}</div>
                                         </div>
                                     </div>
-                                    {logo.website && (
+                                    {logo.website && !categoryIsTemplate && (
                                         <div className="meta-item">
                                             <svg className="meta-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
@@ -786,15 +801,10 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                 )}
                             </div>
 
-                            <div className="card anim d2">
-                                <div className="info-grid">
-                                    {[
-                                        { icon: "🏷️", label: "Brand", value: logo.brand },
-                                        { icon: "🌍", label: "Country", value: logo.country },
-                                        { icon: "📁", label: "Category", value: categoryDisplay },
-                                    ]
-                                        .filter(item => item.value && item.value.trim() !== "")
-                                        .map(item => (
+                            {infoCells.length > 0 && (
+                                <div className="card anim d2">
+                                    <div className="info-grid">
+                                        {infoCells.map(item => (
                                             <div key={item.label} className="info-cell">
                                                 <div className="info-cell-icon" style={{ fontSize: 14 }}>{item.icon}</div>
                                                 <div>
@@ -803,8 +813,9 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <div className="ad-card anim d3" />
                         </div>

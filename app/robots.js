@@ -13,10 +13,6 @@ export default function robots() {
         disallow: "/",
       },
       {
-        userAgent: "ClaudeBot",
-        disallow: "/",
-      },
-      {
         userAgent: "Bytespider",
         disallow: "/",
       },
@@ -26,10 +22,6 @@ export default function robots() {
       },
       {
         userAgent: "Google-Extended",
-        disallow: "/",
-      },
-      {
-        userAgent: "anthropic-ai",
         disallow: "/",
       },
       {

@@ -68,11 +68,12 @@ function scoreMatch(targetWords, nameWords) {
 
 export async function GET(req, { params }) {
   try {
+ console.log("🔥🔥🔥 GET HANDLER CALLED");
     const { slug } = await params;
     const { searchParams } = new URL(req.url);
     const search = (searchParams.get("search") || "").trim().toLowerCase();
     const sort = searchParams.get("sort") || "az";
-
+   console.log(`[GET] enter category group slug=${slug} search=${search} sort=${sort}`);
     const website = await prisma.website.findFirst();
     if (!website?.categories) {
       return Response.json({ error: "No categories configured" }, { status: 404 });
@@ -139,6 +140,12 @@ export async function GET(req, { params }) {
       count: countMap.get(s.name.trim().toLowerCase()) || 0,
     }));
 
+    // ── Fix: drop any subcategory with zero published logos ────────────────
+    // Previously every subcategory from the taxonomy sheet was returned
+    // regardless of whether any logo actually existed for it, so empty
+    // subcategories showed up on the frontend. Only keep ones with count > 0.
+    subcategories = subcategories.filter((s) => s.count > 0);
+
     const totalLogos = subcategories.reduce((sum, s) => sum + s.count, 0);
 
     if (search) {
@@ -154,7 +161,7 @@ export async function GET(req, { params }) {
       slug: targetSlug,
       matchScore: bestScore, // handy for debugging fuzzy matches in dev
       totalLogos,
-      totalSubcategories: subMap.size,
+      totalSubcategories: subcategories.length,
       subcategories,
     });
   } catch (error) {
