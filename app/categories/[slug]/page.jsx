@@ -6,7 +6,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com";
 async function getGroupData(slug) {
   try {
     console.log("enter")
-    const res = await fetch(`/api/catageory/group/${encodeURIComponent(slug)}`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/catageory/group/${encodeURIComponent(slug)}`, {
       cache: "no-store",
     });
     if (!res.ok) return null;

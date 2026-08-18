@@ -172,7 +172,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                     body: JSON.stringify({ slug }),
                 });
                 const data = await res.json();
-                console.log("[LogoDetail] client fetch → related:", data.related || []);
+                console.log("[LogoDetail] client fetch → related:", data|| []);
                 setLogo(data.data || data);
                 setRelated(data.related || []);
             } catch (e) { setError(e.message); }
@@ -316,6 +316,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
 
     // Logos filed under the "template" category should not surface
     // Brand / Country / Category / Website details anywhere on the page.
+    // These fields are fully OMITTED (not rendered blank) when this is true.
     const categoryIsTemplate = logoCategories.some(
         (c) => String(c).trim().toLowerCase() === "template"
     );
@@ -671,7 +672,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                 <span className="breadcrumb-sep">/</span>
                             </>
                         )}
-                        <span className="breadcrumb-current">{logo.logoName}</span>
+                        <h1 className="breadcrumb-current">{logo.logoName}</h1>
                     </nav>
 
                     {/* ── inline search bar ─────────────────────────────────────────── */}

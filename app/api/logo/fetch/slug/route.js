@@ -1,8 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // app/api/logo/fetch/slug/route.js
-// Returns the full logo record (all schema fields) + up-to-5 related logos.
+// Returns the full logo record (all schema fields) + up-to-24 related logos.
 // ─────────────────────────────────────────────────────────────────────────────
 import { prisma } from "../../../../lib/prisma";
+
+const MIN_RELATED = 12;
+const MAX_RELATED = 24;
 
 export async function POST(req) {
   try {
@@ -11,7 +14,7 @@ export async function POST(req) {
       return Response.json({ success: false, error: "Slug is required" }, { status: 400 });
     }
 
-    console.log(`\n[fetch/slug] ── incoming slug: "${slug}"`);
+
 
     const logo = await prisma.logo.findUnique({
       where: { slug },
@@ -74,7 +77,7 @@ export async function POST(req) {
         imageObjectSchema: true,
         breadcrumbSchema: true,
         faqSchema: true,
-
+        downloadedNumberByPeople: true,
         // ── Timestamps ──────────────────────────────────────────────────────
         createdAt: true,
         updatedAt: true,
@@ -99,18 +102,18 @@ export async function POST(req) {
     // ── Related: 1. same brand (case-insensitive) ───────────────────────────
     const byName = logo.brand
       ? await prisma.logo.findMany({
-          where: {
-            brand: { equals: logo.brand, mode: "insensitive" }, // ← fuzzy/case-insensitive fix
-            slug: { not: slug },
-            publishStatus: published,
-          },
-          select: {
-            slug: true, logoName: true, brand: true,
-            webpUrl: true,
-          },
-          take: 5,
-          orderBy: { downloadedNumberByPeople: "desc" },
-        })
+        where: {
+          brand: { equals: logo.brand, mode: "insensitive" }, // ← fuzzy/case-insensitive fix
+          slug: { not: slug },
+          publishStatus: published,
+        },
+        select: {
+          slug: true, logoName: true, brand: true,
+          webpUrl: true,
+        },
+        take: MAX_RELATED,
+        orderBy: { downloadedNumberByPeople: "desc" },
+      })
       : [];
 
     console.log(
@@ -122,23 +125,23 @@ export async function POST(req) {
     const usedSlugs = new Set(byName.map((l) => l.slug));
 
     // ── Related: 2. overlapping category (hasSome, not exact-array equals) ──
-    const rem1 = 5 - byName.length;
+    const rem1 = MAX_RELATED - byName.length;
     const byCategory =
       rem1 > 0 && logoCategories.length > 0
         ? await prisma.logo.findMany({
-            where: {
-              category: { hasSome: logoCategories }, // ← fixed: any overlap, not exact array match
-              slug: { not: slug },
-              publishStatus: published,
-              NOT: { slug: { in: [...usedSlugs] } },
-            },
-            select: {
-              slug: true, logoName: true, brand: true,
-              webpUrl: true,
-            },
-            take: rem1,
-            orderBy: { downloadedNumberByPeople: "desc" },
-          })
+          where: {
+            category: { hasSome: logoCategories }, // ← fixed: any overlap, not exact array match
+            slug: { not: slug },
+            publishStatus: published,
+            NOT: { slug: { in: [...usedSlugs] } },
+          },
+          select: {
+            slug: true, logoName: true, brand: true,
+            webpUrl: true,
+          },
+          take: rem1,
+          orderBy: { downloadedNumberByPeople: "desc" },
+        })
         : [];
 
     console.log(
@@ -150,7 +153,7 @@ export async function POST(req) {
     byCategory.forEach((l) => usedSlugs.add(l.slug));
 
     // ── Related: 3. overlapping tags (case-insensitive fuzzy compare) ───────
-    const rem2 = 5 - byName.length - byCategory.length;
+    const rem2 = MAX_RELATED - byName.length - byCategory.length;
     let byTags = [];
     if (rem2 > 0 && logoTags.length > 0) {
       const candidates = await prisma.logo.findMany({
@@ -186,11 +189,41 @@ export async function POST(req) {
         .join(", ") || "(none)"}`
     );
 
-    const related = [...byName, ...byCategory, ...byTags];
+    byTags.forEach((l) => usedSlugs.add(l.slug));
+
+    let related = [...byName, ...byCategory, ...byTags];
+
+    // ── Related: 4. fallback fill — top up to MIN_RELATED if still short ────
+    const rem3 = MIN_RELATED - related.length;
+    let byFallback = [];
+    if (rem3 > 0) {
+      byFallback = await prisma.logo.findMany({
+        where: {
+          slug: { not: slug },
+          publishStatus: published,
+          NOT: { slug: { in: [...usedSlugs] } },
+        },
+        select: {
+          slug: true, logoName: true, brand: true,
+          webpUrl: true,
+        },
+        take: rem3,
+        orderBy: { downloadedNumberByPeople: "desc" },
+      });
+
+      console.log(
+        `[fetch/slug] step 4 (fallback fill to reach ${MIN_RELATED}): matched ${byFallback.length} → ${byFallback
+          .map((l) => l.slug)
+          .join(", ") || "(none)"}`
+      );
+
+      related = [...related, ...byFallback];
+    }
 
     console.log(
-      `[fetch/slug] ── total related: ${related.length}/5 → ${
-        related.map((l) => l.slug).join(", ") || "(none)"
+      `[fetch/slug] ── total related: ${related.length}/${MAX_RELATED} (min target ${MIN_RELATED}) → ${related
+        .map((l) => l.slug)
+        .join(", ") || "(none)"
       }\n`
     );
 

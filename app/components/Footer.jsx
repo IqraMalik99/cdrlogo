@@ -436,7 +436,7 @@ export default function Footer() {
           {/* ── Bottom bar ── */}
           <div className="cdr-footer-bottom">
             <span className="f-copyright">
-              © 2026 CDRLOGO.com. All rights reserved.
+              All trademarks belong to their respective owners
             </span>
             <div className="f-bottom-right">
               <div className="f-social-row">

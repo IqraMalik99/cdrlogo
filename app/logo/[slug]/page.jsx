@@ -97,9 +97,12 @@ export async function generateMetadata({ params }) {
 
     const ogTitle = logo.ogTitle || metaTitle;
     const ogDescription = logo.ogDescription || metaDescription;
+    // FIX #1 — og:type
     // Logo/image reference page, not a news/blog article — "website" is the
-    // correct og:type. (If a product-style schema is added later, this can
-    // become conditional, e.g. ogType = someCondition ? "product" : "website".)
+    // correct og:type. This is a static value, so every current + future
+    // logo page inherits the fix from this one line. (If a product-style
+    // schema is added later, this can become conditional, e.g.
+    // ogType = someCondition ? "product" : "website".)
     const ogType = "website";
     const ogImage = logo.ogImageUrl || logo.webpUrl || null;
 
@@ -163,7 +166,13 @@ export default async function Page({ params }) {
     related = result.related;
     if (logo) {
       if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
-        // Merge fixed global licensing metadata into every logo page's ImageObject schema.
+        // FIX #4 — copyrightNotice
+        // GLOBAL_IMAGE_LICENSE_META.copyrightNotice is statically set to
+        // "All trademarks belong to their respective owners" above, and is
+        // spread LAST here so it always overrides any stale/wrong value
+        // ("Copyright 2026 CDRLogo") that might be stored in
+        // logo.imageObjectSchema in the database. One static value, applied
+        // to every page's ImageObject schema.
         imageObjectSchema = {
           ...logo.imageObjectSchema,
           ...GLOBAL_IMAGE_LICENSE_META,
@@ -183,7 +192,7 @@ export default async function Page({ params }) {
   const { categories: logoCategories, isTemplate: categoryIsTemplate } =
     getCategoryInfo(logo);
 
-  // ── altText override ──────────────────────────────────────────────────
+  // FIX #2 — altText override (systemic bug fix)
   // The upload/generation pipeline built altText from `brand` (and for some
   // logos, a fallback value like "Other Football") instead of the actual
   // `logoName`, producing wrong alt text such as
@@ -248,7 +257,15 @@ export default async function Page({ params }) {
           hydration/fetch timing. This mirrors (and never contradicts) what
           the client component below shows once it mounts. Brand / Country /
           Category / Website are intentionally omitted for logos in the
-          "template" category. */}
+          "template" category.
+
+          NOTE on FIX #3 (templated description/FAQ content): this block only
+          RENDERS logo.description / logo.faqSchema — it does not generate
+          them. Rotating sentence-structures and injecting unique per-logo
+          context (founding year, industry detail, brand history) has to
+          happen at the source where these fields are generated (the
+          upload/CMS content pipeline), not in this page template. This file
+          can't fix thin/duplicate content on its own. */}
       {logo && (
         <div style={SR_ONLY_STYLE} aria-hidden="false">
           {logo.description && <p>{logo.description}</p>}
