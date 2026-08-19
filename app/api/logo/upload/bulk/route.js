@@ -1050,7 +1050,21 @@ REGARDLESS OF STYLE:
    words (e.g. "archived", "catalogued", "documented", "preserved",
    "compiled", "recorded" are all acceptable alternatives — do not default
    to the same one every time).
-6. Do not open two consecutive sentences with the same word or clause type.`;
+6. Do not open two consecutive sentences with the same word or clause type.
+
+ADDITIONAL VARIATION RULE:
+Beyond the assigned STYLE skeleton, treat it only as a starting direction —
+not a fixed sentence to fill in. Within the same style, further vary:
+- Sentence count (mix 2-sentence and 3-sentence paragraphs across pages)
+- Where the format list (PNG, SVG, AI, CDR) appears — beginning, middle, or end
+- Punctuation rhythm (commas, em-dashes, semicolons) — don't default to the same pattern every time
+- Whether a short standalone sentence is used to close the paragraph
+
+Two pages assigned the same STYLE must never read as structurally
+interchangeable if you swapped their Logo Name/Brand — each should feel
+independently composed, not filled into the same skeleton
+
+`;
 
   // ── Field rules that mention brand — swapped for template ────────────────
   const metaDescriptionFieldRule = isTemplate
