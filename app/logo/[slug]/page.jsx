@@ -213,6 +213,21 @@ export default async function Page({ params }) {
       }
     : logo;
 
+  // FIX #5 — strip Brand/Website/Country/Industry keys entirely for template
+  // logos, not just hide them in the UI. Without this, the full logo object
+  // (including empty "brand":"", "website":"", "country":"" etc.) still gets
+  // serialized into the page's embedded JSON payload used for client
+  // hydration (the self.__next_f.push(...) script blobs in page source),
+  // even though LogoDetail never visually renders them. Deleting the keys
+  // here — before the object is handed to the client component — means
+  // they never reach the HTML source at all for template logos.
+  if (correctedLogo && categoryIsTemplate) {
+    delete correctedLogo.brand;
+    delete correctedLogo.website;
+    delete correctedLogo.country;
+    delete correctedLogo.industry;
+  }
+
   return (
     <>
       {imageObjectSchema && (
@@ -233,39 +248,8 @@ export default async function Page({ params }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}
-      {
-        logo && <h1
-          style={{
-            position: "absolute",
-            width: "1px",
-            height: "1px",
-            padding: 0,
-            margin: "-1px",
-            overflow: "hidden",
-            clip: "rect(0, 0, 0, 0)",
-            clipPath: "inset(50%)",
-            whiteSpace: "nowrap",
-            border: 0,
-          }}
-        >
-          {`${logo.logoName} – PNG SVG Vector | cdrlogo.com`}
-        </h1>
-      }
-
-      {/* SEO-critical content, rendered directly on the server so it's
-          present in the initial HTML response regardless of client-side
-          hydration/fetch timing. This mirrors (and never contradicts) what
-          the client component below shows once it mounts. Brand / Country /
-          Category / Website are intentionally omitted for logos in the
-          "template" category.
-
-          NOTE on FIX #3 (templated description/FAQ content): this block only
-          RENDERS logo.description / logo.faqSchema — it does not generate
-          them. Rotating sentence-structures and injecting unique per-logo
-          context (founding year, industry detail, brand history) has to
-          happen at the source where these fields are generated (the
-          upload/CMS content pipeline), not in this page template. This file
-          can't fix thin/duplicate content on its own. */}
+     
+   
       {logo && (
         <div style={SR_ONLY_STYLE} aria-hidden="false">
           {logo.description && <p>{logo.description}</p>}
