@@ -4,15 +4,9 @@ import sharp from "sharp";
 import OpenAI from "openai";
 import { uploadToR2 } from "../../../../lib/uploadToR2";
 import { prisma } from "../../../../lib/prisma";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { r2 } from "../../../../lib/r2";
 import {
-  extractCategoryEntries,
-  findCategoryMatchLLM,
-  findCategoryMatch,
   buildCategoryTreeFromText,
   validateMainSubAgainstTree,
-  resolveOfficialWebsite,
 } from "../../../../lib/categoryMatch";
 import { CATEGORY_TAXONOMY_TEXT } from "../../../../lib/Categorytaxonomytext";
 
@@ -249,8 +243,48 @@ function hasEducationalPhrase(text) {
   return EDUCATIONAL_PHRASES.some((p) => lower.includes(p));
 }
 
+// Standalone literal "brand"/"company" word check — only relevant for
+// TEMPLATE logos, where there is no real brand and the model must never
+// fall back to using the word "brand" as a placeholder subject (e.g.
+// "by brand", "this brand", "the company") since that reads as spam/thin
+// content to Google. Uses \b so it doesn't flag "branded"/"brandable" etc.
+// mid-word — those are still awkward but the exact placeholder phrases are
+// the actual issue, so we match the literal standalone tokens.
+const PLACEHOLDER_BRAND_PATTERN = /\b(by brand|the brand|this brand|a brand|brand's|the company)\b/i;
+
+function containsPlaceholderBrandWord(text) {
+  if (!text) return false;
+  return PLACEHOLDER_BRAND_PATTERN.test(String(text));
+}
+
+function scanTemplateFieldsForPlaceholderBrand(parsed) {
+  const hits = [];
+  const fields = {
+    meta_title: parsed.meta_title,
+    meta_description: parsed.meta_description,
+    main_description: parsed.main_description,
+    alt_text: parsed.alt_text,
+    og_title: parsed.og_title,
+    og_description: parsed.og_description,
+    twitter_title: parsed.twitter_title,
+    twitter_description: parsed.twitter_description,
+    image_object_description: parsed.image_object_description,
+  };
+  for (const [field, value] of Object.entries(fields)) {
+    if (containsPlaceholderBrandWord(value)) hits.push(field);
+  }
+  if (Array.isArray(parsed.faq)) {
+    parsed.faq.forEach((qa, i) => {
+      if (containsPlaceholderBrandWord(qa?.answer) || containsPlaceholderBrandWord(qa?.question)) {
+        hits.push(`faq[${i}]`);
+      }
+    });
+  }
+  return hits;
+}
+
 // ── Validate AI response against hard rules ───────────────────────────────────
-function validateAIContent(parsed, { usedTitles = [], usedOpeners = [] } = {}) {
+function validateAIContent(parsed, { usedTitles = [], usedOpeners = [], usedFaqQuestions = [], isTemplate = false } = {}) {
   const violations = [];
 
   const fieldsToScan = {
@@ -274,6 +308,14 @@ function validateAIContent(parsed, { usedTitles = [], usedOpeners = [] } = {}) {
     parsed.faq.forEach((qa, i) => {
       const hit = containsBannedPhrase(qa?.answer);
       if (hit) violations.push(`faq[${i}].answer contains banned phrase: "${hit}"`);
+      if (
+        qa?.question &&
+        usedFaqQuestions.some(
+          (q) => q && q.trim().toLowerCase() === String(qa.question).trim().toLowerCase()
+        )
+      ) {
+        violations.push(`faq[${i}].question duplicates a previous page's FAQ question`);
+      }
     });
   }
 
@@ -300,6 +342,13 @@ function validateAIContent(parsed, { usedTitles = [], usedOpeners = [] } = {}) {
     if (opener && usedOpeners.some((o) => o && o.trim().toLowerCase() === opener)) {
       violations.push("main_description opening sentence duplicates a previous page's opening sentence");
     }
+  }
+
+  if (isTemplate) {
+    const placeholderHits = scanTemplateFieldsForPlaceholderBrand(parsed);
+    placeholderHits.forEach((field) =>
+      violations.push(`${field} uses placeholder word "brand"/"company" on a TEMPLATE logo (no real brand exists)`)
+    );
   }
 
   return violations;
@@ -348,6 +397,48 @@ function buildFaqSchema(faqPairs) {
   };
 }
 
+
+// ── site-wide sample of template main_descriptions, independent of
+// logo-name matching. Used ONLY to diversify main_description openers for
+// TEMPLATE-category logos across unrelated names (e.g. different club crests).
+async function getRecentTemplateDescriptionSamples(excludeSlugs = [], limit = 12) {
+  const rows = await prisma.logo.findMany({
+    where: {
+      category: { has: "template" },
+      ...(excludeSlugs.length ? { slug: { notIn: excludeSlugs } } : {}),
+    },
+    select: { description: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  const fullDescriptions = rows.map((r) => (r.description || "").trim()).filter(Boolean);
+  const openers = fullDescriptions
+    .map((d) => d.split(/[.!?]/)[0].trim())
+    .filter(Boolean);
+  return { openers, fullDescriptions };
+}
+
+// ── site-wide sample of BRAND main_descriptions within the same
+// sub_category, independent of logo-name matching. Used to diversify
+// main_description openers AND body phrasing for non-template logos across
+// unrelated brands in the same category (e.g. different football clubs).
+async function getRecentBrandDescriptionSamples(subCategory, excludeSlugs = [], limit = 12) {
+  if (!subCategory) return { openers: [], fullDescriptions: [] };
+  const rows = await prisma.logo.findMany({
+    where: {
+      category: { has: subCategory },
+      ...(excludeSlugs.length ? { slug: { notIn: excludeSlugs } } : {}),
+    },
+    select: { description: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  const fullDescriptions = rows.map((r) => (r.description || "").trim()).filter(Boolean);
+  const openers = fullDescriptions
+    .map((d) => d.split(/[.!?]/)[0].trim())
+    .filter(Boolean);
+  return { openers, fullDescriptions };
+}
 // ── DB: find related / exact matches ─────────────────────────────────────────
 async function findRelatedLogos(logoName) {
   const words = getSignificantWords(logoName);
@@ -369,6 +460,7 @@ async function findRelatedLogos(logoName) {
       country: true,
       industry: true,
       slug: true,
+      faqSchema: true,
     },
     orderBy: { createdAt: "desc" },
     take: 20,
@@ -387,6 +479,16 @@ function stripAccents(text) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 }
+
+// ── deterministic backstop for the missing-space-after-period bug in
+// main_description (e.g. "reference.Users" → "reference. Users"). Runs
+// regardless of whether the model followed the prompt's spacing instruction
+// — only affects main_description, nothing else.
+function fixMissingSpaceAfterPeriod(text) {
+  if (!text) return text;
+  return text.replace(/([.!?])([A-Z])/g, "$1 $2");
+}
+
 // ── Auto-version name ─────────────────────────────────────────────────────────
 function generateVersionedName(logoName, exactNormalizedMatches) {
   const usedVersions = new Set();
@@ -424,51 +526,9 @@ async function callOpenAIWithRetry(params, retries = 1) {
   }
 }
 
-// ── AI content generation (identical prompt to single-upload) ─────────────────
-async function generateAIContent({
-  logoName,
-  userCategory,
-  availableCategories,
-  relatedLogos,
-  canonicalUrl,
-}) {
-  const isVariant = relatedLogos.length > 0;
-
-  const STYLE_LETTERS = ["A", "B", "C", "D"];
-  const forcedStyle = STYLE_LETTERS[Math.floor(Math.random() * 4)];
-  console.log(`  [style] Forced style for this logo: STYLE ${forcedStyle}`);
-
-  const relatedContext = isVariant
-    ? relatedLogos
-      .slice(0, 5)
-      .map(
-        (r, i) =>
-          `Previous version ${i + 1}:\n- Name: ${r.logoName}\n- Meta Title: ${r.metaTitle || "N/A"}\n- Meta Description: ${r.metaDescription || "N/A"}\n- Description: ${r.description || "N/A"}\n- Tags: ${Array.isArray(r.tags) ? r.tags.join(", ") : "N/A"}`
-      )
-      .join("\n\n")
-    : "";
-
-  const usedOpeners = isVariant
-    ? relatedLogos
-      .map((r) => (r.description || "").split(/[.!?]/)[0].trim())
-      .filter(Boolean)
-    : [];
-  const hasCategoryList = availableCategories.length > 0;
-  const categoryTree = buildCategoryTreeFromText(CATEGORY_TAXONOMY_TEXT);
-  // NOTE: categoryTreeLines() no longer used to build the prompt — GPT now
-  // gets CATEGORY_TAXONOMY_TEXT verbatim (imported above). categoryTree is
-  // still needed here for validating GPT's answer against real values.
-
-  // ── STEP 1: category-only call — main_category + sub_category ONLY. ───────
-  // This is deliberately separated from the content call so brand/country can
-  // be resolved from our own records (findCategoryMatch) BEFORE any SEO copy
-  // is written, instead of letting GPT guess brand/country itself.
-  let mainCategory = "";
-  let subCategory = "";
-
-  if (hasCategoryList) {
-    console.log("iqra", logoName, CATEGORY_TAXONOMY_TEXT);
-    const categoryPrompt = `You are classifying a logo NAME into the closest matching entry in a fixed taxonomy.
+// ── STEP 1: classify main_category / sub_category from the logo NAME only ───
+async function classifyCategory({ logoName }) {
+  const categoryPrompt = `You are classifying a logo NAME into the closest matching entry in a fixed taxonomy.
 
 You have NO image and NO extra context. You only have the logo name and your own knowledge of real-world brands.
 
@@ -507,14 +567,14 @@ Return ONLY valid JSON:
   "sub_category": "..."
 }`;
 
-    try {
-      const catCompletion = await callOpenAIWithRetry({
-        model: "gpt-5.4-mini",
-        temperature: 0,
-        messages: [
-          {
-            role: "system",
-            content: `You classify logo names into a fixed taxonomy. Your core skill is knowing what real brands actually make, sell, or do — not guessing from what a word sounds like or evokes.
+  try {
+    const catCompletion = await callOpenAIWithRetry({
+      model: "gpt-5.4-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: `You classify logo names into a fixed taxonomy. Your core skill is knowing what real brands actually make, sell, or do — not guessing from what a word sounds like or evokes.
 
 You ALWAYS perform two separate steps: (1) recall what the real-world brand behind this name is actually known for — its actual products, services, or industry, based on genuine brand knowledge (e.g. Canon = cameras/printers, not artillery; Dove = soap, not bird; Puma = sportswear, not animal) — THEN (2) match that real identity to the closest taxonomy entry.
 
@@ -523,26 +583,140 @@ You never classify based on the literal/surface meaning of the word when you kno
 main_category and sub_category are copied EXACTLY from the provided taxonomy, never invented. Both fields are always required.
 
 Return ONLY JSON, no markdown, no commentary.`
-          },
-          { role: "user", content: categoryPrompt },
-        ],
-        response_format: { type: "json_object" },
-      });
+        },
+        { role: "user", content: categoryPrompt },
+      ],
+      response_format: { type: "json_object" },
+    });
 
-      const catRaw = catCompletion.choices[0]?.message?.content || "{}";
-      let catParsed = {};
-      try { catParsed = JSON.parse(catRaw); } catch { catParsed = {}; }
-      mainCategory = (catParsed.main_category && String(catParsed.main_category).trim()) || "template";
-      subCategory = (catParsed.sub_category && String(catParsed.sub_category).trim()) || "";
-      if (catParsed.reasoning) console.log(`  [ai:category] reasoning: ${catParsed.reasoning}`);
-      // ── RAW LLM PICK — exactly what GPT returned, before any validation ──
-      console.log(`  [ai:category] RAW pick from LLM → main_category: "${mainCategory}" | sub_category: "${subCategory}"`);
-    } catch (err) {
-      console.warn(`  [ai:category] Failed, defaulting to "template": ${err.message}`);
-      mainCategory = "template";
-      subCategory = "";
-    }
+    const catRaw = catCompletion.choices[0]?.message?.content || "{}";
+    let catParsed = {};
+    try { catParsed = JSON.parse(catRaw); } catch { catParsed = {}; }
+    const mainCategory = (catParsed.main_category && String(catParsed.main_category).trim()) || "template";
+    const subCategory = (catParsed.sub_category && String(catParsed.sub_category).trim()) || "";
+    if (catParsed.reasoning) console.log(`  [ai:category] reasoning: ${catParsed.reasoning}`);
+    console.log(`  [ai:category] RAW pick from LLM → main_category: "${mainCategory}" | sub_category: "${subCategory}"`);
+    return { mainCategory, subCategory };
+  } catch (err) {
+    console.warn(`  [ai:category] Failed, defaulting to "template": ${err.message}`);
+    return { mainCategory: "template", subCategory: "" };
   }
+}
+
+// ── URL validity guard ────────────────────────────────────────────────────────
+function isPlausibleUrl(value) {
+  if (!value || typeof value !== "string") return false;
+  try {
+    const u = new URL(value.trim());
+    return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+// ── Merged brand + country + industry + website resolution ──────────────────
+// Pure LLM, single call, using genuine real-world brand knowledge. Only
+// called for NON-template logos.
+async function resolveBrandCountryIndustryWebsite({ logoName, mainCategory, subCategory }) {
+  const prompt = `You are identifying the REAL, official brand behind a logo name, using only your own knowledge.
+
+Logo Name    : ${logoName}
+Main Category: ${mainCategory}
+Sub Category : ${subCategory}
+
+TASK:
+1. Identify the real-world company/brand this logo name refers to.
+2. State the country the brand is headquartered / originates from.
+3. State the specific industry/sector it operates in (a short phrase, e.g. "Athletic Footwear & Apparel", "Fast Food Restaurants", "Consumer Electronics").
+4. Identify the brand's real, official website — the root domain the company itself owns (e.g. "https://nike.com"), NOT a Wikipedia page, news article, social profile, or marketplace listing.
+
+CONFIDENCE RULE:
+- If "${logoName}" corresponds to a real, identifiable brand you have genuine knowledge of, you MUST fill in brand, country, industry, and website — do not leave them blank out of general caution. Commit to the answer.
+- Only return empty strings for a field (or all fields) if the logo name does NOT correspond to any real, identifiable brand you actually know (e.g. it looks like a generic/made-up/placeholder name). Never fabricate a plausible-looking answer for a brand you don't actually recognize.
+- For website specifically: return it only if you are near-certain of the exact domain. If confident about brand/country/industry but unsure of the exact domain, still return brand/country/industry and leave website as "".
+
+Return ONLY valid JSON:
+{
+  "confident_real_brand": true or false,
+  "reasoning": "one short sentence",
+  "brand": "...",
+  "country": "...",
+  "industry": "...",
+  "website": "https://example.com" or ""
+}`;
+
+  try {
+    const completion = await callOpenAIWithRetry({
+      model: "gpt-4.1-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You identify real-world brands, their country, industry, and official website from genuine knowledge only. You commit confidently when you actually know the brand, and you only return blanks when the name truly doesn't correspond to any real brand you recognize. You never fabricate a plausible-looking website domain you aren't sure about. Return only JSON. ",
+        },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const raw = completion.choices[0]?.message?.content || "{}";
+    let parsed = {};
+    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+
+    const brand = (parsed.brand && String(parsed.brand).trim()) || "";
+    const country = (parsed.country && String(parsed.country).trim()) || "";
+    const industry = (parsed.industry && String(parsed.industry).trim()) || "";
+    const website = isPlausibleUrl(parsed.website) ? String(parsed.website).trim() : "";
+
+    if (parsed.reasoning) console.log(`  [brand+website:llm] reasoning: ${parsed.reasoning}`);
+    console.log(`  [brand+website:llm] brand="${brand || "(none)"}" | country="${country || "(none)"}" | industry="${industry || "(none)"}" | website="${website || "(none)"}"`);
+
+    return { brand, country, industry, website };
+  } catch (err) {
+    console.warn(`  [brand+website:llm] Failed: ${err.message}`);
+    return { brand: "", country: "", industry: "", website: "" };
+  }
+}
+
+// ── FAQ topic pool (expanded so every logo doesn't get the same 3 questions) ─
+const FAQ_TOPIC_POOL = [
+  "What file formats is this logo available in?",
+  "Is this logo available in vector format?",
+  "Can I use this logo for educational purposes?",
+  "What is the difference between the PNG and SVG versions of this logo?",
+  "Is this logo suitable for design study or research reference?",
+  "What is a CDR file and why is it included with this logo?",
+  "Can this logo be resized without losing quality?",
+  "What is the recommended use case for the AI file format of this logo?",
+  "How is this logo archived on cdrlogo.com?",
+  "What is the significance of having both raster and vector formats for this logo?",
+  "Is a high-resolution version of this logo available for reference?",
+  "What industry or category does this logo belong to?",
+];
+
+// ── AI content generation ──────────────────────────────────────────────────
+async function generateAIContent({
+  logoName,
+  isManualTemplate,
+  relatedLogos,
+  canonicalUrl,
+}) {
+  const isVariant = relatedLogos.length > 0;
+
+  // ── STEP 1: category classification (or manual template override) ───────
+  let mainCategory = "template";
+  let subCategory = "";
+
+  if (!isManualTemplate) {
+    const classified = await classifyCategory({ logoName });
+    mainCategory = classified.mainCategory;
+    subCategory = classified.subCategory;
+  } else {
+    console.log(`  [ai:category] Manual override → forced "template"`);
+  }
+
+  const categoryTree = buildCategoryTreeFromText(CATEGORY_TAXONOMY_TEXT);
   const mainCategoryFromLLM = mainCategory;
   const subCategoryFromLLM = subCategory;
 
@@ -558,39 +732,95 @@ Return ONLY JSON, no markdown, no commentary.`
     console.log(`  [ai:category] VALIDATED pick unchanged → main: "${mainCategory}" | sub: "${subCategory}"`);
   }
 
-  // ── Brand resolution: EXACT category match + LLM-based brand match ────────
-  // main_category/sub_category are matched EXACTLY (case-insensitive,
-  // accent/whitespace-normalized) against website.categories (DB). Among the
-  // resulting candidates, the LLM picks whichever candidate's brand/synonyms
-  // genuinely refer to the same real-world brand as the logo name.
-  const { match: categoryMatch, log: matchLog } = await findCategoryMatchLLM(
-    openai,
-    availableCategories,
-    mainCategory,
-    subCategory,
-    logoName
-  );
-  matchLog.forEach((l) => console.log(`  [brand:fuzzy] ${l}`));
-  console.log(
-    `  [category] main: "${mainCategory}" | sub: "${subCategory}" | matched: ${categoryMatch ? `${categoryMatch.brand} / ${categoryMatch.country || "(no country)"}` : "none"}`
-  );
+  const isTemplate = mainCategory === "template";
 
-  const resolvedBrand = categoryMatch?.brand || "";
-  const resolvedCountry = categoryMatch?.country || "";
-  const resolvedIndustry = categoryMatch?.etype || "";
-  // Website: category rows don't carry a url, so this is a dedicated
-  // single-purpose LLM call (isolated from the 15-field content prompt for
-  // reliability), gated by a strict confidence rule + isPlausibleUrl() so a
-  // guess can never silently slip through.
-  const { website: resolvedWebsite, reasoning: websiteReasoning } = await resolveOfficialWebsite({
-    openai,
-    logoName,
-    brand: resolvedBrand,
-  });
-  console.log(`  [website:llm] brand="${resolvedBrand}" → website="${resolvedWebsite || "(none)"}"`);
-  const websiteFromDB = false;
+  // ── STEP 2: brand + country + industry + website ─────────────────────────
+  let resolvedBrand = "";
+  let resolvedCountry = "";
+  let resolvedIndustry = "";
+  let resolvedWebsite = "";
 
-  // ── System prompt ─────────────────────────────────────────────────────────
+  if (!isTemplate) {
+    const resolved = await resolveBrandCountryIndustryWebsite({
+      logoName,
+      mainCategory,
+      subCategory,
+    });
+    resolvedBrand = resolved.brand;
+    resolvedCountry = resolved.country;
+    resolvedIndustry = resolved.industry;
+    resolvedWebsite = resolved.website;
+  } else {
+    console.log(`  [brand+website] Skipped — TEMPLATE category, no brand/country/industry/website.`);
+  }
+
+  // ── Style assignment ──────────────────────────────────────────────────────
+  const TEMPLATE_STYLE_LETTERS = ["A", "B", "C", "D"];
+  const BRAND_STYLE_LETTERS = ["A", "B", "C", "D", "E", "F"];
+  const forcedStyle = isTemplate
+    ? TEMPLATE_STYLE_LETTERS[Math.floor(Math.random() * TEMPLATE_STYLE_LETTERS.length)]
+    : BRAND_STYLE_LETTERS[Math.floor(Math.random() * BRAND_STYLE_LETTERS.length)];
+  console.log(`  [style] Forced style for this logo: STYLE ${forcedStyle} ${isTemplate ? "(template, 4-style pool)" : "(brand, 6-style pool)"}`);
+
+  const relatedContext = isVariant
+    ? relatedLogos
+      .slice(0, 5)
+      .map(
+        (r, i) =>
+          `Previous version ${i + 1}:\n- Name: ${r.logoName}\n- Meta Title: ${r.metaTitle || "N/A"}\n- Meta Description: ${r.metaDescription || "N/A"}\n- Description: ${r.description || "N/A"}\n- Tags: ${Array.isArray(r.tags) ? r.tags.join(", ") : "N/A"}`
+      )
+      .join("\n\n")
+    : "";
+
+  const usedOpeners = isVariant
+    ? relatedLogos
+      .map((r) => (r.description || "").split(/[.!?]/)[0].trim())
+      .filter(Boolean)
+    : [];
+
+  let siteWideTemplateOpeners = [];
+  let siteWideTemplateFullSamples = [];
+  if (isTemplate) {
+    const templateSamples = await getRecentTemplateDescriptionSamples(
+      relatedLogos.map((r) => r.slug).filter(Boolean)
+    );
+    siteWideTemplateOpeners = templateSamples.openers;
+    siteWideTemplateFullSamples = templateSamples.fullDescriptions;
+  }
+
+  let siteWideBrandOpeners = [];
+  let siteWideBrandFullSamples = [];
+  if (!isTemplate) {
+    const brandSamples = await getRecentBrandDescriptionSamples(
+      subCategory,
+      relatedLogos.map((r) => r.slug).filter(Boolean)
+    );
+    siteWideBrandOpeners = brandSamples.openers;
+    siteWideBrandFullSamples = brandSamples.fullDescriptions;
+  }
+
+  const mainDescriptionOpeners = [...usedOpeners, ...siteWideTemplateOpeners, ...siteWideBrandOpeners];
+  const mainDescriptionFullSamples = isTemplate ? siteWideTemplateFullSamples : siteWideBrandFullSamples;
+
+  const usedFaqQuestions = isVariant
+    ? relatedLogos
+      .flatMap((r) => {
+        const mainEntity = r?.faqSchema?.mainEntity;
+        return Array.isArray(mainEntity) ? mainEntity.map((q) => q?.name).filter(Boolean) : [];
+      })
+    : [];
+
+  // ── System prompt (shared) ────────────────────────────────────────────────
+  const brandFactsBlock = isTemplate
+    ? `NOTE: This logo has NO confirmed real-world brand, company, country, or industry on record. Do NOT invent one. Refer only to the Logo Name and the file formats — never to "the brand" or "the company" as a stand-in subject.`
+    : `1. Brand, country, and industry are FIXED facts supplied to you for every
+   logo — never identify, guess, or override them yourself.
+
+2. Website is normally a FIXED fact too. On the rare occasion it is marked
+   UNKNOWN, leave it blank — never guess.
+
+3. NEVER invent fake companies, websites, or facts not given to you.`;
+
   const systemPrompt = `You are a senior SEO specialist generating metadata for cdrlogo.com, a professional logo reference archive website.
 
 Your purpose is to generate SEO content for logo pages while following STRICT compliance rules.
@@ -626,14 +856,7 @@ NEVER sound like:
 BRAND IDENTIFICATION RULES
 ==================================================
 
-1. Brand, country, and industry are FIXED facts supplied to you for every
-   logo — never identify, guess, or override them yourself.
-
-2. Website is normally a FIXED fact too. On the rare occasion it is marked
-   UNKNOWN, you may fill it in yourself — but ONLY under the strict
-   confidence rule given in the user prompt. If in doubt, leave it blank.
-
-3. NEVER invent fake companies, websites, or facts not given to you.
+${brandFactsBlock}
 
 ==================================================
 GLOBAL ABSOLUTE BANNED WORDS
@@ -685,6 +908,7 @@ Marketing/promotional language of any kind
 Cutting-edge
 Innovative
 Stunning
+${isTemplate ? `\nThe standalone words/phrases "brand", "the brand", "by brand", "this brand", "a brand", "brand's", "the company" — used as a stand-in subject in place of a real name — are ALSO absolutely banned in this response, because this logo has no confirmed brand on record. Use the Logo Name instead, every time.` : ""}
 
 ==================================================
 PRIORITY ORDER
@@ -729,7 +953,304 @@ Note: main_description has ADDITIONAL banned words beyond this global list
 — see the "MAIN_DESCRIPTION — ABSOLUTE BANNED WORDS" section in the user
 prompt. Both lists apply simultaneously.`;
 
-  // ── User prompt (identical to single-upload) ──────────────────────────────
+  // ── Fixed-facts block for user prompt ─────────────────────────────────────
+  const fixedFactsBlock = isTemplate
+    ? `Brand   : NONE ON RECORD — this is a TEMPLATE-category logo. Do not mention a brand, company, or industry at all. Refer only to "${logoName}" and the file formats.
+Country : NONE ON RECORD — do not mention a country.
+Industry: NONE ON RECORD — do not mention an industry or sector.
+Website : NONE ON RECORD — do not mention a website.
+
+IMPORTANT: Do not output brand_used / country_used / industry_used / website_used at all for this logo — none of these fields exist for TEMPLATE logos.`
+    : `Brand   : ${resolvedBrand || ""} (FIXED — from real-world brand knowledge, not generated by you here. Use exactly this string, do not alter, translate, or second-guess it.)
+Country : ${resolvedCountry || ""} (FIXED — use exactly this string.)
+Industry: ${resolvedIndustry || "Logo Design & Graphics"} (FIXED — use exactly this string.)
+Website : ${resolvedWebsite
+      ? `${resolvedWebsite} (FIXED — use exactly this string.)`
+      : `UNKNOWN — leave website_used as "".`}
+
+IMPORTANT: Do not output brand_used / country_used / industry_used at all —
+brand, country, and industry are FIXED facts, never generated by you.
+website_used is the only field you may need to leave blank if UNKNOWN above.`;
+
+
+  const styleSection = isTemplate
+    ? `STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION 120–160 words — MANDATORY
+==================================================
+
+This logo is a TEMPLATE-category logo with NO confirmed brand, country, or
+industry. This logo has been externally assigned: STYLE ${forcedStyle}
+
+This assignment is NOT your choice — it was randomly generated in code to
+guarantee stylistic variation across the entire site. You MUST write
+main_description using STYLE ${forcedStyle} below. Do NOT use any other
+style. Do NOT reference a brand, company, country, or industry anywhere,
+regardless of which style is assigned.
+
+Each style below lists several example openers. These are illustrations of
+the PATTERN only — do not copy any of them verbatim. Pick a different
+sentence skeleton and vocabulary than the examples shown.
+
+STYLE A — Format-first:
+Start with the file formats or the Logo Name as the subject.
+Examples of the PATTERN (do not copy wording):
+- "PNG, SVG, AI, and CDR files of the [Logo Name] are archived here as scalable vector assets for reference use."
+- "Archived in PNG, SVG, AI, and CDR, the [Logo Name] is stored here as a set of scalable vector files for research reference."
+- "Scalable vector versions of the [Logo Name] — spanning PNG, SVG, AI, and CDR — are catalogued on this page for design study."
+
+STYLE B — Archive-purpose-first:
+Start with the archival/educational purpose as the subject.
+Examples of the PATTERN (do not copy wording):
+- "This entry documents the [Logo Name] for research and educational reference, available in PNG, SVG, AI, and CDR vector file formats."
+- "Compiled as part of this reference archive, the [Logo Name] can be studied here in PNG, SVG, AI, and CDR vector formats."
+- "For educational and research reference, this page catalogues the [Logo Name] across PNG, SVG, AI, and CDR scalable vector files."
+
+STYLE C — Name-descriptive-first:
+Start with the Logo Name itself as the subject, described through its file nature.
+Examples of the PATTERN (do not copy wording):
+- "The [Logo Name] is preserved here as a set of scalable vector files — PNG, SVG, AI, and CDR — for research and design study."
+- "Rendered in PNG, SVG, AI, and CDR, the [Logo Name] exists on this page as scalable vector artwork for reference examination."
+
+STYLE D — Technical/vector-first:
+Start with the vector/technical nature of the files as the subject.
+Examples of the PATTERN (do not copy wording):
+- "Presented in scalable vector form, spanning PNG, SVG, AI, and CDR, the [Logo Name] serves as a reference asset for archival study."
+- "Available as scalable vector artwork across PNG, SVG, AI, and CDR, the [Logo Name] is catalogued here for design and research reference."
+
+REGARDLESS OF STYLE:
+1. Never reuse the same paragraph structure or sentence order as any
+   previous page for this logo (see PREVIOUS PAGES below, if applicable).
+2. Do not swap synonyms (presented/features/offers/provides) while keeping
+   the same sentence skeleton — that still counts as a repeated template.
+3. Vary sentence length and rhythm across the paragraph — mix at least one
+   short sentence (under 12 words) with at least one longer sentence.
+4. Use varied, precise vocabulary rather than repeating the same connector
+   words every time (e.g. "archived", "catalogued", "documented",
+   "preserved", "compiled", "recorded" are all acceptable alternatives).
+5. Do not open two consecutive sentences with the same word or clause type.
+6. Never write "brand", "the brand", "by brand", "this brand", "a brand",
+   or "the company" anywhere — refer to "${logoName}" by name instead.
+${mainDescriptionOpeners.length ? `
+SITE-WIDE STRUCTURAL DIVERSITY CHECK — MANDATORY:
+The following are opening sentences already used on OTHER template-category
+logo pages on this site (unrelated names, same category). Your opening
+sentence for main_description must not match any of these in sentence
+skeleton, clause order, or connector words — not just avoid exact wording:
+${mainDescriptionOpeners.map((o) => `- "${o}"`).join("\n")}
+` : ""}
+${mainDescriptionFullSamples.length ? `
+BODY-PHRASE DIVERSITY CHECK — MANDATORY (applies to the WHOLE paragraph, not just the opener):
+The following are FULL main_description paragraphs already used on OTHER
+template-category logo pages on this site. Do not reuse any of their
+mid-paragraph or closing connective phrases (e.g. matching phrase pairs like
+"design study and research reference", "professional [x] sector/industry",
+"comprehensive/expanded understanding of [x]'s visual identity") even if the
+opening sentence differs. Read these fully, then write body and closing
+sentences using different phrasing and different connective structure:
+${mainDescriptionFullSamples.map((d, i) => `- Sample ${i + 1}: "${d}"`).join("\n")}
+` : ""}`
+    : `STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION 120–160 words  — MANDATORY
+==========================================================================================
+
+This logo has been externally assigned: STYLE ${forcedStyle}
+
+This assignment is NOT your choice — it was randomly generated in code to
+guarantee stylistic variation across the entire site. You MUST write
+main_description using STYLE ${forcedStyle} below. Do NOT use any other
+style. Do NOT blend multiple styles together. Do NOT default to the style
+that "feels most natural" — use STYLE ${forcedStyle}, exactly as described.
+
+Each style below lists several example openers. These are illustrations of
+the PATTERN only — do not copy any of them verbatim. Pick a different
+sentence skeleton and vocabulary than the examples shown, and vary word
+choice, clause order, and sentence length so the final paragraph reads as
+freshly written rather than templated.
+
+STYLE A — Format-first:
+Start with the file formats as the subject.
+Examples of the PATTERN (do not copy wording):
+- "PNG, SVG, AI, and CDR files of the [Logo Name] are archived here as scalable vector assets for reference use."
+- "Archived in PNG, SVG, AI, and CDR, the [Logo Name] is stored here as a set of scalable vector files for research reference."
+- "Scalable vector versions of the [Logo Name] — spanning PNG, SVG, AI, and CDR — are catalogued on this page for design study."
+
+STYLE B — Brand-first (requires confirmed brand, industry, AND country):
+Start with the brand as the subject.
+Examples of the PATTERN (do not copy wording):
+- "[Brand], a [industry] company from [country], is represented here through its [Logo Name], archived in PNG, SVG, AI, and CDR scalable vector formats."
+- "Originating in [country], [Brand] operates within the [industry] sector; its [Logo Name] is catalogued here in PNG, SVG, AI, and CDR vector form for reference use."
+- "The [Logo Name] belongs to [Brand], a [country]-based name in [industry], and is preserved on this page across PNG, SVG, AI, and CDR vector formats."
+
+STYLE C — Archive-purpose-first:
+Start with the archive purpose as the subject.
+Examples of the PATTERN (do not copy wording):
+- "This entry documents the [Logo Name] for research and educational reference, available in PNG, SVG, AI, and CDR vector file formats."
+- "Compiled as part of this reference archive, the [Logo Name] can be studied here in PNG, SVG, AI, and CDR vector formats."
+- "For educational and research reference, this page catalogues the [Logo Name] across PNG, SVG, AI, and CDR scalable vector files."
+
+STYLE D — Industry-context-first (requires confirmed industry AND country):
+Start with the industry as the subject.
+Examples of the PATTERN (do not copy wording):
+- "Within the [industry] sector, the [Logo Name] is preserved here as scalable vector artwork in PNG, SVG, AI, and CDR formats for educational study."
+- "The [industry] sector in [country] is represented on this page by the [Logo Name], catalogued in PNG, SVG, AI, and CDR vector formats for reference use."
+- "As an example from the [industry] field, the [Logo Name] is archived in PNG, SVG, AI, and CDR vector formats for research and design study."
+
+STYLE E — Country/origin-first (requires confirmed country):
+Start with the brand's country/origin as the subject.
+Examples of the PATTERN (do not copy wording):
+- "Headquartered in [country], [Brand] is represented here through its [Logo Name], available in PNG, SVG, AI, and CDR vector formats for reference use."
+- "Originating from [country], [Brand]'s [Logo Name] is documented on this page in PNG, SVG, AI, and CDR scalable vector form."
+- "[Country] is home to [Brand], whose [Logo Name] is catalogued here across PNG, SVG, AI, and CDR vector formats for research reference."
+
+STYLE F — Official-source-first (requires confirmed website):
+Start by referencing the brand's real, official web presence.
+Examples of the PATTERN (do not copy wording):
+- "As documented at [website], [Brand]'s [Logo Name] is preserved here in PNG, SVG, AI, and CDR vector formats for research reference."
+- "[Brand], whose official presence is [website], is represented on this page through its [Logo Name], archived in PNG, SVG, AI, and CDR."
+- "Operating via [website], [Brand] is catalogued here through the [Logo Name], available in PNG, SVG, AI, and CDR scalable vector form."
+
+FALLBACK RULE (applies if the assigned style is STYLE B, D, E, or F):
+STYLE B requires a confidently identified brand. STYLE D requires industry
+AND country. STYLE E requires a confirmed country. STYLE F requires a
+confirmed, real website. If you cannot confidently confirm the required
+fact(s) for your assigned style, fall back to STYLE A instead. Do NOT
+fabricate brand, industry, country, or website details just to force-fit
+STYLE ${forcedStyle}.
+
+REGARDLESS OF STYLE:
+1. Never reuse the same paragraph structure or sentence order as any
+   previous page for this logo (see PREVIOUS PAGES above, if applicable).
+2. Do not swap synonyms (presented/features/offers/provides) while keeping
+   the same sentence skeleton — that still counts as a repeated template.
+3. Vary WHERE brand context, format list, and educational phrase appear
+   within the sentence.
+4. Vary sentence length and rhythm across the paragraph — mix at least one
+   short sentence (under 12 words) with at least one longer sentence, rather
+   than writing several similarly-sized sentences back to back.
+5. Use varied, precise vocabulary rather than repeating the same connector
+   words (e.g. "archived", "catalogued", "documented", "preserved",
+   "compiled", "recorded" are all acceptable alternatives — do not default
+   to the same one every time).
+6. Do not open two consecutive sentences with the same word or clause type.
+${mainDescriptionOpeners.length ? `
+SITE-WIDE STRUCTURAL DIVERSITY CHECK — MANDATORY:
+The following are opening sentences already used on OTHER logo pages on
+this site (unrelated brands, same category). Your opening sentence for
+main_description must not match any of these in sentence skeleton, clause
+order, or connector words — not just avoid exact wording:
+${mainDescriptionOpeners.map((o) => `- "${o}"`).join("\n")}
+` : ""}
+${mainDescriptionFullSamples.length ? `
+BODY-PHRASE DIVERSITY CHECK — MANDATORY (applies to the WHOLE paragraph, not just the opener):
+The following are FULL main_description paragraphs already used on OTHER
+brand logo pages in this same sub_category (e.g. other football clubs). Do
+not reuse any of their mid-paragraph or closing connective phrases (e.g.
+matching phrase pairs like "design study and research reference",
+"professional football club sector/industry", "comprehensive/expanded
+understanding of [club]'s visual identity") even if your opening sentence
+differs. Read these fully, then write your body and closing sentences using
+different phrasing and different connective structure:
+${mainDescriptionFullSamples.map((d, i) => `- Sample ${i + 1}: "${d}"`).join("\n")}
+` : ""}
+
+ADDITIONAL VARIATION RULE:
+Beyond the assigned STYLE skeleton, treat it only as a starting direction —
+not a fixed sentence to fill in. Within the same style, further vary:
+- Sentence count (mix 2-sentence and 3-sentence paragraphs across pages)
+- Where the format list (PNG, SVG, AI, CDR) appears — beginning, middle, or end
+- Punctuation rhythm (commas, em-dashes, semicolons) — don't default to the same pattern every time
+- Whether a short standalone sentence is used to close the paragraph
+
+Two pages assigned the same STYLE must never read as structurally
+interchangeable if you swapped their Logo Name/Brand — each should feel
+independently composed, not filled into the same skeleton
+
+`;
+
+  // ── Field rules that mention brand — swapped for template ────────────────
+  const metaDescriptionFieldRule = isTemplate
+    ? `Must contain the Logo Name ("${logoName}") — do NOT mention a brand or company.
+Must contain minimum 3 of: PNG, SVG, Vector, AI.
+Must contain AT LEAST ONE EXACT PHRASE:
+  "educational use" OR "reference use" OR "research purposes"
+
+STRICTLY FORBIDDEN: commercial projects, business use, branding needs, marketing language, the words "brand"/"company" used as a placeholder subject`
+    : `Must contain brand name.
+Must contain minimum 3 of: PNG, SVG, Vector, AI.
+Must contain AT LEAST ONE EXACT PHRASE:
+  "educational use" OR "reference use" OR "research purposes"
+
+STRICTLY FORBIDDEN: commercial projects, business use, branding needs, marketing language`;
+
+  const altTextRule = isTemplate
+    ? `Return EXACTLY: "${logoName} logo — PNG SVG vector file on cdrlogo.com"
+DO NOT DEVIATE. DO NOT ADD WORDS. DO NOT use the word "brand".`
+    : `Return EXACTLY: "${logoName} logo — PNG SVG vector file on cdrlogo.com"
+DO NOT DEVIATE. DO NOT ADD WORDS.`;
+
+  const ogDescriptionRule = isTemplate
+    ? `Must sound like a DIGITAL ARCHIVE — never an advertisement.
+Must contain the Logo Name and minimum 2 of: PNG, SVG, Vector, AI, CDR.
+Must contain AT LEAST ONE EXACT PHRASE:
+  "educational reference" OR "research purposes" OR "reference use"
+STRICTLY FORBIDDEN: Perfect for, for your projects, commercial language, marketing language, the words "brand"/"company" used as a placeholder subject`
+    : `Must sound like a DIGITAL ARCHIVE — never an advertisement.
+Must contain brand name and minimum 2 of: PNG, SVG, Vector, AI, CDR.
+Must contain AT LEAST ONE EXACT PHRASE:
+  "educational reference" OR "research purposes" OR "reference use"
+STRICTLY FORBIDDEN: Perfect for, for your projects, commercial language, marketing language`;
+
+  const twitterTitleRule = isTemplate
+    ? `Logo Name mandatory. At least one of: PNG, SVG, Vector.
+STRICTLY FORBIDDEN: Free, Download, the word "brand" used as placeholder.`
+    : `Brand mandatory. At least one of: PNG, SVG, Vector.
+STRICTLY FORBIDDEN: Free, Download.`;
+
+  const twitterDescriptionRule = isTemplate
+    ? `Must contain the Logo Name and minimum 2 of: PNG, SVG, Vector.
+Must contain AT LEAST ONE EXACT PHRASE:
+  "educational reference" OR "research use" OR "reference use"
+STRICTLY FORBIDDEN: Perfect for, for your projects, branding use, commercial wording, the word "brand" used as placeholder`
+    : `Must contain brand name and minimum 2 of: PNG, SVG, Vector.
+Must contain AT LEAST ONE EXACT PHRASE:
+  "educational reference" OR "research use" OR "reference use"
+STRICTLY FORBIDDEN: Perfect for, for your projects, branding use, commercial wording`;
+
+  const imageObjectDescriptionRule = isTemplate
+    ? `Short, literal description of the image file itself for schema.org/ImageObject.
+Must mention: the Logo Name, at least one of: logo / image / file.
+STRICTLY FORBIDDEN: Free, Download, marketing language, the word "brand" used as placeholder.`
+    : `Short, literal description of the image file itself for schema.org/ImageObject.
+Must mention: brand name, at least one of: logo / image / file.
+STRICTLY FORBIDDEN: Free, Download, marketing language.`;
+
+  const websiteRule = isTemplate
+    ? `This logo has no confirmed brand — always return "website_used": "".`
+    : `- Only return a real, currently-existing official domain.
+- Must be the brand's own root domain — not a Wikipedia page, social media profile, marketplace listing, or unrelated site.
+- If you are not near-certain, return "".
+- Never fabricate a domain that "looks right" (e.g. guessing brandname.com without verifying it's correct).`;
+
+  // ── FAQ section — expanded pool + variety + variant-dedup ─────────────────
+  const faqSection = `--------------------------------------------------
+faq (EXACTLY 3 Q&A PAIRS)
+--------------------------------------------------
+
+Choose EXACTLY 3 questions from this pool — pick a DIFFERENT combination of
+3 than you would typically default to, so different logos end up with
+different question sets rather than the same 3 every time. You do not have
+to use the wording below verbatim; you may lightly rephrase a question as
+long as it stays factual and on-topic.
+
+QUESTION POOL:
+${FAQ_TOPIC_POOL.map((q) => `- ${q}`).join("\n")}
+${isTemplate ? `\nNote: this logo has no confirmed brand, so skip any pool question that would require mentioning a brand or industry (e.g. skip the "what industry does this logo belong to" question for this logo).` : ""}
+${usedFaqQuestions.length ? `\nPREVIOUSLY USED FAQ QUESTIONS on related pages (choose DIFFERENT questions from the pool where possible — avoid repeating these verbatim):\n${usedFaqQuestions.map((q) => `- "${q}"`).join("\n")}` : ""}
+
+Answers must be factual, 1–2 sentences, educational/reference tone.
+NEVER use: Free, Download, commercial wording${isTemplate ? `, the word "brand"/"company" as a placeholder subject` : ""}.
+
+Return as array: [{ "question": "...", "answer": "..." }, ...]`;
+
+  // ── User prompt ─────────────────────────────────────────────────────────
   const userPrompt = `Generate complete SEO metadata for this logo page.
 
 ==================================================
@@ -743,17 +1264,7 @@ Category (already decided — do not change, do not output a category field):
 - Main Category : ${mainCategory}
 - Sub Category  : ${subCategory}
 
-Brand   : ${resolvedBrand || ""} (FIXED — from our own records, not generated by you. Use exactly this string, do not alter, translate, or second-guess it.)
-Country : ${resolvedCountry || "Worldwide"} (FIXED — from our own records, not generated by you. Use exactly this string.)
-Industry: ${resolvedIndustry || "Logo Design & Graphics"} (FIXED — from our own records, not generated by you. Use exactly this string.)
-Website : ${websiteFromDB
-      ? `${resolvedWebsite} (FIXED — from our own records, not generated by you. Use exactly this string.)`
-      : `UNKNOWN — not on record. You may fill in "website_used" ONLY if you are highly confident (near-certain) of the brand's real, official website domain. If there is any doubt at all, return "website_used": "".`}
-
-IMPORTANT: Do not output brand_used / country_used / industry_used at all —
-brand, country, and industry are FIXED facts, never generated by you.
-${websiteFromDB ? `website_used is also fixed — just echo "${resolvedWebsite}" back exactly.` : `website_used is the ONLY field you determine yourself, and only under the strict confidence rule above — never guess, never fabricate, never use a placeholder-looking domain.`}
-
+${fixedFactsBlock}
 
 ${isVariant ? `
 ==================================================
@@ -777,6 +1288,7 @@ MANDATORY RULES FOR THIS VARIANT:
 3. main_description's first sentence MUST open differently from every sentence listed above.
 4. og_title, og_description, twitter_title, twitter_description must each differ in wording from previous fields.
 5. tags: keep core brand/format tags but vary the 4 context-specific tags. important **dont use these tags in tags [logo,png,svg,vector,cdrlogo,cdrlogo.com] **
+6. faq: choose a different combination of questions than previous pages where possible (see FAQ pool below).
 ` : ""}
 
 ==================================================
@@ -801,87 +1313,13 @@ STRICTLY FORBIDDEN: Free, Download, Free Download,PNG ,SVG, Vector, cdrlogo.com 
 meta_description (140–155 chars HARD LIMIT)
 --------------------------------------------------
 
-Must contain brand name.
-Must contain minimum 3 of: PNG, SVG, Vector, AI.
-Must contain AT LEAST ONE EXACT PHRASE:
-  "educational use" OR "reference use" OR "research purposes"
-
-STRICTLY FORBIDDEN: commercial projects, business use, branding needs, marketing language
+${metaDescriptionFieldRule}
 
 --------------------------------------------------
 ⚠️ MAIN_DESCRIPTION 120–160 words  — ABSOLUTE BANNED WORDS (HIGHEST PRIORITY)
 ==================================================
 
-STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION 120–160 words  — MANDATORY
-==================================================
-
-This logo has been externally assigned: STYLE ${forcedStyle}
-
-This assignment is NOT your choice — it was randomly generated in code to
-guarantee stylistic variation across the entire site. You MUST write
-main_description using STYLE ${forcedStyle} below. Do NOT use any other
-style. Do NOT blend multiple styles together. Do NOT default to the style
-that "feels most natural" — use STYLE ${forcedStyle}, exactly as described.
-
-Each style below lists several example openers. These are illustrations of
-the PATTERN only — do not copy any of them verbatim. Pick a different
-sentence skeleton and vocabulary than the examples shown, and vary word
-choice, clause order, and sentence length so the final paragraph reads as
-freshly written rather than templated.
-
-STYLE A — Format-first:
-Start with the file formats as the subject.
-Vary the verb and structure each time — do not default to the same phrasing.
-Examples of the PATTERN (do not copy wording):
-- "PNG, SVG, AI, and CDR files of the [Logo Name] are archived here as scalable vector assets for reference use."
-- "Archived in PNG, SVG, AI, and CDR, the [Logo Name] is stored here as a set of scalable vector files for research reference."
-- "Scalable vector versions of the [Logo Name] — spanning PNG, SVG, AI, and CDR — are catalogued on this page for design study."
-
-STYLE B — Brand-first (requires confirmed brand, industry, AND country):
-Start with the brand as the subject.
-Vary the verb and structure each time — do not default to the same phrasing.
-Examples of the PATTERN (do not copy wording):
-- "[Brand], a [industry] company from [country], is represented here through its [Logo Name], archived in PNG, SVG, AI, and CDR scalable vector formats."
-- "Originating in [country], [Brand] operates within the [industry] sector; its [Logo Name] is catalogued here in PNG, SVG, AI, and CDR vector form for reference use."
-- "The [Logo Name] belongs to [Brand], a [country]-based name in [industry], and is preserved on this page across PNG, SVG, AI, and CDR vector formats."
-
-STYLE C — Archive-purpose-first:
-Start with the archive purpose as the subject.
-Vary the verb and structure each time — do not default to the same phrasing.
-Examples of the PATTERN (do not copy wording):
-- "This entry documents the [Logo Name] for research and educational reference, available in PNG, SVG, AI, and CDR vector file formats."
-- "Compiled as part of this reference archive, the [Logo Name] can be studied here in PNG, SVG, AI, and CDR vector formats."
-- "For educational and research reference, this page catalogues the [Logo Name] across PNG, SVG, AI, and CDR scalable vector files."
-
-STYLE D — Industry-context-first (requires confirmed industry AND country):
-Start with the industry as the subject.
-Vary the verb and structure each time — do not default to the same phrasing.
-Examples of the PATTERN (do not copy wording):
-- "Within the [industry] sector, the [Logo Name] is preserved here as scalable vector artwork in PNG, SVG, AI, and CDR formats for educational study."
-- "The [industry] sector in [country] is represented on this page by the [Logo Name], catalogued in PNG, SVG, AI, and CDR vector formats for reference use."
-- "As an example from the [industry] field, the [Logo Name] is archived in PNG, SVG, AI, and CDR vector formats for research and design study."
-
-FALLBACK RULE (applies ONLY if the assigned style is STYLE B or STYLE D):
-STYLE B and STYLE D require a confidently identified brand, industry, AND
-country for THIS specific logo. If you cannot confidently identify these,
-fall back to STYLE A instead. Do NOT fabricate brand, industry, or country
-details just to force-fit STYLE ${forcedStyle}.
-
-REGARDLESS OF STYLE:
-1. Never reuse the same paragraph structure or sentence order as any
-   previous page for this logo (see PREVIOUS PAGES above, if applicable).
-2. Do not swap synonyms (presented/features/offers/provides) while keeping
-   the same sentence skeleton — that still counts as a repeated template.
-3. Vary WHERE brand context, format list, and educational phrase appear
-   within the sentence.
-4. Vary sentence length and rhythm across the paragraph — mix at least one
-   short sentence (under 12 words) with at least one longer sentence, rather
-   than writing several similarly-sized sentences back to back.
-5. Use varied, precise vocabulary rather than repeating the same connector
-   words (e.g. "archived", "catalogued", "documented", "preserved",
-   "compiled", "recorded" are all acceptable alternatives — do not default
-   to the same one every time).
-6. Do not open two consecutive sentences with the same word or clause type.
+${styleSection}
 
 ==================================================
 
@@ -896,45 +1334,56 @@ Amazing, Beautiful, Professional Design, Modern red/blue/green
 (or any color/style description), Click here, Download now,
 100% free, No copyright, HD logo, World best, Top quality
 Marketing/promotional language of any kind.
+${isTemplate ? `Also banned: "brand", "the brand", "by brand", "this brand", "a brand", "brand's", "the company" used as a placeholder subject — this logo has no confirmed real brand.` : ""}
 
-SELF-CHECK BEFORE RETURNING main_description:
-Re-read the sentence you wrote. If ANY word above appears — even as
-part of a larger phrase, even with different capitalization — DELETE
-it and rewrite that sentence completely. Do not just swap the banned
-word for a synonym while keeping the same sentence structure.
+SELF-CHECK: if any banned word above appears, delete and rewrite that
+sentence completely — don't just swap in a synonym.
 
-Must naturally contain ONE of:
+FORMATTING: always insert a space after every sentence-ending period,
+question mark, or exclamation mark (e.g. never "reference.Users" — must be
+"reference. Users").
 
-* vector format
-* scalable vector
-* vector artwork
-* vector assets
-* vector files
+SEO-PHRASE LIMIT — MANDATORY:
+Use ONLY ONE phrase from this list, ONE time, anywhere in the paragraph —
+not one from each group, not more than once total:
+vector format / scalable vector / vector artwork / vector assets / vector
+files / educational use / reference use / archival reference / design
+study / research reference.
+Stacking two or more of these in the same paragraph (even in different
+sentences) reads as SEO filler, not real writing — do not do it.
 
-Must naturally contain ONE of:
+CONCRETE DETAIL — MANDATORY:
+At least one sentence must state something ACTUALLY specific to this logo
+— not a generic "this resource contributes to understanding" statement.
+Use real knowledge you have of ${logoName}${isTemplate ? "" : ` (${resolvedBrand || "the brand"})`}
+where you're confident it's accurate: emblem shapes/symbols, colors,
+typography, notable design elements, founding/version context, or what the
+mark visually depicts. If you don't reliably know specifics for this logo,
+describe the visible file/format facts concretely instead (e.g. what each
+format is typically used for) rather than falling back to vague phrases
+like "expanded understanding of sports identity" or "comprehensive
+understanding of visual identity" — those add no information and must be
+avoided.
 
-* educational use
-* reference use
-* archival reference
-* design study
-* research reference
+NATURAL LANGUAGE — MANDATORY:
+Avoid abstract filler sentences that state a vague benefit without saying
+anything concrete (e.g. "This resource contributes to an expanded
+understanding of sports identity"). Prefer plain, specific statements
+(e.g. "The files show the emblem's shapes, lettering, and colors at full
+scale for closer inspection.").
 
 Cover:
-
-* brand background (if known)
-* industry (if known)
+${isTemplate ? `* available formats (PNG, SVG, AI, CDR) — do NOT cover brand background or industry, since none exist for this logo` : `* brand/club and country context (if known)
 * available formats (PNG, SVG, AI, CDR)
+* at least one concrete visual/logo-specific detail per the rule above`}
 
 Word count:
 120–160 words
-
-
 --------------------------------------------------
 alt_text (LOCKED FORMAT)
 --------------------------------------------------
 
-Return EXACTLY: "{Brand} logo — PNG SVG vector file on cdrlogo.com"
-DO NOT DEVIATE. DO NOT ADD WORDS.
+${altTextRule}
 
 
 ==================================================
@@ -951,6 +1400,7 @@ The "tags" array MUST NEVER contain ANY of the following values:
 - cdrlogo.com
 - website
 - website.com
+${isTemplate ? `- brand\n- company` : ""}
 
 THIS IS A HARD REQUIREMENT.
 
@@ -974,64 +1424,39 @@ og_title (50–60 chars)
 
 Format: "{Logo Name} — PNG SVG vector file on cdrlogo.com"
 Use the EXACT FULL Logo Name — every distinguishing word MUST appear. No "| cdrlogo.com" suffix.
-STRICTLY FORBIDDEN: Free, Download, marketing phrases.
+STRICTLY FORBIDDEN: Free, Download, marketing phrases${isTemplate ? `, the word "brand" used as placeholder` : ""}.
 
 --------------------------------------------------
 og_description (120–160 chars)
 --------------------------------------------------
 
-Must sound like a DIGITAL ARCHIVE — never an advertisement.
-Must contain brand name and minimum 2 of: PNG, SVG, Vector, AI, CDR.
-Must contain AT LEAST ONE EXACT PHRASE:
-  "educational reference" OR "research purposes" OR "reference use"
-STRICTLY FORBIDDEN: Perfect for, for your projects, commercial language, marketing language.
+${ogDescriptionRule}
 
 --------------------------------------------------
 twitter_title (50–60 chars)
 --------------------------------------------------
 
-Brand mandatory. At least one of: PNG, SVG, Vector.
-STRICTLY FORBIDDEN: Free, Download.
+${twitterTitleRule}
 
 --------------------------------------------------
 twitter_description (100–140 chars)
 --------------------------------------------------
 
-Must contain brand name and minimum 2 of: PNG, SVG, Vector.
-Must contain AT LEAST ONE EXACT PHRASE:
-  "educational reference" OR "research use" OR "reference use"
-STRICTLY FORBIDDEN: Perfect for, for your projects, branding use, commercial wording.
+${twitterDescriptionRule}
 
 --------------------------------------------------
 image_object_description (15–25 words)
 --------------------------------------------------
 
-Short, literal description of the image file itself for schema.org/ImageObject.
-Must mention: brand name, at least one of: logo / image / file.
-STRICTLY FORBIDDEN: Free, Download, marketing language.
+${imageObjectDescriptionRule}
 
 --------------------------------------------------
 website_used — STRICT RULE
 --------------------------------------------------
 
-- Only return a real, currently-existing official domain.
-- Must be the brand's own root domain — not a Wikipedia page, social media profile, marketplace listing, or unrelated site.
-- If you are not near-certain, return "".
-- Never fabricate a domain that "looks right" (e.g. guessing brandname.com without verifying it's correct).
+${websiteRule}
 
---------------------------------------------------
-faq (EXACTLY 3 Q&A PAIRS)
---------------------------------------------------
-
-Allowed question topics ONLY:
-- What formats is this logo available in
-- Can I use this logo for educational purposes?
-- Is this logo available in vector format?
-
-Answers must be factual, 1–2 sentences, educational/reference tone.
-NEVER use: Free, Download, commercial wording.
-
-Return as array: [{ "question": "...", "answer": "..." }, ...]
+${faqSection}
 
 --------------------------------------------------
 FINAL OUTPUT FIELDS
@@ -1049,7 +1474,7 @@ FINAL SELF VALIDATION
 
 BEFORE RETURNING: Scan ALL fields. If ANY banned word found OR
 educational phrase missing from meta_description / og_description /
-twitter_description / main_description — REGENERATE internally.
+twitter_description / main_description${isTemplate ? ` OR the word "brand"/"company" was used as a placeholder subject` : ""} — REGENERATE internally.
 
 Return ONLY VALID JSON (no "category", "brand_used", "country_used", or
 "industry_used" fields — those are all decided outside of you):
@@ -1078,50 +1503,60 @@ Return ONLY VALID JSON (no "category", "brand_used", "country_used", or
     { role: "user", content: userPrompt },
   ];
 
-  const completion = await callOpenAIWithRetry({
-    model: "gpt-4.1-mini",
-    temperature: 0.6,
-    messages,
-    response_format: { type: "json_object" },
-  });
+  async function runContentCall(extraNote = "") {
+    const finalMessages = extraNote
+      ? [...messages, { role: "user", content: extraNote }]
+      : messages;
+    const completion = await callOpenAIWithRetry({
+      model: "gpt-4.1-mini",
+      temperature: 0.6,
+      messages: finalMessages,
+      response_format: { type: "json_object" },
+    });
+    const raw = completion.choices[0]?.message?.content || "{}";
+    try { return JSON.parse(raw); } catch { return {}; }
+  }
 
-  const raw = completion.choices[0]?.message?.content || "{}";
-  let parsed;
-  try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+  let parsed = await runContentCall();
+
+  // TEMPLATE-only safety net: if the model slipped in a literal "brand"/
+  // "company" placeholder word despite instructions, do ONE regeneration
+  // pass with an explicit correction note before falling back silently.
+  if (isTemplate) {
+    const placeholderHits = scanTemplateFieldsForPlaceholderBrand(parsed);
+    if (placeholderHits.length) {
+      console.warn(`  [ai:template-guard] Placeholder "brand"/"company" word found in: ${placeholderHits.join(", ")} — regenerating once.`);
+      parsed = await runContentCall(
+        `Your previous JSON response used the word "brand" or "company" as a placeholder subject in these fields: ${placeholderHits.join(", ")}. This logo has NO confirmed real brand — regenerate the ENTIRE JSON response, replacing every instance where "brand"/"company" was used as a stand-in subject with the actual Logo Name ("${logoName}") instead. Return the full corrected JSON object.`
+      );
+    }
+  }
 
   // ── Resolve category ──────────────────────────────────────────────────────
-  // logo.category is a single-element array containing ONLY the sub category
-  // (main_category / sub_category were already decided deterministically in
-  // STEP 1 above — GPT's "category" output, if any, is ignored here).
-  const finalCategoryValue = mainCategory === "template" ? "template" : subCategory;
+  const finalCategoryValue = isTemplate ? "template" : subCategory;
   const resolvedCategories = [finalCategoryValue];
 
   // ── Resolve brand / country / industry / website ──────────────────────────
-  // brand/country/industry are FULLY deterministic — always taken from our
-  // own records (resolvedBrand/resolvedCountry/resolvedIndustry, computed
-  // above via findCategoryMatchLLM). GPT never generates these.
-  //
-  // Website: prefer the DB record (resolvedWebsite / websiteFromDB, computed
-  // above). ONLY when the DB has nothing on file do we fall back to GPT's
-  // website_used — and even then, only if it passes isPlausibleUrl() (a real
-  // http(s) URL with a hostname). Anything else (blank, malformed, or a
-  // low-confidence guess GPT should have left empty per the prompt) resolves
-  // to "" rather than being trusted.
-  const brand = stripSpecialChars(resolvedBrand);
-  const country = resolvedCountry || "Worldwide";
-  const industry = resolvedIndustry || "Logo Design & Graphics";
-  const website = resolvedWebsite || "";
-
+  const brand = isTemplate ? "" : stripSpecialChars(resolvedBrand);
+  const country = isTemplate ? "" : (resolvedCountry || "");
+  const industry = isTemplate ? "" : (resolvedIndustry || "Logo Design & Graphics");
+  const website = isTemplate ? "" : (resolvedWebsite || "");
 
   // ── Field fallbacks (educational-tone, banned-word-free) ─────────────────
   const metaTitle = stripAccents(parsed.meta_title) ||
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const metaDescription = stripAccents(parsed.meta_description) ||
     `${logoName}  available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`;
-  const description = stripAccents(parsed.main_description) ||
-    `The ${logoName}  is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`;
+  const description = fixMissingSpaceAfterPeriod(
+    (parsed.main_description && String(parsed.main_description).trim()) ||
+    (isTemplate
+      ? `${logoName} is available in PNG, SVG, AI and CDR vector formats, provided on cdrlogo.com for educational use and reference purposes.`
+      : `The ${logoName}  is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`)
+  );
   const altText = stripAccents(parsed.alt_text) ||
-    `${logoName} — PNG SVG vector file on cdrlogo.com`;
+    (isTemplate
+      ? `${logoName} logo — PNG SVG vector file on cdrlogo.com`
+      : `${logoName} — PNG SVG vector file on cdrlogo.com`);
   const tags = Array.isArray(parsed.tags) && parsed.tags.length
     ? parsed.tags.map(t => stripAccents(String(t)))
     : [logoName, "PNG", "SVG", "vector", "cdrlogo.com"];
@@ -1138,7 +1573,14 @@ Return ONLY VALID JSON (no "category", "brand_used", "country_used", or
     `${logoName} image on cdrlogo.com`;
   const faqPairs = Array.isArray(parsed.faq) ? parsed.faq : [];
 
-
+  // ── Post-generation validation logging (not blocking, but visible) ───────
+  const violations = validateAIContent(
+    { ...parsed, meta_title: metaTitle, meta_description: metaDescription, main_description: description, alt_text: altText, og_title: ogTitle, og_description: ogDescription, twitter_title: twitterTitle, twitter_description: twitterDescription, image_object_description: imageObjectDescription, faq: faqPairs },
+    { usedTitles: relatedLogos.map((r) => r.metaTitle), usedOpeners, usedFaqQuestions, isTemplate }
+  );
+  if (violations.length) {
+    console.warn(`  [ai:validate] ${violations.length} issue(s) found:\n    - ${violations.join("\n    - ")}`);
+  }
 
   return {
     category: resolvedCategories,
@@ -1160,6 +1602,7 @@ Return ONLY VALID JSON (no "category", "brand_used", "country_used", or
     imageObjectDescription,
     faqPairs,
     isVariant,
+    isTemplate,
     relatedSlugs: relatedLogos.map((r) => r.slug).filter(Boolean),
   };
 }
@@ -1187,15 +1630,18 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     console.log(`  [slug] ${finalSlug}`);
 
     // ── Step B: AI content generation ────────────────────────────────────────
+    const isManualTemplate =
+      sharedFields.category.toLowerCase().trim() === "template" ||
+      /\btemplate\b/i.test(finalLogoName);
+
     const aiContent = await generateAIContent({
       logoName: stripSpecialChars(finalLogoName),
-      userCategory: sharedFields.category,
-      availableCategories: sharedFields.availableCategories,
+      isManualTemplate,
       relatedLogos: related,
       canonicalUrl,
     });
 
-    console.log(`  [ai] main: "${aiContent.mainCategory}" | sub: "${aiContent.subCategory}" | brand: "${aiContent.brand}" | website: "${aiContent.website || "(none)"}" | country: "${aiContent.country}" | industry: "${aiContent.industry}"`);
+    console.log(`  [ai] main: "${aiContent.mainCategory}" | sub: "${aiContent.subCategory}" | brand: "${aiContent.brand || "(none — template)"}" | website: "${aiContent.website || "(none)"}" | country: "${aiContent.country || "(none)"}" | industry: "${aiContent.industry || "(none)"}"`);
     console.log(`  [ai] metaTitle (${aiContent.metaTitle.length} chars): "${aiContent.metaTitle.substring(0, 60)}"`);
     console.log(`  [ai] ogTitle: "${aiContent.ogTitle}" | twitterTitle: "${aiContent.twitterTitle}"`);
     console.log(`  [ai] tags: ${aiContent.tags.length} | faq pairs: ${aiContent.faqPairs.length}`);
@@ -1241,7 +1687,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         fileSizes.cdr = fileBuffer.length;
 
       } else {
-        // koi aur file type ho to bhi "separate" mein hi — koi "private" folder nahi
         separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
       }
     }
@@ -1274,7 +1719,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     const aiUrl = findUrl((f) => f.key.endsWith(".ai"));
     const cdrUrl = findUrl((f) => f.key.endsWith(".cdr"));
 
-    // ogImageUrl — public WebP is the OG/Twitter card image
     const ogImageUrl = webpUrl || null;
     console.log(`  [urls] webp: ${webpUrl || "null"} | ogImageUrl: ${ogImageUrl || "null"}`);
 
@@ -1305,12 +1749,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         slug: finalSlug,
         brand: aiContent.brand,
         website: aiContent.website,
-        // Single-element array: just the sub category (or ["template"]).
-        // sharedFields.category === "template" is a manual override that
-        // forces template regardless of what the classifier picked.
-        category: sharedFields.category.toLowerCase().trim() === "template"
-          ? ["template"]
-          : aiContent.category,
+        category: isManualTemplate ? ["template"] : aiContent.category,
         industry: aiContent.industry,
         country: aiContent.country,
         license: sharedFields.license,
@@ -1333,7 +1772,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         aifilesize: formatSize(fileSizes.ai),
         cdrfilesize: formatSize(fileSizes.cdr),
 
-        // ── SEO / social ────────────────────────────────────────────────────
         canonicalUrl,
         ogTitle: aiContent.ogTitle,
         ogDescription: aiContent.ogDescription,
@@ -1344,7 +1782,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         twitterImage: ogImageUrl,
         twitterCardType: "summary_large_image",
 
-        // ── Schema JSON-LD ───────────────────────────────────────────────────
         imageObjectSchema,
         breadcrumbSchema,
         faqSchema,
@@ -1384,17 +1821,23 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
 
 export const maxDuration = 60;
 
+// ══════════════════════════════════════════════════════════════════════════
+// REQUEST / RESPONSE HANDLING — kept IDENTICAL to the previous single-upload
+// route (multipart/form-data with logoName + files[]) so the frontend does
+// not need any changes. Only the internal generation logic above was
+// upgraded to match the bulk route.
+// ══════════════════════════════════════════════════════════════════════════
 export async function POST(req) {
   console.log("\n========== SINGLE-FOLDER UPLOAD START ==========");
   const startTime = Date.now();
 
   try {
-    // ── Parse multipart/form-data instead of JSON ──────────────────────────
+    // ── Parse multipart/form-data ───────────────────────────────────────────
     const formData = await req.formData();
 
     const folderName = (formData.get("logoName") || "").toString().trim();
 
-    // per requirement: category is always taken as "" here (classifier decides)
+    // category is always "" here — the classifier decides main/sub category
     const category = "";
 
     const license = (formData.get("license") || "Educational").toString();
@@ -1420,7 +1863,7 @@ export async function POST(req) {
 
     console.log(`[1] Received ${uploadedFiles.length} zip file(s) for logoName: "${folderName}"`);
 
-    // ── Extract entries from each uploaded ZIP (same filtering rules as before) ──
+    // ── Extract entries from each uploaded ZIP ───────────────────────────────
     const folderFiles = [];
     for (const uploaded of uploadedFiles) {
       if (!uploaded || typeof uploaded === "string") continue;
@@ -1446,14 +1889,7 @@ export async function POST(req) {
     const websiteRecord = await prisma.website.findFirst();
     const watermark = websiteRecord?.watermark ?? null;
 
-    // ── Categories come from website.categories (DB) ──────────────────────
-    const availableCategories = category.toLowerCase().trim() === "template"
-      ? []
-      : extractCategoryEntries(websiteRecord?.categories);
-
-    console.log(`[categories] website.findFirst() → ${availableCategories.length} categories loaded from DB`);
-
-    const sharedFields = { category, license, publishStatus, downloadCount, brandColors, availableCategories };
+    const sharedFields = { category, license, publishStatus, downloadCount, brandColors };
 
     const result = await processOneLogoFolder({ folderName, folderFiles, sharedFields, watermark });
 

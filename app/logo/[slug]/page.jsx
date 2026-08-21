@@ -10,21 +10,7 @@ const GLOBAL_IMAGE_LICENSE_META = {
   acquireLicensePage: "https://www.cdrlogo.com/terms-of-service",
 };
 
-// Visually-hidden (but present in the raw HTML) style — same "clip" technique
-// already used for the H1 below. Screen readers and crawlers still read this
-// content; it's just not shown twice on screen since the client component
-// renders the visible version once it hydrates.
-const SR_ONLY_STYLE = {
-  position: "absolute",
-  width: "1px",
-  height: "1px",
-  padding: 0,
-  margin: "-1px",
-  overflow: "hidden",
-  clip: "rect(0, 0, 0, 0)",
-  clipPath: "inset(50%)",
-  border: 0,
-};
+
 
 async function fetchLogo(slug) {
   try {
@@ -250,21 +236,6 @@ export default async function Page({ params }) {
       )}
      
    
-      {logo && (
-        <div style={SR_ONLY_STYLE} aria-hidden="false">
-          {logo.description && <p>{logo.description}</p>}
-          {!categoryIsTemplate && logo.brand && <p>Brand: {logo.brand}</p>}
-          {!categoryIsTemplate && logo.country && <p>Country: {logo.country}</p>}
-          {!categoryIsTemplate && logoCategories.length > 0 && (
-            <p>Category: {logoCategories.join(", ")}</p>
-          )}
-          {!categoryIsTemplate && logo.website && <p>Website: {logo.website}</p>}
-          <p>License: {logo.license || "Free For Personal Use"}</p>
-          {Array.isArray(logo.tags) && logo.tags.length > 0 && (
-            <p>Tags: {logo.tags.join(", ")}</p>
-          )}
-        </div>
-      )}
 
     <LogoDetail logo={correctedLogo} initialRelated={related} />
     </>

@@ -399,6 +399,48 @@ function buildFaqSchema(faqPairs) {
   };
 }
 
+
+// ── NEW: site-wide sample of template main_descriptions, independent of
+// logo-name matching. Used ONLY to diversify main_description openers for
+// TEMPLATE-category logos across unrelated names (e.g. different club crests).
+async function getRecentTemplateDescriptionSamples(excludeSlugs = [], limit = 12) {
+  const rows = await prisma.logo.findMany({
+    where: {
+      category: { has: "template" },
+      ...(excludeSlugs.length ? { slug: { notIn: excludeSlugs } } : {}),
+    },
+    select: { description: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  const fullDescriptions = rows.map((r) => (r.description || "").trim()).filter(Boolean);
+  const openers = fullDescriptions
+    .map((d) => d.split(/[.!?]/)[0].trim())
+    .filter(Boolean);
+  return { openers, fullDescriptions };
+}
+
+// ── NEW: site-wide sample of BRAND main_descriptions within the same
+// sub_category, independent of logo-name matching. Used to diversify
+// main_description openers AND body phrasing for non-template logos across
+// unrelated brands in the same category (e.g. different football clubs).
+async function getRecentBrandDescriptionSamples(subCategory, excludeSlugs = [], limit = 12) {
+  if (!subCategory) return { openers: [], fullDescriptions: [] };
+  const rows = await prisma.logo.findMany({
+    where: {
+      category: { has: subCategory },
+      ...(excludeSlugs.length ? { slug: { notIn: excludeSlugs } } : {}),
+    },
+    select: { description: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  const fullDescriptions = rows.map((r) => (r.description || "").trim()).filter(Boolean);
+  const openers = fullDescriptions
+    .map((d) => d.split(/[.!?]/)[0].trim())
+    .filter(Boolean);
+  return { openers, fullDescriptions };
+}
 // ── DB: find related / exact matches ─────────────────────────────────────────
 async function findRelatedLogos(logoName) {
   const words = getSignificantWords(logoName);
@@ -439,6 +481,16 @@ function stripAccents(text) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 }
+
+// ── NEW: deterministic backstop for the missing-space-after-period bug in
+// main_description (e.g. "reference.Users" → "reference. Users"). Runs
+// regardless of whether the model followed the prompt's spacing instruction
+// — only affects main_description, nothing else.
+function fixMissingSpaceAfterPeriod(text) {
+  if (!text) return text;
+  return text.replace(/([.!?])([A-Z])/g, "$1 $2");
+}
+
 // ── Auto-version name ─────────────────────────────────────────────────────────
 function generateVersionedName(logoName, exactNormalizedMatches) {
   const usedVersions = new Set();
@@ -718,8 +770,8 @@ async function generateAIContent({
   // TEMPLATE logos: forced to STYLE A (format-first) only — Styles B/D need a
   // real brand+country+industry, and even Style C leans "archive-purpose"
   // which is safe, but we keep it simple and deterministic for template: A.
-  
-    const TEMPLATE_STYLE_LETTERS = ["A", "B", "C", "D"];
+
+  const TEMPLATE_STYLE_LETTERS = ["A", "B", "C", "D"];
   const BRAND_STYLE_LETTERS = ["A", "B", "C", "D", "E", "F"];
   const forcedStyle = isTemplate
     ? TEMPLATE_STYLE_LETTERS[Math.floor(Math.random() * TEMPLATE_STYLE_LETTERS.length)]
@@ -741,6 +793,35 @@ async function generateAIContent({
       .map((r) => (r.description || "").split(/[.!?]/)[0].trim())
       .filter(Boolean)
     : [];
+
+  // NEW — only for template logos, only affects main_description input:
+  let siteWideTemplateOpeners = [];
+  let siteWideTemplateFullSamples = [];
+  if (isTemplate) {
+    const templateSamples = await getRecentTemplateDescriptionSamples(
+      relatedLogos.map((r) => r.slug).filter(Boolean)
+    );
+    siteWideTemplateOpeners = templateSamples.openers;
+    siteWideTemplateFullSamples = templateSamples.fullDescriptions;
+  }
+
+  // NEW — only for brand logos, only affects main_description input:
+  let siteWideBrandOpeners = [];
+  let siteWideBrandFullSamples = [];
+  if (!isTemplate) {
+    const brandSamples = await getRecentBrandDescriptionSamples(
+      subCategory,
+      relatedLogos.map((r) => r.slug).filter(Boolean)
+    );
+    siteWideBrandOpeners = brandSamples.openers;
+    siteWideBrandFullSamples = brandSamples.fullDescriptions;
+  }
+
+  const mainDescriptionOpeners = [...usedOpeners, ...siteWideTemplateOpeners, ...siteWideBrandOpeners];
+  // NEW — full-paragraph samples used for the body-phrase diversity check
+  // (separate from the opener-only check above). Empty for whichever branch
+  // (template/brand) doesn't apply.
+  const mainDescriptionFullSamples = isTemplate ? siteWideTemplateFullSamples : siteWideBrandFullSamples;
 
   const usedFaqQuestions = isVariant
     ? relatedLogos
@@ -912,7 +993,7 @@ IMPORTANT: Do not output brand_used / country_used / industry_used at all —
 brand, country, and industry are FIXED facts, never generated by you.
 website_used is the only field you may need to leave blank if UNKNOWN above.`;
 
-  
+
   const styleSection = isTemplate
     ? `STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION 120–160 words — MANDATORY
 ==================================================
@@ -968,9 +1049,28 @@ REGARDLESS OF STYLE:
    "preserved", "compiled", "recorded" are all acceptable alternatives).
 5. Do not open two consecutive sentences with the same word or clause type.
 6. Never write "brand", "the brand", "by brand", "this brand", "a brand",
-   or "the company" anywhere — refer to "${logoName}" by name instead.`
+   or "the company" anywhere — refer to "${logoName}" by name instead.
+${mainDescriptionOpeners.length ? `
+SITE-WIDE STRUCTURAL DIVERSITY CHECK — MANDATORY:
+The following are opening sentences already used on OTHER template-category
+logo pages on this site (unrelated names, same category). Your opening
+sentence for main_description must not match any of these in sentence
+skeleton, clause order, or connector words — not just avoid exact wording:
+${mainDescriptionOpeners.map((o) => `- "${o}"`).join("\n")}
+` : ""}
+${mainDescriptionFullSamples.length ? `
+BODY-PHRASE DIVERSITY CHECK — MANDATORY (applies to the WHOLE paragraph, not just the opener):
+The following are FULL main_description paragraphs already used on OTHER
+template-category logo pages on this site. Do not reuse any of their
+mid-paragraph or closing connective phrases (e.g. matching phrase pairs like
+"design study and research reference", "professional [x] sector/industry",
+"comprehensive/expanded understanding of [x]'s visual identity") even if the
+opening sentence differs. Read these fully, then write body and closing
+sentences using different phrasing and different connective structure:
+${mainDescriptionFullSamples.map((d, i) => `- Sample ${i + 1}: "${d}"`).join("\n")}
+` : ""}`
     : `STYLE ASSIGNMENT FOR THIS LOGO MAIN_DESCRIPTION 120–160 words  — MANDATORY
-==================================================
+==========================================================================================
 
 This logo has been externally assigned: STYLE ${forcedStyle}
 
@@ -1051,6 +1151,26 @@ REGARDLESS OF STYLE:
    "compiled", "recorded" are all acceptable alternatives — do not default
    to the same one every time).
 6. Do not open two consecutive sentences with the same word or clause type.
+${mainDescriptionOpeners.length ? `
+SITE-WIDE STRUCTURAL DIVERSITY CHECK — MANDATORY:
+The following are opening sentences already used on OTHER logo pages on
+this site (unrelated brands, same category). Your opening sentence for
+main_description must not match any of these in sentence skeleton, clause
+order, or connector words — not just avoid exact wording:
+${mainDescriptionOpeners.map((o) => `- "${o}"`).join("\n")}
+` : ""}
+${mainDescriptionFullSamples.length ? `
+BODY-PHRASE DIVERSITY CHECK — MANDATORY (applies to the WHOLE paragraph, not just the opener):
+The following are FULL main_description paragraphs already used on OTHER
+brand logo pages in this same sub_category (e.g. other football clubs). Do
+not reuse any of their mid-paragraph or closing connective phrases (e.g.
+matching phrase pairs like "design study and research reference",
+"professional football club sector/industry", "comprehensive/expanded
+understanding of [club]'s visual identity") even if your opening sentence
+differs. Read these fully, then write your body and closing sentences using
+different phrasing and different connective structure:
+${mainDescriptionFullSamples.map((d, i) => `- Sample ${i + 1}: "${d}"`).join("\n")}
+` : ""}
 
 ADDITIONAL VARIATION RULE:
 Beyond the assigned STYLE skeleton, treat it only as a starting direction —
@@ -1237,38 +1357,49 @@ Amazing, Beautiful, Professional Design, Modern red/blue/green
 Marketing/promotional language of any kind.
 ${isTemplate ? `Also banned: "brand", "the brand", "by brand", "this brand", "a brand", "brand's", "the company" used as a placeholder subject — this logo has no confirmed real brand.` : ""}
 
-SELF-CHECK BEFORE RETURNING main_description:
-Re-read the sentence you wrote. If ANY word above appears — even as
-part of a larger phrase, even with different capitalization — DELETE
-it and rewrite that sentence completely. Do not just swap the banned
-word for a synonym while keeping the same sentence structure.
+SELF-CHECK: if any banned word above appears, delete and rewrite that
+sentence completely — don't just swap in a synonym.
 
-Must naturally contain ONE of:
+FORMATTING: always insert a space after every sentence-ending period,
+question mark, or exclamation mark (e.g. never "reference.Users" — must be
+"reference. Users").
 
-* vector format
-* scalable vector
-* vector artwork
-* vector assets
-* vector files
+SEO-PHRASE LIMIT — MANDATORY:
+Use ONLY ONE phrase from this list, ONE time, anywhere in the paragraph —
+not one from each group, not more than once total:
+vector format / scalable vector / vector artwork / vector assets / vector
+files / educational use / reference use / archival reference / design
+study / research reference.
+Stacking two or more of these in the same paragraph (even in different
+sentences) reads as SEO filler, not real writing — do not do it.
 
-Must naturally contain ONE of:
+CONCRETE DETAIL — MANDATORY:
+At least one sentence must state something ACTUALLY specific to this logo
+— not a generic "this resource contributes to understanding" statement.
+Use real knowledge you have of ${logoName}${isTemplate ? "" : ` (${resolvedBrand || "the brand"})`}
+where you're confident it's accurate: emblem shapes/symbols, colors,
+typography, notable design elements, founding/version context, or what the
+mark visually depicts. If you don't reliably know specifics for this logo,
+describe the visible file/format facts concretely instead (e.g. what each
+format is typically used for) rather than falling back to vague phrases
+like "expanded understanding of sports identity" or "comprehensive
+understanding of visual identity" — those add no information and must be
+avoided.
 
-* educational use
-* reference use
-* archival reference
-* design study
-* research reference
+NATURAL LANGUAGE — MANDATORY:
+Avoid abstract filler sentences that state a vague benefit without saying
+anything concrete (e.g. "This resource contributes to an expanded
+understanding of sports identity"). Prefer plain, specific statements
+(e.g. "The files show the emblem's shapes, lettering, and colors at full
+scale for closer inspection.").
 
 Cover:
-
-${isTemplate ? `* available formats (PNG, SVG, AI, CDR) — do NOT cover brand background or industry, since none exist for this logo` : `* brand background (if known)
-* industry (if known)
-* available formats (PNG, SVG, AI, CDR)`}
+${isTemplate ? `* available formats (PNG, SVG, AI, CDR) — do NOT cover brand background or industry, since none exist for this logo` : `* brand/club and country context (if known)
+* available formats (PNG, SVG, AI, CDR)
+* at least one concrete visual/logo-specific detail per the rule above`}
 
 Word count:
 120–160 words
-
-
 --------------------------------------------------
 alt_text (LOCKED FORMAT)
 --------------------------------------------------
@@ -1437,10 +1568,12 @@ Return ONLY VALID JSON (no "category", "brand_used", "country_used", or
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const metaDescription = stripAccents(parsed.meta_description) ||
     `${logoName}  available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`;
-  const description = stripAccents(parsed.main_description) ||
+  const description = fixMissingSpaceAfterPeriod(
+    (parsed.main_description && String(parsed.main_description).trim()) ||
     (isTemplate
       ? `${logoName} is available in PNG, SVG, AI and CDR vector formats, provided on cdrlogo.com for educational use and reference purposes.`
-      : `The ${logoName}  is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`);
+      : `The ${logoName}  is available in PNG, SVG, AI and CDR vector formats and high resolution, provided on cdrlogo.com for educational use and reference purposes.`)
+  );
   const altText = stripAccents(parsed.alt_text) ||
     (isTemplate
       ? `${logoName} logo — PNG SVG vector file on cdrlogo.com`
