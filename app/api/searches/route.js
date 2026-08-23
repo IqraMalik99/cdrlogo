@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../lib/prisma";
 
 function normalize(str = "") {
-  return String(str).toLowerCase().trim();
+  return String(str)
+    .toLowerCase()
+    .trim()
+    .replace(/[-_]+/g, " ")   // treat hyphens/underscores as spaces
+    .replace(/\s+/g, " ");    // collapse repeated whitespace
 }
 
 // ── Levenshtein — used for fuzzy name matching (typo tolerance) ─────────────
@@ -68,7 +72,7 @@ export async function POST(req) {
     if (!query || !normalize(query)) {
       return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
-
+   console.log("Searchingz for:", query);
     const logos = await prisma.logo.findMany({
       where: { publishStatus: "Published" },
       select: {
