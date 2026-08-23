@@ -554,13 +554,91 @@ async function researchBrandFacts(logoName, brand) {
   return { hasResults: true, contextText };
 }
 
-async function generateMainDescription({ logoName, brand, isTemplate, canonicalUrl }) {
+// ============================================================================
+// PATCH START — generateMainDescription + supporting helpers
+// Fixes:
+//  #1 Word-count enforcement (was defined in prompt, never checked in code)
+//  #2 Case B educational-phrase check
+//  #3 Rotating "opening angle" per logo
+//  #4 Rotating closing sentence (3 variants)
+//  #5 Sibling/variant description awareness (relatedDescriptions param)
+// ============================================================================
+
+// stable hash so the same logoName always gets the same rotation
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) - h + str.charCodeAt(i);
+    h |= 0;
+  }
+  return h;
+}
+
+function wordCount(text) {
+  return text ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+}
+
+function isWordCountValid(caseUsed, wc) {
+  if (caseUsed === "A") return wc >= 150 && wc <= 250;
+  if (caseUsed === "B") return wc >= 30 && wc <= 80;
+  if (caseUsed === "C") return wc === 0;
+  return true; // unknown/unparsed case — don't block on this alone
+}
+
+const OPENING_ANGLES = [
+  "Open the description with the founding date and origin story, then move to the logo itself.",
+  "Open the description by describing what is visually in the logo first — shapes, imagery, colors — before any history or dates.",
+  "Open the description with what the brand/club/organization is actually known for or does, then move into the logo's design.",
+  "Open the description with the most recent redesign or the current logo's launch date, then work backward to earlier history if relevant.",
+];
+
+const CLOSING_VARIANTS = [
+  `The [Logo Name] logo is available on this page in PNG, SVG, AI, and CDR formats for reference and design purposes.`,
+  `This page provides the [Logo Name] logo in PNG, SVG, AI, and CDR file formats for research and reference use.`,
+  `PNG, SVG, AI, and CDR versions of the [Logo Name] logo are provided here for educational reference.`,
+];
+
+function pickRotation(logoName, arr) {
+  const idx = Math.abs(hashString(logoName)) % arr.length;
+  return { value: arr[idx], index: idx };
+}
+
+// detects a stray hex/RGB/Pantone code slipping into the description
+function containsColorCode(text) {
+  if (!text) return false;
+  if (/#[0-9a-f]{3,8}\b/i.test(text)) return true;
+  if (/\brgb\s*\(/i.test(text)) return true;
+  if (/\bpantone\s*\d/i.test(text)) return true;
+  return false;
+}
+
+async function generateMainDescription({
+  logoName,
+  brand,
+  isTemplate,
+  canonicalUrl,
+  relatedDescriptions = [], // #5 — prior versions' descriptions (V1, V2, ...)
+}) {
   if (isTemplate) {
     console.log(`  [description] Skipped — TEMPLATE category, description left blank.`);
     return "";
   }
 
   const { hasResults, contextText } = await researchBrandFacts(logoName, brand);
+
+  // #3 — rotating opening angle, deterministic per logoName
+  const opening = pickRotation(logoName, OPENING_ANGLES);
+  // #4 — rotating closing sentence template
+  const closing = pickRotation(logoName, CLOSING_VARIANTS);
+  const closingSentenceForPrompt = closing.value.replace(/\[Logo Name\]/g, logoName);
+
+  // #5 — sibling/variant awareness block
+  const variantNote = relatedDescriptions.length
+    ? `\n\nPREVIOUS VERSION DESCRIPTIONS ALREADY PUBLISHED ON THIS SITE FOR RELATED PAGES (do NOT copy or closely mirror their sentence structure, opening line, or phrasing — this description must read differently from all of them, even though the underlying facts may overlap):\n${relatedDescriptions
+        .slice(0, 3)
+        .map((d, i) => `v${i + 1}: ${String(d).slice(0, 220)}${String(d).length > 220 ? "..." : ""}`)
+        .join("\n")}`
+    : "";
 
   const systemPrompt = `You are a careful research writer producing the "About This Logo" description for a logo reference page. You never invent facts. You only use what is explicitly supported by the research notes given to you. If the notes don't support a fact, you leave it out rather than guessing. Return ONLY valid JSON, no markdown, no commentary.`;
 
@@ -572,6 +650,7 @@ INTERNAL PAGE URL (for your reference only — do NOT use this as, or confuse th
 
 RESEARCH NOTES (from web search — may be incomplete or empty):
 ${hasResults ? contextText : "(no usable search results were found for this name)"}
+${variantNote}
 
 ==================================================
 TASK
@@ -584,7 +663,7 @@ Read the research notes above. Decide honestly which case applies:
 
 CASE A — SUBSTANTIAL VERIFIABLE HISTORY:
 The notes contain genuine, verifiable facts about founding date, logo history/redesign dates, designer, symbolism, official colors, typography, HQ location, or official website.
-→ Write a description between 150 and 250 words. Include as much of the verified facts as you can, but never pad with invented detail:
+→ Write a description between 150 and 250 words (THIS IS A HARD LIMIT — count your words before finishing; if you go over 250 or under 150, trim or expand before returning). Include as much of the verified facts as you can, but never pad with invented detail:
   * Founding date (exact date if available)
   * Logo history — when the current logo launched, and change dates if it changed
   * Reason for redesign if publicly documented (rebrand, merger, sponsorship change)
@@ -600,11 +679,11 @@ The notes contain genuine, verifiable facts about founding date, logo history/re
 
 CASE B — BRAND IS REAL/IDENTIFIABLE BUT NOTES ARE THIN:
 The notes only confirm the brand/logo name is real (or barely touch on it) but do not support real history, dates, designer, or colors.
-→ Write a SHORT description between 30 and 80 words, including only:
+→ Write a SHORT description between 30 and 80 words (HARD LIMIT — count before returning), including only:
   * Brand/logo name
   * Official website, ONLY if the RESEARCH NOTES themselves confirm one — never guess, and never use the INTERNAL PAGE URL
   * State it's official/original ONLY if verifiable — otherwise omit that claim entirely
-  * A line noting the logo is provided for educational and reference use
+  * A line noting the logo is provided for educational and reference use (this exact phrase family — "educational use", "reference use", or "research purposes" — MUST appear somewhere in the description)
   * End with exactly one closing sentence about file formats (see STEP 2, "CLOSING SENTENCE" rule)
   Leave out history, dates, designer, and redesign info entirely.
 
@@ -618,6 +697,8 @@ STEP 2 — WRITING STYLE (applies to CASE A and CASE B only)
 * Never copy or closely paraphrase source wording — rewrite completely in your own words.
 * This description must not follow a generic templated skeleton — write it the way a person would actually write it for this specific logo.
 * Always insert a space after every sentence-ending period, question mark, or exclamation mark.
+* OPENING INSTRUCTION (follow this for how you START the description): ${opening.value}
+  Do NOT default to "[Name] was founded on [date]..." as the first sentence unless the opening instruction above tells you to.
 
 NO UNSOURCED INTERPRETATION:
 Never state what a shape, color, or design "symbolizes," "represents," "reflects," "highlights," or "embodies" unless the research notes explicitly say so. Do not invent meaning about strength, leadership, ambition, tradition, or heritage. If the notes don't explain what something means, just describe what is literally visible (e.g. "the emblem includes two cherries inside a shield outline") without interpreting it.
@@ -629,9 +710,9 @@ REDUNDANT "LOGO" WORDING:
 If LOGO NAME already contains the word "Logo" (e.g. "Borussia Dortmund Logo V2"), never stack a second "logo" right after it (never write "Borussia Dortmund Logo V2 logo is available..."). Rephrase naturally instead, e.g. "Borussia Dortmund's V2 logo is available..." or start the sentence with "This logo...".
 
 CLOSING SENTENCE (formats — mention ONCE, only here):
-End the description with exactly one sentence, close to this pattern, adapted naturally to the sentence flow:
-"The [Logo Name] logo is available on this page in PNG, SVG, AI, and CDR formats for reference and design purposes."
-Do not use variants scattered elsewhere like "logo PNG", "logo vector", "versions of the logo exist", "the logo exists in various formats", or "making it accessible for different uses." File formats must appear exactly once in the whole description, in this closing sentence only.
+End the description with exactly one sentence, adapted naturally to the sentence flow, close to this exact pattern (use THIS pattern, not a different one, so closing phrasing varies across the site rather than every page using the same sentence):
+"${closingSentenceForPrompt}"
+Do not use variants scattered elsewhere like "logo PNG", "logo vector", "versions of the logo exist", "the logo exists in various formats", or "making it accessible for different uses". File formats must appear exactly once in the whole description, in this closing sentence only.
 
 STEP 3 — BANNED WORDS (ZERO EXCEPTIONS, applies to CASE A and CASE B)
 Never use, in any form or tense, anywhere in the description:
@@ -681,56 +762,60 @@ Return ONLY this JSON:
     return { caseUsed, description };
   }
 
-  // ── detects a stray hex/RGB/Pantone code slipping into the description ──
-  function containsColorCode(text) {
-    if (!text) return false;
-    if (/#[0-9a-f]{3,8}\b/i.test(text)) return true;                     // #FFCC00
-    if (/\brgb\s*\(/i.test(text)) return true;                            // rgb(...)
-    if (/\bpantone\s*\d/i.test(text)) return true;                        // Pantone 123
-    return false;
-  }
-
   try {
     let { caseUsed, description } = await runDescriptionCall();
 
-    // Safety net: banned word slipped through, hex/RGB/Pantone code leaked
-    // in despite instructions, or the model echoed the internal page URL /
-    // cdrlogo.com as if it were the brand's website. Do ONE regeneration
-    // pass with an explicit correction note before falling back to blank.
+    // ── Validation gate — now includes word count (#1) and Case B
+    // educational-phrase check (#2), alongside the existing checks. ────────
     const bannedHit = containsBannedPhrase(description);
     const colorCodeHit = containsColorCode(description);
     const leakedInternalUrl =
       description && (description.includes(canonicalUrl) || /cdrlogo\.com/i.test(description));
 
-    if (description && (bannedHit || colorCodeHit || leakedInternalUrl)) {
-      const reason = bannedHit
-        ? `it used the banned phrase "${bannedHit}"`
-        : colorCodeHit
-        ? `it included a hex/RGB/Pantone color code, which is not allowed — colors must be described by name only`
-        : `it incorrectly mentioned the internal archive URL/domain instead of a verified brand website (or none at all)`;
+    const wc = wordCount(description);
+    const wordCountBad = !!description && !isWordCountValid(caseUsed, wc);
+
+    const missingEducationalPhraseB =
+      caseUsed === "B" && !!description && !hasEducationalPhrase(description);
+
+    if (
+      description &&
+      (bannedHit || colorCodeHit || leakedInternalUrl || wordCountBad || missingEducationalPhraseB)
+    ) {
+      const reasonParts = [];
+      if (bannedHit) reasonParts.push(`it used the banned phrase "${bannedHit}"`);
+      if (colorCodeHit) reasonParts.push(`it included a hex/RGB/Pantone color code, which is not allowed — colors must be described by name only`);
+      if (leakedInternalUrl) reasonParts.push(`it incorrectly mentioned the internal archive URL/domain instead of a verified brand website (or none at all)`);
+      if (wordCountBad) reasonParts.push(`it was ${wc} words, which is outside the required range for Case ${caseUsed} (Case A needs 150–250 words, Case B needs 30–80 words)`);
+      if (missingEducationalPhraseB) reasonParts.push(`it is Case B but is missing the required "educational use" / "reference use" / "research purposes" phrase`);
+
+      const reason = reasonParts.join("; and ");
       console.warn(`  [description] Regenerating once — ${reason}.`);
+
       const retry = await runDescriptionCall(
-        `Your previous JSON response was rejected because ${reason}. Regenerate the ENTIRE JSON response, fixing this issue. Follow the STEP 3 banned-words list, the "Official colors — name them only, never hex/RGB/Pantone" rule, and the internal-URL rule exactly.`
+        `Your previous JSON response was rejected because ${reason}. Regenerate the ENTIRE JSON response, fixing this issue precisely. Pay special attention to: the exact word-count range for the case you choose (count your words before returning), the STEP 3 banned-words list, the "Official colors — name them only, never hex/RGB/Pantone" rule, the internal-URL rule, and — if Case B — including the required educational/reference/research phrase.`
       );
       caseUsed = retry.caseUsed;
       description = retry.description;
 
-      // If it still fails after one retry, don't publish bad content —
-      // fall back to blank rather than risk a banned word, a color code, or a wrong URL.
-      if (
-        description &&
-        (containsBannedPhrase(description) ||
-          containsColorCode(description) ||
-          description.includes(canonicalUrl) ||
-          /cdrlogo\.com/i.test(description))
-      ) {
+      // Re-check everything after the retry — if still bad, don't publish;
+      // fall back to blank rather than risk shipping non-compliant content.
+      const stillBanned = containsBannedPhrase(description);
+      const stillColorCode = containsColorCode(description);
+      const stillLeaked = description && (description.includes(canonicalUrl) || /cdrlogo\.com/i.test(description));
+      const stillWc = wordCount(description);
+      const stillWordCountBad = !!description && !isWordCountValid(caseUsed, stillWc);
+      const stillMissingEduB = caseUsed === "B" && !!description && !hasEducationalPhrase(description);
+
+      if (description && (stillBanned || stillColorCode || stillLeaked || stillWordCountBad || stillMissingEduB)) {
         console.warn(`  [description] Still failing validation after retry — leaving blank.`);
         description = "";
+        caseUsed = "C";
       }
     }
 
     console.log(
-      `  [description] Case ${caseUsed} — ${description ? `${description.split(/\s+/).length} words` : "BLANK"}`
+      `  [description] Case ${caseUsed} — ${description ? `${wordCount(description)} words` : "BLANK"} | opening#${opening.index} closing#${closing.index}`
     );
 
     return description;
@@ -739,6 +824,9 @@ Return ONLY this JSON:
     return "";
   }
 }
+// ============================================================================
+// PATCH END
+// ============================================================================
 
 // ── STEP 1: classify main_category / sub_category from the logo NAME only ───
 // Unchanged in spirit from before, but no longer gated on DB availableCategories
@@ -1476,6 +1564,7 @@ generated by a separate pipeline):
     brand,
     isTemplate,
     canonicalUrl,
+    relatedDescriptions: relatedLogos.map((r) => r.description).filter(Boolean), // #5 — sibling-page dedup
   });
 
   // ── Field fallbacks (educational-tone, banned-word-free) ─────────────────
