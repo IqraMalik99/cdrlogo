@@ -30,9 +30,27 @@ export async function middleware(req) {
 > Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for designers and students.
 
 ## Main Pages
-- [All Logos](${origin}/logos)
-- [Brand Categories](${origin}/category)
-- [About](${origin}/about-us)
+- [All Logos](https://www.cdrlogo.com/logos)
+- [Sports & Athletics](https://www.cdrlogo.com/categories/sports-athletics)
+- [Corporate & Finance](https://www.cdrlogo.com/categories/corporate-finance)
+- [Technology & Media](https://www.cdrlogo.com/categories/technology-media)
+- [Automotive & Transport](https://www.cdrlogo.com/categories/automotive-transport)
+- [Food & Beverages](https://www.cdrlogo.com/categories/food-beverages)
+- [Fashion & Retail](https://www.cdrlogo.com/categories/fashion-retail)
+- [Industry, Energy & Construction](https://www.cdrlogo.com/categories/industry-energy-construction)
+- [Government & Politics](https://www.cdrlogo.com/categories/government-politics)
+- [Education & Science](https://www.cdrlogo.com/categories/education-science)
+- [Entertainment & Lifestyle](https://www.cdrlogo.com/categories/entertainment-lifestyle)
+- [Healthcare & Pharma](https://www.cdrlogo.com/categories/healthcare-pharma)
+- [Travel & Hospitality](https://www.cdrlogo.com/categories/travel-hospitality)
+- [Non-Profit & Culture](https://www.cdrlogo.com/categories/non-profit-culture)
+
+## Optional
+- [About Us](https://www.cdrlogo.com/about-us)
+- [Blog](https://www.cdrlogo.com/blog)
+- [Privacy Policy](https://www.cdrlogo.com/privacy-policy)
+- [Terms of Service](https://www.cdrlogo.com/terms-of-service)
+- [DMCA & Copyright Policy](https://www.cdrlogo.com/dmca-copyright-policy)
 
 ## Guidelines
 Educational reference library. Logos provided for design reference and learning purposes only.

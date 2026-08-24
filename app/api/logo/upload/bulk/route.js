@@ -387,7 +387,7 @@ function buildFaqSchema(faqPairs) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "mainEntity": faqPairs.slice(0, 3).map((qa) => ({
+  "mainEntity": faqPairs.slice(0, 4).map((qa) => ({
       "@type": "Question",
       "name": qa.question || qa.q || "",
       "acceptedAnswer": { "@type": "Answer", "text": qa.answer || qa.a || "" },
@@ -990,21 +990,124 @@ Return ONLY valid JSON:
   }
 }
 
-// ── FAQ topic pool (expanded so every logo doesn't get the same 3 questions) ─
-const FAQ_TOPIC_POOL = [
-  "What file formats is this logo available in?",
-  "Is this logo available in vector format?",
-  "Can I use this logo for educational purposes?",
-  "What is the difference between the PNG and SVG versions of this logo?",
-  "Is this logo suitable for design study or research reference?",
-  "What is a CDR file and why is it included with this logo?",
-  "Can this logo be resized without losing quality?",
-  "What is the recommended use case for the AI file format of this logo?",
-  "How is this logo archived on cdrlogo.com?",
-  "What is the significance of having both raster and vector formats for this logo?",
-  "Is a high-resolution version of this logo available for reference?",
-  "What industry or category does this logo belong to?",
-];
+// ── FAQ pool keyed by main category (matches CATEGORY_TAXONOMY_TEXT names) ──
+// "general" questions apply to every category and are always merged in.
+const FAQ_TOPIC_POOL = {
+  general: [
+    "What file formats is this logo available in?",
+    "Is this logo available in vector format?",
+    "What is a CDR file and why is it included with this logo?",
+    "Can this logo be resized without losing quality?",
+    "Can this logo's SVG code be copied directly from this page?",
+    "Is the PNG format of this logo available with a transparent background?",
+  ],
+
+  "Technology & Media": [
+    "What does this logo's design suggest about the company's tech identity?",
+    "Does this logo use flat, minimal, or 3D-style design typical of tech brands?",
+    "Has this tech company's logo changed with major product or platform shifts?",
+    "What typography style does this logo use?",
+  ],
+
+  "Sports & Athletics": [
+    "What does this team or club's logo emblem represent?",
+    "What are this team's official colors?",
+    "Does this logo include a mascot, animal, or historic club symbol?",
+    "Has this team's logo changed after a rebrand or league move?",
+    "Which city or region is this team based in?",
+  ],
+
+  "Fashion & Retail": [
+    "Is this brand's logo a wordmark, monogram, or emblem style?",
+    "What do this fashion brand's colors typically signal about its identity?",
+    "Has this retail brand updated its logo for a rebrand in recent years?",
+    "What typography style defines this brand's logo?",
+  ],
+
+  "Automotive & Transport": [
+    "What does this automotive brand's badge or emblem depict?",
+    "What are the official colors of this brand's logo?",
+    "Has this brand's emblem changed across different vehicle generations?",
+    "Which country is this automotive brand headquartered in?",
+  ],
+
+  "Corporate & Finance": [
+    "What does this company's logo symbol represent, if documented?",
+    "Is this logo a wordmark, icon, or combination mark?",
+    "What are this company's official brand colors?",
+    "Which city or country is this company headquartered in?",
+  ],
+
+  "Government & Politics": [
+    "What does this emblem or seal represent?",
+    "What are the official colors used in this government emblem?",
+    "Which country or region does this emblem represent?",
+    "Does this seal include any historic or symbolic elements?",
+  ],
+
+  "Food & Beverages": [
+    "What does this brand's logo mascot or icon represent, if any?",
+    "What are the official colors of this food/beverage brand's logo?",
+    "Has this brand's packaging or logo design changed over the years?",
+    "Which country did this brand originate from?",
+  ],
+
+  "Travel & Hospitality": [
+    "What does this travel or hospitality brand's logo symbol depict?",
+    "What are this brand's official colors?",
+    "Which country or city is this brand headquartered in?",
+    "Does this logo reflect a specific travel or hospitality theme?",
+  ],
+
+  "Education & Science": [
+    "What does this institution's emblem or crest represent?",
+    "Does this logo include any Latin motto, shield, or historic symbol?",
+    "Which country or city is this institution located in?",
+    "What are the official colors of this institution's logo?",
+  ],
+
+  "Entertainment & Lifestyle": [
+    "What does this logo's character or icon represent?",
+    "What are the official colors associated with this brand?",
+    "Has this entertainment brand's logo changed for a rebrand?",
+    "What visual style best describes this logo — bold, playful, minimal?",
+  ],
+
+  "Healthcare & Pharma": [
+    "What does this healthcare brand's symbol represent, if documented?",
+    "What are this brand's official logo colors?",
+    "Which country is this healthcare or pharma company based in?",
+    "Is this logo a wordmark, icon, or combination mark?",
+  ],
+
+  "Industry, Energy & Construction": [
+    "What does this company's logo symbol depict?",
+    "What are the official colors of this industrial brand's logo?",
+    "Which country or region is this company based in?",
+    "Does this logo reflect the company's specific industry visually?",
+  ],
+
+  "Non Profit & Culture": [
+    "What does this organization's emblem represent?",
+    "What are the official colors of this organization's logo?",
+    "Which country or region is this organization based in?",
+    "Does this logo include any symbolic or cultural elements?",
+  ],
+
+  // TEMPLATE logos — no brand, so only format/technical questions apply
+  template: [
+    "What file formats is this logo available in?",
+    "Is this logo available in vector format?",
+    "Can this logo be resized without losing quality?",
+    "Can this logo's SVG code be copied directly from this page?",
+  ],
+};
+
+function getFaqPoolForCategory(mainCategory, isTemplate) {
+  if (isTemplate) return FAQ_TOPIC_POOL.template;
+  const specific = FAQ_TOPIC_POOL[mainCategory] || [];
+  return [...specific, ...FAQ_TOPIC_POOL.general];
+}
 
 // ── AI content generation ──────────────────────────────────────────────────
 async function generateAIContent({
@@ -1310,26 +1413,56 @@ STRICTLY FORBIDDEN: Free, Download, marketing language.`;
 - If you are not near-certain, return "".
 - Never fabricate a domain that "looks right" (e.g. guessing brandname.com without verifying it's correct).`;
 
-  // ── FAQ section — expanded pool + variety + variant-dedup ─────────────────
-  const faqSection = `--------------------------------------------------
-faq (EXACTLY 3 Q&A PAIRS)
+const faqPoolForThisLogo = getFaqPoolForCategory(mainCategory, isTemplate);
+
+const faqSection = `--------------------------------------------------
+faq (1 to 4 Q&A PAIRS — VARIABLE, NEVER A FIXED NUMBER)
 --------------------------------------------------
 
-Choose EXACTLY 3 questions from this pool — pick a DIFFERENT combination of
-3 than you would typically default to, so different logos end up with
-different question sets rather than the same 3 every time. You do not have
-to use the wording below verbatim; you may lightly rephrase a question as
-long as it stays factual and on-topic.
+This logo's main category is "${isTemplate ? "template" : mainCategory}" — the
+question pool below has already been filtered to match this category, mixed
+with general format/technical questions. Only choose from THIS pool.
 
-QUESTION POOL:
-${FAQ_TOPIC_POOL.map((q) => `- ${q}`).join("\n")}
-${isTemplate ? `\nNote: this logo has no confirmed brand, so skip any pool question that would require mentioning a brand or industry (e.g. skip the "what industry does this logo belong to" question for this logo).` : ""}
-${usedFaqQuestions.length ? `\nPREVIOUSLY USED FAQ QUESTIONS on related pages (choose DIFFERENT questions from the pool where possible — avoid repeating these verbatim):\n${usedFaqQuestions.map((q) => `- "${q}"`).join("\n")}` : ""}
+STEP 1 — HOW MANY QUESTIONS
+Select between 1 and 4 questions — never a fixed number. Choose only as many
+as you can answer with genuine, specific, brand-related information or
+direct visual observation of THIS exact logo. If little is known about this
+logo/brand, 1 or 2 questions is correct and preferred over padding to 4.
 
-Answers must be factual, 1–2 sentences, educational/reference tone.
+STEP 2 — SELECTING QUESTIONS
+Pick from the pool below. Randomly vary your selection across different
+logos in the same category — do not always pick the same combination.
+Select AT MOST 1 general format/technical question — do not stack more
+than one "file format" style question together.
+
+QUESTION POOL FOR "${isTemplate ? "template" : mainCategory}":
+${faqPoolForThisLogo.map((q) => `- ${q}`).join("\n")}
+${usedFaqQuestions.length ? `\nPREVIOUSLY USED FAQ QUESTIONS on related pages (choose DIFFERENT questions where possible — avoid repeating these verbatim):\n${usedFaqQuestions.map((q) => `- "${q}"`).join("\n")}` : ""}
+
+STEP 3 — WRITING ANSWERS
+- Every answer must naturally include the specific brand/logo name.
+- Base category-specific answers on what is genuinely observable in THIS
+  specific logo (its actual colors, shape, symbol, style) — never a generic
+  answer that could apply to any logo in this category.
+- For a format/technical question, use this exact logo's real file size and
+  format data where available.
+- Never reuse the same answer wording across different logos, even for the
+  same question — rewrite naturally each time.
+- If you cannot verify a fact needed to answer a chosen question, do not
+  guess — choose a different question instead.
+
+STEP 4 — WRITING STYLE
+Natural, simple, human English — not stiff AI phrasing. Keep answers
+concise (1-2 sentences each).
+
+STEP 5 — ACCURACY RULE
+Never fabricate history, symbolism, or meaning that cannot be reasonably
+inferred from the logo itself or verified research. A short, honest answer
+is always better than a confident guess.
+
 NEVER use: Free, Download, commercial wording${isTemplate ? `, the word "brand"/"company" as a placeholder subject` : ""}.
 
-Return as array: [{ "question": "...", "answer": "..." }, ...]`;
+Return as array (1 to 4 items): [{ "question": "...", "answer": "..." }, ...]`;
 
   // ── User prompt ─────────────────────────────────────────────────────────
   const userPrompt = `Generate complete SEO metadata for this logo page.
@@ -1504,10 +1637,9 @@ generated by a separate pipeline):
   "twitter_title": "...",
   "twitter_description": "...",
   "image_object_description": "...",
-  "faq": [
-    { "question": "...", "answer": "..." },
-    { "question": "...", "answer": "..." },
+ "faq": [
     { "question": "...", "answer": "..." }
+    // 1 to 4 items — count depends on how much genuine info is available
   ]
 }`;
 
