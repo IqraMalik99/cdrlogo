@@ -503,6 +503,7 @@ function LogoCard({ logo, index }) {
       <div className="card-img-wrap">
         {logo.webpUrl && !imgError ? (
           <Image
+          unoptimized
             className="card-img"
             src={logo.webpUrl}
             alt={logo.logoName}

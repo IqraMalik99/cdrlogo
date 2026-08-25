@@ -60,6 +60,7 @@ function LogoCard({ logo }) {
       <div className="card-image">
         {!imgErr && logo.webpUrl ? (
           <Image
+          unoptimized
             src={logo.webpUrl}
             alt={logo.logoName}
             width={110}

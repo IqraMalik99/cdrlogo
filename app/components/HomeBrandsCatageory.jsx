@@ -40,7 +40,7 @@ function BrandCard({ cat, index, dark }) {
       {hasImages ? (
         <div className="bc-imgs">
           {cat.images.map((src, i) => (
-            <Image key={i} src={src} width={22}
+            <Image  unoptimized key={i} src={src} width={22}
               height={22} alt="" className="bc-img" loading="lazy"/>
           ))}
         </div>
