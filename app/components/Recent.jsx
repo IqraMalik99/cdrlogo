@@ -81,6 +81,7 @@ function RecentCard({ logo, dark }) {
 
         {!imgErr && logo.webpUrl
           ? <Image
+            unoptimized
             src={logo.webpUrl}
             alt={logo.logoName}
             onError={() => setImgErr(true)}
