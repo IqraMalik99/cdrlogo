@@ -1066,12 +1066,19 @@ const FAQ_QUESTION_BANK = {
   ],
 };
 
-// isRestricted = TEMPLATE logo OR no verified facts (Case C blank
-// description) → only website_format_technical questions are honest to
-// offer, since all other categories require genuine brand-specific facts.
-function getFaqPool(isRestricted) {
-  if (isRestricted) return FAQ_QUESTION_BANK.website_format_technical;
-  return [
+function seededShuffle(arr, seed) {
+  const a = [...arr];
+  let s = Math.abs(hashString(seed)) || 1;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280;
+    const j = Math.floor((s / 233280) * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function getFaqPool(isRestricted, seed = "") {
+  if (isRestricted) return seededShuffle(FAQ_QUESTION_BANK.website_format_technical, seed);
+  const full = [
     ...FAQ_QUESTION_BANK.brand_identity_symbolism,
     ...FAQ_QUESTION_BANK.colors,
     ...FAQ_QUESTION_BANK.shape_design_concept,
@@ -1082,6 +1089,7 @@ function getFaqPool(isRestricted) {
     ...FAQ_QUESTION_BANK.country_city_industry_context,
     ...FAQ_QUESTION_BANK.website_format_technical,
   ];
+  return seededShuffle(full, seed);
 }
 // ── AI content generation ──────────────────────────────────────────────────
 async function generateAIContent({
@@ -1426,7 +1434,7 @@ STRICTLY FORBIDDEN: Free, Download, marketing language.`;
 - Never fabricate a domain that "looks right" (e.g. guessing brandname.com without verifying it's correct).`;
 
 const noVerifiedFacts = !description;
-const faqPoolForThisLogo = getFaqPool(isTemplate || noVerifiedFacts);
+const faqPoolForThisLogo = getFaqPool(isTemplate || noVerifiedFacts, logoName);
 
 const faqSection = `--------------------------------------------------
 faq (1 to 4 Q&A PAIRS — VARIABLE, NEVER A FIXED NUMBER)
