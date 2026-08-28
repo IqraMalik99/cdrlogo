@@ -44,58 +44,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
     const searchDebounceRef = useRef(null);
     const searchFirstRender = useRef(true);
 
-    const PANTONE_COLORS = [
-        { name: "PANTONE 186 C", hex: "#C8102E" },
-        { name: "PANTONE 485 C", hex: "#DA291C" },
-        { name: "PANTONE 1655 C", hex: "#FF6720" },
-        { name: "PANTONE 021 C", hex: "#FE5000" },
-        { name: "PANTONE 1235 C", hex: "#FFC72C" },
-        { name: "PANTONE 109 C", hex: "#FFD100" },
-        { name: "PANTONE 368 C", hex: "#78BE21" },
-        { name: "PANTONE 354 C", hex: "#00B140" },
-        { name: "PANTONE 347 C", hex: "#009A44" },
-        { name: "PANTONE 3435 C", hex: "#00543C" },
-        { name: "PANTONE 3258 C", hex: "#00B294" },
-        { name: "PANTONE 320 C", hex: "#00A3AD" },
-        { name: "PANTONE 299 C", hex: "#00A9E0" },
-        { name: "PANTONE Process Blue C", hex: "#0085CA" },
-        { name: "PANTONE 2935 C", hex: "#0057B8" },
-        { name: "PANTONE 286 C", hex: "#0033A0" },
-        { name: "PANTONE 2758 C", hex: "#00205B" },
-        { name: "PANTONE 2685 C", hex: "#330072" },
-        { name: "PANTONE 2597 C", hex: "#511778" },
-        { name: "PANTONE Purple C", hex: "#7B2D8E" },
-        { name: "PANTONE Rubine Red C", hex: "#CE0058" },
-        { name: "PANTONE 7425 C", hex: "#A6093D" },
-        { name: "PANTONE Rose Red C", hex: "#E40046" },
-        { name: "PANTONE Pink C", hex: "#D6006C" },
-        { name: "PANTONE Black C", hex: "#2D2926" },
-        { name: "PANTONE Cool Gray 11 C", hex: "#53565A" },
-        { name: "PANTONE Cool Gray 8 C", hex: "#888B8D" },
-        { name: "PANTONE Cool Gray 5 C", hex: "#B1B3B3" },
-        { name: "PANTONE 877 C", hex: "#8A8D8F" },
-        { name: "PANTONE 8001 C", hex: "#C7C9C7" },
-        { name: "PANTONE Warm Gray 11 C", hex: "#6F6259" },
-        { name: "PANTONE Warm Gray 8 C", hex: "#97877A" },
-        { name: "PANTONE 476 C", hex: "#4A3728" },
-        { name: "PANTONE 4695 C", hex: "#5C4033" },
-        { name: "PANTONE 4625 C", hex: "#3B2412" },
-        { name: "PANTONE 7585 C", hex: "#C5621F" },
-        { name: "PANTONE 7597 C", hex: "#A0522D" },
-        { name: "PANTONE 7621 C", hex: "#A6192E" },
-        { name: "PANTONE 7625 C", hex: "#B13D38" },
-        { name: "PANTONE 1795 C", hex: "#DA291C" },
-        { name: "PANTONE 1788 C", hex: "#EF3340" },
-        { name: "PANTONE 7417 C", hex: "#E1553F" },
-        { name: "PANTONE 1585 C", hex: "#FF8200" },
-        { name: "PANTONE 1375 C", hex: "#FF9E1B" },
-        { name: "PANTONE 7406 C", hex: "#F2A900" },
-        { name: "PANTONE 382 C", hex: "#C4D600" },
-        { name: "PANTONE 361 C", hex: "#43B02A" },
-        { name: "PANTONE 7710 C", hex: "#6CACE4" },
-        { name: "PANTONE 7462 C", hex: "#1B365D" },
-        { name: "PANTONE 2767 C", hex: "#002554" },
-    ];
+
 
     useEffect(() => {
         const t = setTimeout(() => setReady(true), 60);
@@ -271,23 +220,9 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
         return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
     };
 
-    const parsedColors = (() => {
-        if (!logo?.id) return [];
-        let seed = 0;
-        for (const ch of String(logo.id)) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
-        const shuffled = [...PANTONE_COLORS];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            seed = (seed * 1103515245 + 12345) >>> 0;
-            const j = seed % (i + 1);
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled;
-    })();
 
-    const hexToRgb = (hex) => {
-        const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-        return `${r}, ${g}, ${b}`;
-    };
+
+
 
     const buildEnrichedDescription = (desc, relatedLogos) => {
         if (!desc || relatedLogos.length === 0) return { __html: desc || "" };
@@ -965,27 +900,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                 </div>
                             )}
 
-                            {parsedColors.length > 0 && (
-                                <div className="colors-card anim d2">
-                                    <div className="colors-header"><span className="colors-dot" />Official Brand Colors</div>
-                                    {parsedColors.map((color, i) => (
-                                        <div className="color-row" key={i}>
-                                            <div className="color-swatch" style={{ background: color.hex }} />
-                                            <div className="color-info">
-                                                <div className="color-name">{color.name}</div>
-                                                <div className="color-hex">{color.hex.toUpperCase()}</div>
-                                                <div className="color-rgb">RGB: {hexToRgb(color.hex)}</div>
-                                            </div>
-                                            <button className={`color-copy-btn${copiedColor === color.hex ? " copied" : ""}`} onClick={() => handleCopyColor(color.hex)} title="Copy hex">
-                                                {copiedColor === color.hex
-                                                    ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                                                    : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                                                }
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                          
 
                             <div className="ad-card anim d3" style={{ minHeight: 160 }} />
                         </div>
