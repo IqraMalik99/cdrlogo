@@ -729,6 +729,12 @@ that may appear is the brand's own official website, and only when the research 
 
 STEP 4 — ACCURACY RULE (NON-NEGOTIABLE)
 Never state a fact not supported by the research notes above. If you are unsure, leave it out. A short, honest description is always better than a longer one with invented facts. If in doubt between Case A/B/C, choose the more conservative case.
+BANNED STRUCTURES (do not use these, even reworded slightly):
+- Banned Opening: "[Brand Name] is a professional club/company based in [Location], known for competing in..."
+- Banned Closing: "This page provides the [Brand Name] in PNG, SVG, AI, and CDR file formats for research and reference use."
+- Alternative approach: blend file formats naturally into the middle of the paragraph, or use active voice (e.g., "Graphic designers can access the CDR and SVG assets below"). Start descriptions directly with an action, a fact, or something specific to that brand — never a generic opening formula.
+- DYNAMIC PATTERN PROHIBITION: Do not substitute the banned list with a third repetitive formula. Every description must have a completely unique syntax layout.
+
 
 Return ONLY this JSON:
 {
@@ -874,7 +880,7 @@ Return ONLY valid JSON:
   try {
     const catCompletion = await callOpenAIWithRetry({
       model: "gpt-5.4-mini",
-      temperature: 0,
+      temperature: 0.7,
       messages: [
         {
           role: "system",
@@ -959,7 +965,7 @@ Return ONLY valid JSON:
   try {
     const completion = await callOpenAIWithRetry({
       model: "gpt-4.1-mini",
-      temperature: 0,
+      temperature: 0.7,
       messages: [
         {
           role: "system",
@@ -1688,7 +1694,7 @@ VERIFIED FACTS):
       : messages;
     const completion = await callOpenAIWithRetry({
       model: "gpt-4.1-mini",
-      temperature: 0.6,
+      temperature: 0.7,
       messages: finalMessages,
       response_format: { type: "json_object" },
     });

@@ -215,7 +215,7 @@ export default async function Page({ params }) {
   }
 
   return (
-    <>
+       <>
       {imageObjectSchema && (
         <script
           type="application/ld+json"
@@ -234,10 +234,14 @@ export default async function Page({ params }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}
-     
-   
 
-    <LogoDetail logo={correctedLogo} initialRelated={related} />
+      {correctedLogo && (
+        <h1 style={{ color: "transparent", margin: 0, fontSize: 0 }}>
+          {correctedLogo.logoName} Logo – Download (SVG, PNG, AI, CDR)
+        </h1>
+      )}
+
+      <LogoDetail logo={correctedLogo} initialRelated={related} />
     </>
   );
 }

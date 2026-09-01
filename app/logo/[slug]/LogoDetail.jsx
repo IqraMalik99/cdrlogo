@@ -607,7 +607,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                 <span className="breadcrumb-sep">/</span>
                             </>
                         )}
-                        <h1 className="breadcrumb-current">{logo.logoName}</h1>
+                        <h2 className="breadcrumb-current">{logo.logoName}</h2>
                     </nav>
 
                     {/* ── inline search bar ─────────────────────────────────────────── */}
