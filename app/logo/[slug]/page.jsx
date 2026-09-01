@@ -235,13 +235,48 @@ export default async function Page({ params }) {
         />
       )}
 
-      {correctedLogo && (
-        <h1 style={{ color: "transparent", margin: 0, fontSize: 0 }}>
-          {correctedLogo.logoName} Logo – Download (SVG, PNG, AI, CDR)
-        </h1>
-      )}
-
       <LogoDetail logo={correctedLogo} initialRelated={related} />
+
+     
+      <style>{`
+        .seo-h1-wrap {
+          position: relative;
+          z-index: 1;
+          max-width: 1100px;
+          margin: 28px auto 0;
+          padding: 0 24px;
+        }
+        .seo-h1 {
+          font-family: 'Sora', sans-serif;
+          font-weight: 800;
+          font-size: clamp(18px, 2.4vw, 26px);
+          line-height: 1.35;
+          letter-spacing: -0.3px;
+          color: var(--heading, #0a0a14);
+          padding-bottom: 10px;
+          position: relative;
+        }
+        .seo-h1::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          width: 48px;
+          height: 3px;
+          border-radius: 3px;
+          background: linear-gradient(135deg, #07A626, #059c1f);
+        }
+        @media (max-width: 480px) {
+          .seo-h1-wrap { padding: 0 16px; margin-top: 20px; }
+        }
+      `}</style>
+      {correctedLogo?.logoName && (
+        <div className="seo-h1-wrap">
+          <h1 className="seo-h1">
+            {correctedLogo.logoName} Logo – Download (SVG, PNG, AI, CDR)
+          </h1>
+        </div>
+      )}
     </>
   );
 }
