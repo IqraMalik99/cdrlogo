@@ -7,16 +7,29 @@ export async function middleware(req) {
     const res = await fetch(`${origin}/api/sitemap-data`);
     const routes = await res.json();
 
+    const escapeXml = (str) =>
+      String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+
     const urlEntries = routes.map(r => `
   <url>
-    <loc>${r.url}</loc>
+    <loc>${escapeXml(r.url)}</loc>
     <lastmod>${new Date(r.lastModified).toISOString()}</lastmod>
     <changefreq>${r.changeFrequency}</changefreq>
-    <priority>${r.priority}</priority>
+    <priority>${r.priority}</priority>${r.image ? `
+    <image:image>
+      <image:loc>${escapeXml(r.image)}</image:loc>
+      <image:title>${escapeXml(r.imageTitle || "")}</image:title>
+    </image:image>` : ""}
   </url>`).join("");
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urlEntries}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">${urlEntries}
 </urlset>`;
 
     return new NextResponse(xml, {

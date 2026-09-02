@@ -10,7 +10,35 @@ const GLOBAL_IMAGE_LICENSE_META = {
   acquireLicensePage: "https://www.cdrlogo.com/terms-of-service",
 };
 
+// Flip to false to make the SEO h1 visible on the page instead of hidden.
+const HIDE_H1 = true;
 
+// Standard "visually-hidden" pattern: invisible on screen, but still
+// present for screen readers and search engine crawlers. More robust
+// than color:transparent + font-size:0, which some browsers/assistive
+// tech can treat inconsistently.
+const VISUALLY_HIDDEN_STYLE = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  padding: 0,
+  margin: "-1px",
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
+// Single source of truth for the page title — used by BOTH
+// generateMetadata() (<title>, og:title, twitter:title fallback) and the
+// on-page <h1>. Previously these were built separately in two places with
+// the same-looking template string, which meant editing one didn't
+// guarantee the other stayed in sync. Now there's exactly one place that
+// decides what "the title" is.
+function buildPageTitle(logo) {
+  if (!logo) return "Logo – Download";
+  return logo.metaTitle || `${logo.logoName} Logo – Download (SVG, PNG, AI, CDR)`;
+}
 
 async function fetchLogo(slug) {
   try {
@@ -65,9 +93,10 @@ export async function generateMetadata({ params }) {
 
     if (!logo) {
       return {
-        title: "Logo – Download",
+        title: buildPageTitle(null),
         description: "Download vector logos in SVG, PNG, AI, CDR formats.",
         robots: { index: false, follow: false },
+        other: { title: buildPageTitle(null) },
       };
     }
 
@@ -75,8 +104,7 @@ export async function generateMetadata({ params }) {
       logo.canonicalUrl ||
       `${process.env.NEXT_PUBLIC_BASE_URL}/logo/${logo.slug}`;
 
-    const metaTitle = logo.metaTitle ||
-      `${logo.logoName} Logo – Download (SVG, PNG, AI, CDR)`;
+    const metaTitle = buildPageTitle(logo);
 
     const metaDescription = logo.metaDescription ||
       (logo.description || "").slice(0, 160);
@@ -106,6 +134,12 @@ export async function generateMetadata({ params }) {
       title: metaTitle,
       description: metaDescription,
 
+      // Explicit <meta name="title"> mirroring the h1 / <title>. Some SEO
+      // tools and crawlers read this tag separately from <title>, so it's
+      // kept in sync via the same buildPageTitle() call rather than a
+      // second hardcoded string.
+      other: { title: metaTitle },
+
       alternates: { canonical: canonicalUrl },
       robots,
 
@@ -131,9 +165,10 @@ export async function generateMetadata({ params }) {
   } catch (err) {
     console.error("[generateMetadata]", err);
     return {
-      title: "Logo – Download",
+      title: buildPageTitle(null),
       description: "Download vector logos in SVG, PNG, AI, CDR formats.",
       robots: { index: false, follow: false },
+      other: { title: buildPageTitle(null) },
     };
   }
 }
@@ -214,6 +249,10 @@ export default async function Page({ params }) {
     delete correctedLogo.industry;
   }
 
+  // Same buildPageTitle() used in generateMetadata — the h1 and the
+  // <title>/og:title are now guaranteed to say the same thing.
+  const pageTitle = buildPageTitle(correctedLogo);
+
   return (
        <>
       {imageObjectSchema && (
@@ -235,48 +274,24 @@ export default async function Page({ params }) {
         />
       )}
 
-      <LogoDetail logo={correctedLogo} initialRelated={related} />
-
-     
-      <style>{`
-        .seo-h1-wrap {
-          position: relative;
-          z-index: 1;
-          max-width: 1100px;
-          margin: 28px auto 0;
-          padding: 0 24px;
-        }
-        .seo-h1 {
-          font-family: 'Sora', sans-serif;
-          font-weight: 800;
-          font-size: clamp(18px, 2.4vw, 26px);
-          line-height: 1.35;
-          letter-spacing: -0.3px;
-          color: var(--heading, #0a0a14);
-          padding-bottom: 10px;
-          position: relative;
-        }
-        .seo-h1::after {
-          content: "";
-          position: absolute;
-          left: 0;
-          bottom: 0;
-          width: 48px;
-          height: 3px;
-          border-radius: 3px;
-          background: linear-gradient(135deg, #07A626, #059c1f);
-        }
-        @media (max-width: 480px) {
-          .seo-h1-wrap { padding: 0 16px; margin-top: 20px; }
-        }
-      `}</style>
-      {correctedLogo?.logoName && (
-        <div className="seo-h1-wrap">
-          <h1 className="seo-h1">
-            {correctedLogo.logoName} Logo – Download (SVG, PNG, AI, CDR)
-          </h1>
-        </div>
+      {/*
+        Server-rendered SEO h1 — always present in the raw HTML (good for
+        crawlers, no client fetch delay) whenever the fetch actually
+        succeeded (correctedLogo is non-null). Its text comes from the
+        exact same buildPageTitle() call that generateMetadata() uses, so
+        it can't drift from <title>/og:title.
+        Controlled by HIDE_H1 above:
+        true  -> invisible to users but still readable by screen readers
+                 and search engines (standard "visually-hidden" pattern).
+        false -> renders normally, visible on the page.
+      */}
+      {correctedLogo && (
+        <h1 style={HIDE_H1 ? VISUALLY_HIDDEN_STYLE : undefined}>
+          {pageTitle}
+        </h1>
       )}
+
+      <LogoDetail logo={correctedLogo} initialRelated={related} />
     </>
   );
 }

@@ -7,7 +7,7 @@ export async function GET() {
   const [logos, blogs] = await Promise.all([
     prisma.logo.findMany({
       where: { publishStatus: "Published" },
-      select: { slug: true, updatedAt: true, category: true },
+      select: { slug: true, updatedAt: true, category: true, webpUrl: true, logoName: true }, // ← added webpUrl, logoName
       orderBy: { updatedAt: "desc" },
     }),
     prisma.blog.findMany({
@@ -20,17 +20,14 @@ export async function GET() {
   // -------------------------------
   // SAFE CATEGORY EXTRACTION
   // -------------------------------
-  const categories = [
-    ...new Set(
-      logos
-        .map(l =>
-          typeof l.category === "string"
-            ? l.category.trim().toLowerCase().replace(/\s+/g, "-")
-            : null
-        )
-        .filter(cat => cat)
-    )
-  ];
+ const categories = [
+  ...new Set(
+    logos
+      .flatMap(l => Array.isArray(l.category) ? l.category : [])
+      .map(c => String(c).trim().toLowerCase().replace(/\s+/g, "-"))
+      .filter(Boolean)
+  )
+];
 
   // -------------------------------
   // STATIC + IMPORTANT ROUTES
@@ -40,10 +37,9 @@ export async function GET() {
     { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/brands`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/category`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-     { url: `${baseUrl}/template`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-     { url: `${baseUrl}/about-us`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-       { url: `${baseUrl}/logos`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-
+    { url: `${baseUrl}/template`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/about-us`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/logos`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
   ];
 
   // -------------------------------
@@ -57,7 +53,7 @@ export async function GET() {
   }));
 
   // -------------------------------
-  // LOGO ROUTES
+  // LOGO ROUTES (now with image data)
   // -------------------------------
   const logoRoutes = logos
     .filter(l => typeof l.slug === "string" && l.slug.trim() !== "")
@@ -66,6 +62,8 @@ export async function GET() {
       lastModified: l.updatedAt || new Date(),
       changeFrequency: "weekly",
       priority: 0.9,
+      image: l.webpUrl || null,        // ← same row as slug, no zipping
+      imageTitle: l.logoName || null,  // ← same row as slug, no zipping
     }));
 
   // -------------------------------
