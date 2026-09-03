@@ -260,10 +260,19 @@ export default async function Page({ params }) {
         />
       )}
 
+      {/* Rendered directly by the server component so it's present in the
+          initial HTML (view-source, crawlers) regardless of what LogoDetail
+          does client-side. This is now the single source of the visible H1
+          for the page — LogoDetail must NOT render its own H1 anymore. */}
+      <h1 className="text-2xl md:text-3xl font-bold">
+        {pageTitle}
+      </h1>
+
       <LogoDetail
         logo={correctedLogo}
         initialRelated={related}
         pageTitle={pageTitle}
+        showH1={false}
       />
     </>
   );

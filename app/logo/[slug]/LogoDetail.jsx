@@ -654,7 +654,6 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
                 <div className="page">
                     <div className="dot-grid" />
 
-                    {pageTitle && <h1 className="seo-h1">{pageTitle}</h1>}
 
                     <nav className="breadcrumb" aria-label="breadcrumb">
                         <Link href="/">Home</Link>

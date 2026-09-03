@@ -375,7 +375,7 @@ function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, descr
     "contentUrl": imageUrl,
     "url": imageUrl,
     "name": `${logoName}`,
-    "description": description || `${logoName} logo image on cdrlogo.com`,
+  "description": description || `${logoPhrase(logoName)} image on cdrlogo.com`,
     "representativeOfPage": true,
     ...(brand ? { "creator": { "@type": "Organization", "name": brand } } : {}),
     "mainEntityOfPage": canonicalUrl,
@@ -387,7 +387,7 @@ function buildFaqSchema(faqPairs) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-  "mainEntity": faqPairs.slice(0, 4).map((qa) => ({
+  "mainEntity": faqPairs.slice(0, 2).map((qa) => ({
       "@type": "Question",
       "name": qa.question || qa.q || "",
       "acceptedAnswer": { "@type": "Answer", "text": qa.answer || qa.a || "" },
@@ -434,6 +434,12 @@ function stripAccents(text) {
   return text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+}
+
+// returns the name with exactly one trailing "logo", never two
+function logoPhrase(name) {
+  const trimmed = String(name || "").trim();
+  return /\blogo\b\s*$/i.test(trimmed) ? trimmed : `${trimmed} logo`;
 }
 
 // ── Backstop for the missing-space-after-period bug (e.g.
@@ -593,15 +599,16 @@ const OPENING_ANGLES = [
 ];
 
 const CLOSING_VARIANTS = [
-  `The [Logo Name] logo is available on this page in PNG, SVG, AI, and CDR formats for reference and design purposes.`,
-  `This page provides the [Logo Name] logo in PNG, SVG, AI, and CDR file formats for research and reference use.`,
-  `PNG, SVG, AI, and CDR versions of the [Logo Name] logo are provided here for educational reference.`,
+  `The [Logo Phrase] is available on this page in PNG, SVG, AI, and CDR formats for reference and design purposes.`,
+  `This page provides the [Logo Phrase] in PNG, SVG, AI, and CDR file formats for research and reference use.`,
+  `PNG, SVG, AI, and CDR versions of the [Logo Phrase] are provided here for educational reference.`,
 ];
-
+ 
 function pickRotation(logoName, arr) {
   const idx = Math.abs(hashString(logoName)) % arr.length;
   return { value: arr[idx], index: idx };
 }
+
 
 // detects a stray hex/RGB/Pantone code slipping into the description
 function containsColorCode(text) {
@@ -630,7 +637,7 @@ async function generateMainDescription({
   const opening = pickRotation(logoName, OPENING_ANGLES);
   // #4 — rotating closing sentence template
   const closing = pickRotation(logoName, CLOSING_VARIANTS);
-  const closingSentenceForPrompt = closing.value.replace(/\[Logo Name\]/g, logoName);
+ const closingSentenceForPrompt = closing.value.replace(/\[Logo Phrase\]/g, logoPhrase(logoName));
 
   // #5 — sibling/variant awareness block
   const variantNote = relatedDescriptions.length
@@ -1384,10 +1391,10 @@ Any color/symbol/shape claim must match VERIFIED FACTS above — do not introduc
 
 STRICTLY FORBIDDEN: commercial projects, business use, branding needs, marketing language`;
 
-  const altTextRule = isTemplate
-    ? `Return EXACTLY: "${logoName} logo — PNG SVG vector file on cdrlogo.com"
+const altTextRule = isTemplate
+  ? `Return EXACTLY: "${logoPhrase(logoName)} — PNG SVG vector file on cdrlogo.com"
 DO NOT DEVIATE. DO NOT ADD WORDS. DO NOT use the word "brand".`
-    : `Return EXACTLY: "${logoName} logo — PNG SVG vector file on cdrlogo.com"
+  : `Return EXACTLY: "${logoPhrase(logoName)} — PNG SVG vector file on cdrlogo.com"
 DO NOT DEVIATE. DO NOT ADD WORDS.`;
 
   const ogDescriptionRule = isTemplate
@@ -1452,12 +1459,10 @@ with general format/technical questions${noVerifiedFacts && !isTemplate ? ` (and
 Only choose from THIS pool.
 
 STEP 1 — HOW MANY QUESTIONS
-Select between 1 and 4 questions — never a fixed number. Choose only as many
-as you can answer with genuine, specific, brand-related information that is
-explicitly present in VERIFIED FACTS above (never from your own general
-knowledge or assumption about the logo's appearance). If little or nothing
-is available in VERIFIED FACTS, 1 or 2 generic/technical questions is
-correct and preferred over padding to 4 with guessed details.
+Select EXACTLY 2 questions — always 2, never more and never fewer. If
+VERIFIED FACTS is sparse, pick 1 brand-related question (if any genuine
+fact supports it) plus 1 generic/technical question rather than inventing
+detail to fill a second brand question.
 
 STEP 2 — SELECTING QUESTIONS
 Pick from the pool below. Randomly vary your selection across different
@@ -1496,7 +1501,7 @@ confident guess.
 
 NEVER use: Free, Download, commercial wording${isTemplate ? `, the word "brand"/"company" as a placeholder subject` : ""}.
 
-Return as array (1 to 4 items): [{ "question": "...", "answer": "..." }, ...]`;
+Return as array of EXACTLY 2 items: [{ "question": "...", "answer": "..." }, { "question": "...", "answer": "..." }]`;
 
   // ── User prompt ─────────────────────────────────────────────────────────
   const userPrompt = `Generate complete SEO metadata for this logo page.
@@ -1678,8 +1683,9 @@ VERIFIED FACTS):
   "twitter_description": "...",
   "image_object_description": "...",
  "faq": [
+    { "question": "...", "answer": "..." },
     { "question": "...", "answer": "..." }
-    // 1 to 4 items — count depends on how much genuine info is available
+    // exactly 2 items, always
   ]
 }`;
 
@@ -1736,10 +1742,8 @@ VERIFIED FACTS):
     `${logoName} — PNG SVG vector file on cdrlogo.com`;
   const metaDescription = stripAccents(parsed.meta_description) ||
     `${logoName}  available in PNG, SVG and vector format for educational use and research purposes. Reference archive on cdrlogo.com.`;
-  const altText = stripAccents(parsed.alt_text) ||
-    (isTemplate
-      ? `${logoName} logo — PNG SVG vector file on cdrlogo.com`
-      : `${logoName} — PNG SVG vector file on cdrlogo.com`);
+const altText = stripAccents(parsed.alt_text) ||
+  `${logoPhrase(logoName)} — PNG SVG vector file on cdrlogo.com`;
   const tags = Array.isArray(parsed.tags) && parsed.tags.length
     ? parsed.tags.map(t => stripAccents(String(t)))
     : [logoName, "PNG", "SVG", "vector", "cdrlogo.com"];
@@ -1754,7 +1758,7 @@ VERIFIED FACTS):
     `${logoName} in PNG and SVG vector format for educational reference and research use.`;
   const imageObjectDescription = stripAccents(parsed.image_object_description) ||
     `${logoName} image on cdrlogo.com`;
-  const faqPairs = Array.isArray(parsed.faq) ? parsed.faq : [];
+const faqPairs = (Array.isArray(parsed.faq) ? parsed.faq : []).slice(0, 2);
 
   // ── Post-generation validation logging (not blocking, but visible) ───────
   const violations = validateAIContent(
