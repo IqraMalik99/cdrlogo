@@ -17,7 +17,7 @@ const GLOBAL_IMAGE_LICENSE_META = {
 // guarantee the other stayed in sync. Now there's exactly one place that
 // decides what "the title" is.
 function buildPageTitle(logo) {
-  if (!logo) return "Logo – Download";
+  if (!logo) return "";
   return logo.metaTitle || `${logo.logoName} Logo – Download (SVG, PNG, AI, CDR)`;
 }
 
