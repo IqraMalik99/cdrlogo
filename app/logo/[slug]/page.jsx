@@ -272,7 +272,7 @@ export default async function Page({ params }) {
         logo={correctedLogo}
         initialRelated={related}
         pageTitle={pageTitle}
-        showH1={false}
+      showH1={true}
       />
     </>
   );
