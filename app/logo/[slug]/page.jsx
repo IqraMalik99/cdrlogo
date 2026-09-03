@@ -10,18 +10,6 @@ const GLOBAL_IMAGE_LICENSE_META = {
   acquireLicensePage: "https://www.cdrlogo.com/terms-of-service",
 };
 
-// Flip to false to make the SEO h1 visible on the page instead of hidden.
-const HIDE_H1 = true;
-
-// Standard "visually-hidden" pattern: invisible on screen, but still
-// present for screen readers and search engine crawlers. More robust
-// than color:transparent + font-size:0, which some browsers/assistive
-// tech can treat inconsistently.
-const VISUALLY_HIDDEN_STYLE = {
-  color: "transparent",
-  userSelect: "none",
-};
-
 // Single source of truth for the page title — used by BOTH
 // generateMetadata() (<title>, og:title, twitter:title fallback) and the
 // on-page <h1>. Previously these were built separately in two places with
@@ -243,11 +231,16 @@ export default async function Page({ params }) {
   }
 
   // Same buildPageTitle() used in generateMetadata — the h1 and the
-  // <title>/og:title are now guaranteed to say the same thing.
+  // <title>/og:title are now guaranteed to say the same thing. The h1
+  // itself is rendered inside LogoDetail (as a real, visible, theme-aware
+  // heading) so it sits in the correct spot in the page layout instead of
+  // being bolted on above it. Since correctedLogo/pageTitle are resolved
+  // here on the server, LogoDetail still receives them synchronously on
+  // first render — no client fetch delay, no SEO downside.
   const pageTitle = buildPageTitle(correctedLogo);
 
   return (
-       <>
+    <>
       {imageObjectSchema && (
         <script
           type="application/ld+json"
@@ -267,24 +260,11 @@ export default async function Page({ params }) {
         />
       )}
 
-      {/*
-        Server-rendered SEO h1 — always present in the raw HTML (good for
-        crawlers, no client fetch delay) whenever the fetch actually
-        succeeded (correctedLogo is non-null). Its text comes from the
-        exact same buildPageTitle() call that generateMetadata() uses, so
-        it can't drift from <title>/og:title.
-        Controlled by HIDE_H1 above:
-        true  -> invisible to users but still readable by screen readers
-                 and search engines (standard "visually-hidden" pattern).
-        false -> renders normally, visible on the page.
-      */}
-      {correctedLogo && (
-        <h1 style={HIDE_H1 ? VISUALLY_HIDDEN_STYLE : undefined}>
-          {pageTitle}
-        </h1>
-      )}
-
-      <LogoDetail logo={correctedLogo} initialRelated={related} />
+      <LogoDetail
+        logo={correctedLogo}
+        initialRelated={related}
+        pageTitle={pageTitle}
+      />
     </>
   );
 }

@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import Footer from "../../components/Footer";
 import Image from "next/image";
 
-export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
+export default function LogoDetail({ logo: initialLogo, initialRelated = [], pageTitle }) {
     const { slug } = useParams();
     const router = useRouter();
     const { dark } = useTheme();
@@ -43,8 +43,6 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
     const [searchFocused, setSearchFocused] = useState(false);
     const searchDebounceRef = useRef(null);
     const searchFirstRender = useRef(true);
-
-
 
     useEffect(() => {
         const t = setTimeout(() => setReady(true), 60);
@@ -220,10 +218,6 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
         return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
     };
 
-
-
-
-
     const buildEnrichedDescription = (desc, relatedLogos) => {
         if (!desc || relatedLogos.length === 0) return { __html: desc || "" };
         const sentences = desc.split(/(?<=[.!?])\s+/);
@@ -244,6 +238,28 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
     if (!logo) return null;
 
     const logoTags = Array.isArray(logo.tags) ? logo.tags : [];
+
+    // Same source object (logo.faqSchema) that page.js embeds server-side
+    // as the FAQPage JSON-LD <script>. We read the mainEntity Q&A pairs
+    // out of it here so the visible accordion and the JSON-LD schema are
+    // generated from one field and can never drift apart.
+    const faqItems = (() => {
+        const schema = logo?.faqSchema;
+        const entities = Array.isArray(schema?.mainEntity)
+            ? schema.mainEntity
+            : Array.isArray(schema)
+            ? schema
+            : [];
+        return entities
+            .map((item) => {
+                const question = item?.name || item?.question || "";
+                const answerRaw =
+                    item?.acceptedAnswer?.text || item?.acceptedAnswer || item?.answer || "";
+                const answer = typeof answerRaw === "string" ? answerRaw : "";
+                return { question, answer };
+            })
+            .filter((item) => item.question.trim() && item.answer.trim());
+    })();
 
     const logoCategories = Array.isArray(logo.category)
         ? logo.category.filter(Boolean)
@@ -303,6 +319,20 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
     background-image:radial-gradient(var(--dot) 1px,transparent 1px);
     background-size:30px 30px;
     pointer-events:none; z-index:0;
+  }
+
+  /* Visible, theme-aware SEO h1. Small and understated so it doesn't
+     compete visually with the breadcrumb/search bar below it, but it's
+     a real heading now — proper contrast in both dark and light mode
+     via the --heading variable, not color:transparent. */
+  .seo-h1 {
+    position:relative; z-index:1;
+    max-width:1100px; margin:6px auto 0; padding:0 24px;
+    font-family:'Sora',sans-serif; font-size:13px; font-weight:700;
+    line-height:1.5; color:var(--heading); letter-spacing:-0.1px;
+  }
+  @media (max-width:640px) {
+    .seo-h1 { padding:0 16px; font-size:12px; }
   }
 
   .breadcrumb {
@@ -412,6 +442,32 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
   .desc-related-hint a.desc-inline-link { font-style:normal; }
 
   .see-more-btn { background:none; border:none; cursor:pointer; color:#07A626; font-size:12px; font-weight:600; font-family:'Sora',sans-serif; padding:0; margin-top:8px; display:inline-block; }
+
+  /* ── FAQ accordion ──────────────────────────────────────────────── */
+  .faq-list { display:flex; flex-direction:column; gap:8px; }
+  .faq-item {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:9px; overflow:hidden; transition:border-color .2s;
+  }
+  .faq-item:hover { border-color:var(--border2); }
+  .faq-item[open] { border-color:rgba(7,166,38,.3); }
+  .faq-question {
+    list-style:none; cursor:pointer; padding:11px 14px;
+    font-size:12.5px; font-weight:700; color:var(--heading);
+    font-family:'Sora',sans-serif;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .faq-question::-webkit-details-marker { display:none; }
+  .faq-question::after {
+    content:'+'; flex-shrink:0; font-size:16px; font-weight:400;
+    color:var(--muted); line-height:1;
+    transition:transform .22s cubic-bezier(.22,1,.36,1), color .2s;
+  }
+  .faq-item[open] .faq-question::after { transform:rotate(45deg); color:#07A626; }
+  .faq-answer {
+    padding:0 14px 13px; font-size:12px; color:var(--body);
+    font-family:'DM Sans',sans-serif; line-height:1.7;
+  }
 
   .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .info-cell { background:var(--surface2); border:1px solid var(--border); border-radius:9px; padding:10px 14px; display:flex; align-items:center; gap:9px; }
@@ -598,6 +654,8 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                 <div className="page">
                     <div className="dot-grid" />
 
+                    {pageTitle && <h1 className="seo-h1">{pageTitle}</h1>}
+
                     <nav className="breadcrumb" aria-label="breadcrumb">
                         <Link href="/">Home</Link>
                         <span className="breadcrumb-sep">/</span>
@@ -738,8 +796,24 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                 )}
                             </div>
 
-                            {infoCells.length > 0 && (
+                            {faqItems.length > 0 && (
                                 <div className="card anim d2">
+                                    <div className="card-title">Frequently Asked Questions</div>
+                                    <div className="faq-list">
+                                        {faqItems.map((item, i) => (
+                                            <details key={i} className="faq-item">
+                                                <summary className="faq-question">
+                                                    <span>{item.question}</span>
+                                                </summary>
+                                                <div className="faq-answer">{item.answer}</div>
+                                            </details>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {infoCells.length > 0 && (
+                                <div className="card anim d3">
                                     <div className="info-grid">
                                         {infoCells.map(item => (
                                             <div key={item.label} className="info-cell">
@@ -754,7 +828,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                 </div>
                             )}
 
-                            <div className="ad-card anim d3" />
+                            <div className="ad-card anim d4" />
                         </div>
 
                         {/* ── RIGHT ── */}
@@ -899,8 +973,6 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [] }) {
                                     <div className="svg-code">{logo.svgContent.slice(0, 300)}{logo.svgContent.length > 300 ? "…" : ""}</div>
                                 </div>
                             )}
-
-                          
 
                             <div className="ad-card anim d3" style={{ minHeight: 160 }} />
                         </div>
