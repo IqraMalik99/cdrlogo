@@ -162,6 +162,39 @@ async function applyWatermark(buffer, wm) {
     .toBuffer();
 }
 
+// ── Preview generator: logo ko white canvas ke center mein rakhta hai ────────
+// fit:"inside" → na stretch, na crop. Canvas exact width×height hi banta hai.
+const PREVIEW_PADDING = 0.12; // har taraf 12% white space (range 10–15%)
+
+async function buildPreviewWebp(pngBuffer, width, height, watermark) {
+  // Transparent margin hata do taaki padding sahi ginti ho (fail ho to original use hoga)
+  let source = pngBuffer;
+  try {
+    source = await sharp(pngBuffer).trim().toBuffer();
+  } catch { source = pngBuffer; }
+
+  const innerW = Math.round(width * (1 - PREVIEW_PADDING * 2));
+  const innerH = Math.round(height * (1 - PREVIEW_PADDING * 2));
+
+  const resizedLogo = await sharp(source)
+    .resize(innerW, innerH, { fit: "inside", withoutEnlargement: false })
+    .png()
+    .toBuffer();
+
+  // Clean white canvas + logo center mein
+  const canvasPng = await sharp({
+    create: { width, height, channels: 3, background: "#ffffff" },
+  })
+    .composite([{ input: resizedLogo, gravity: "center" }])
+    .png()
+    .toBuffer();
+
+  // Watermark final canvas par (agar enabled ho)
+  const finalPng = await applyWatermark(canvasPng, watermark);
+
+  return sharp(finalPng).webp({ quality: 90 }).toBuffer();
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatSize(bytes) {
   if (!bytes || bytes === 0) return "0 KB";
@@ -528,6 +561,9 @@ function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, descr
     "@type": "ImageObject",
     "contentUrl": imageUrl,
     "url": imageUrl,
+    "width": 1200,
+    "height": 1200,
+    "encodingFormat": "image/webp",
     "name": `${logoName}`,
     "description": description || `${logoPhrase(logoName)} image on cdrlogo.com`,
     "representativeOfPage": true,
@@ -535,7 +571,6 @@ function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, descr
     "mainEntityOfPage": canonicalUrl,
   };
 }
-
 function buildFaqSchema(faqPairs) {
   if (!Array.isArray(faqPairs) || !faqPairs.length) return {};  // {} not []
   return {
@@ -3153,9 +3188,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       visualFacts,
     });
 
-    // Spelling correction (replaces reviewLogoName). Templates skip this —
-    // no real brand to compare against, and templates never go to review
-    // regardless of what happens here.
     const nameCorrection = correctLogoNameSpelling({
       logoName: finalLogoName,
       brand: facts.brand,
@@ -3167,8 +3199,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         ? toProperCase(nameCorrection.correctedName)
         : nameCorrection.correctedName;
 
-    // Retry loop ke BAHAR — tags facts se bante hain, LLM output se nahi,
-    // isliye inhe har validation attempt par dobara banane ki zaroorat nahi.
     const tags = await buildTags({
       isTemplate: facts.isTemplate,
       brand: facts.brand,
@@ -3243,9 +3273,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       );
     }
 
-    // Templates never review. Everything else publishes unless the
-    // description itself is genuinely weak (bottomed out at the static
-    // emergency fallback sentence after every real attempt + LLM fallback).
     const needsReview = !facts.isTemplate && !!facts.descriptionIsWeak;
 
     if (needsReview) {
@@ -3274,6 +3301,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     const separateFiles = [];
     let svgContent = null;
     const fileSizes = { svg: 0, png: 0, ai: 0, cdr: 0 };
+    let previewsDone = false; // CHANGED: sirf pehle PNG se previews banenge
 
     for (const { filename, buffer: fileBuffer } of folderFiles) {
       const safeFilename = sanitizeFilename(filename);
@@ -3293,13 +3321,23 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         if (!svgContent) svgContent = fileBuffer.toString("utf-8");
 
       } else if (fileExt === "png") {
+        // Original PNG bilkul untouched upload hota hai
         separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
         fileSizes.png = fileBuffer.length;
 
-        const watermarked = await applyWatermark(fileBuffer, watermark);
-        const webpBuffer = await sharp(watermarked).webp({ quality: 90 }).toBuffer();
-        const webpName = safeFilename.replace(/\.png$/i, ".webp");
-        publicFiles.push({ key: `public/${finalSlug}/${webpName}`, buffer: webpBuffer, contentType: "image/webp" });
+        // CHANGED: 2 preview images (square + og)
+        if (!previewsDone) {
+          previewsDone = true;
+          const baseName = safeFilename.replace(/\.png$/i, "");
+
+          // 1) Square 1200×1200 → webpUrl
+          const squareWebp = await buildPreviewWebp(fileBuffer, 1200, 1200, watermark);
+          publicFiles.push({ key: `public/${finalSlug}/${baseName}.webp`, buffer: squareWebp, contentType: "image/webp" });
+
+          // 2) OG 1200×630 → ogImageUrl
+          const ogWebp = await buildPreviewWebp(fileBuffer, 1200, 630, watermark);
+          publicFiles.push({ key: `public/${finalSlug}/${baseName}-og.webp`, buffer: ogWebp, contentType: "image/webp" });
+        }
 
       } else if (fileExt === "ai") {
         separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
@@ -3337,16 +3375,17 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
 
     const svgUrl = findUrl((f) => f.key.endsWith(".svg"));
     const pngUrl = findUrl((f) => f.key.endsWith(".png"));
-    const webpUrl = findUrl((f) => f.key.endsWith(".webp"));
     const aiUrl = findUrl((f) => f.key.endsWith(".ai"));
     const cdrUrl = findUrl((f) => f.key.endsWith(".cdr"));
 
-    const ogImageUrl = webpUrl || null;
-    console.log(`  [urls] webp: ${webpUrl || "null"} | ogImageUrl: ${ogImageUrl || "null"}`);
+    // CHANGED: square = webpUrl, OG = ogImageUrl (alag-alag files)
+    const webpUrl = findUrl((f) => f.key.endsWith(".webp") && !f.key.endsWith("-og.webp"));
+    const ogImageUrl = findUrl((f) => f.key.endsWith("-og.webp")) || null;
+    console.log(`  [urls] webp(square): ${webpUrl || "null"} | ogImageUrl(1200x630): ${ogImageUrl || "null"}`);
 
     // ── Step E: build schema JSON-LD ────────────────────────────────────────
     const imageObjectSchema = buildImageObjectSchema({
-      imageUrl: ogImageUrl,
+      imageUrl: webpUrl, // CHANGED: square 1200×1200 URL
       logoName: displayLogoName,
       brand: aiContent.brand,
       canonicalUrl,
@@ -3384,7 +3423,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         downloadCount: sharedFields.downloadCount,
         svgUrl,
         pngUrl,
-        webpUrl,
+        webpUrl,          // square 1200×1200
         aiUrl,
         cdrUrl,
         svgContent,
@@ -3398,7 +3437,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         canonicalUrl,
         ogTitle: aiContent.ogTitle,
         ogDescription: aiContent.ogDescription,
-        ogImageUrl,
+        ogImageUrl,       // OG 1200×630
         ogType: "website",
         twitterTitle: aiContent.twitterTitle,
         twitterDescription: aiContent.twitterDescription,
@@ -3424,6 +3463,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       country: aiContent.country,
       industry: aiContent.industry,
       canonicalUrl,
+      webpUrl,          // CHANGED: return mein bhi
       ogImageUrl,
       id: logo.id,
       needsReview,
