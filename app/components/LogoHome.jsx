@@ -60,13 +60,11 @@ function LogoCard({ logo }) {
       <div className="card-image">
         {!imgErr && logo.webpUrl ? (
           <Image
-          unoptimized
+            unoptimized
             src={logo.webpUrl}
             alt={logo.logoName}
-            width={110}
-            height={110}
-            quality={70}
-            sizes="(max-width: 640px) 50vw, 170px"
+            width={160}
+            height={160}
             onError={() => setImgErr(true)}
             className="card-img"
             draggable={false}
@@ -282,14 +280,24 @@ export default function LogosPage() {
           letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px);
         }
 
+        /* White preview box; padding keeps the logo off the edges */
         .card-image {
-  position: relative;
-  width: 100%; height: 160px; background: var(--card-img-bg);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden; transition: background 0.3s;
-}
-       .card-img { object-fit: contain; transform: scale(1.3); }
-        .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; font-family: var(--font-sora), sans-serif; }
+          position: relative;
+          width: 100%; height: 160px; background: #ffffff;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden;
+          padding: 14px;
+          box-sizing: border-box;
+          transition: background 0.3s;
+        }
+        /* Image fills the padded box; object-fit: contain scales it down proportionally, so it never overflows */
+        .card-img {
+          width: 100%; height: 100%;
+          max-width: 100%; max-height: 100%;
+          object-fit: contain;
+          display: block;
+        }
+        .card-initials { font-size: 30px; font-weight: 900; color: rgba(0,0,0,0.45); letter-spacing: -1px; font-family: var(--font-sora), sans-serif; }
 
         .card-body { padding: 10px 12px 12px; }
         .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s; }
@@ -308,7 +316,7 @@ export default function LogosPage() {
         [data-theme="light"] .fmt-png { color:#1e40af; }
 
         .skeleton-card { pointer-events: none; }
-        .skeleton-img { width: 100%; height: 130px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
+        .skeleton-img { width: 100%; height: 160px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
         .skeleton-line { height: 10px; border-radius: 5px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
         .w60{width:60%} .w40{width:40%} .mt4{margin-top:4px}
         .skeleton-badge { width:28px; height:16px; border-radius:4px; background:var(--skeleton); animation:shimmer 1.6s infinite linear; }
@@ -340,7 +348,8 @@ export default function LogosPage() {
           .cat-row::-webkit-scrollbar { display: none; }
           .cat-btn { flex-shrink: 0; font-size: 11.5px; padding: 4px 12px; }
           .logos-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
-          .card-image { height: 105px; }
+          .card-image { height: 105px; padding: 10px; }
+          .skeleton-img { height: 105px; }
           .card-name { font-size: 13px; }
           .card-formats { gap: 3px; }
           .pagination { gap: 4px; }

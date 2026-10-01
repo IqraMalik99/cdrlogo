@@ -1,30 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "../context/ThemeContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-
-function gradientFromColors(colors, dark) {
-  if (dark) {
-    // Always neutral dark gray/black in dark mode, ignore brand colors
-    return { bgFrom: "#1a1a1f", bgTo: "#0a0a0d" };
-  }
-
-  if (colors?.length >= 2) {
-    return {
-      bgFrom: `${colors[0]}22`,
-      bgTo: `${colors[1]}22`,
-    };
-  }
-  if (colors?.length === 1) {
-    return {
-      bgFrom: `${colors[0]}22`,
-      bgTo: "#f8fafc",
-    };
-  }
-  return { bgFrom: "#f1f5f9", bgTo: "#e2e8f0" };
-}
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -51,10 +29,9 @@ function SkeletonCard() {
   );
 }
 
-function RecentCard({ logo, dark }) {
+function RecentCard({ logo }) {
   const [hovered, setHovered] = useState(false);
   const [imgErr, setImgErr] = useState(false);
-  const { bgFrom, bgTo } = gradientFromColors(logo.brandColors, dark);
   const router = useRouter();
 
   return (
@@ -67,18 +44,8 @@ function RecentCard({ logo, dark }) {
         router.push(`/logo/${logo.slug}`);
       }}
     >
-      <div
-        className="rl-preview"
-        style={{ background: `linear-gradient(145deg, ${bgFrom}, ${bgTo})` }}
-      >
-        <div className="rl-badge">
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          NEW
-        </div>
-
+      {/* Preview background is plain white; image size/padding unchanged */}
+      <div className="rl-preview">
         {!imgErr && logo.webpUrl
           ? <Image
             unoptimized
@@ -94,6 +61,15 @@ function RecentCard({ logo, dark }) {
           />
           : <span className="rl-brand-name">{logo.logoName}</span>
         }
+
+        {/* Badge after the image with z-index so it floats on top */}
+        <div className="rl-badge">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          NEW
+        </div>
       </div>
 
       <div className="rl-body">
@@ -110,7 +86,6 @@ function RecentCard({ logo, dark }) {
 }
 
 export default function RecentLogos() {
-  const { dark } = useTheme();
   const [logos, setLogos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -155,12 +130,13 @@ export default function RecentLogos() {
         .rl-card--hovered{border-color:var(--rl-border-h);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.25)}
         [data-theme="dark"] .rl-card--hovered{box-shadow:0 16px 40px rgba(0,0,0,.55)}
 
-        .rl-preview{position:relative;height:160px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.rl-logo-img{object-fit:contain;padding:20px}
+        /* White preview background in both themes; original height kept */
+        .rl-preview{position:relative;height:160px;background:#ffffff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        .rl-logo-img{object-fit:contain;padding:20px}
 
-        .rl-badge{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(59,130,246,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
+        .rl-badge{position:absolute;top:10px;left:10px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(59,130,246,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
 
-        .rl-brand-name{font-size:clamp(18px,2.5vw,26px);font-weight:900;color:rgba(255,255,255,.82);letter-spacing:-1px;text-align:center;padding:0 12px;line-height:1.1;text-shadow:0 2px 16px rgba(0,0,0,.4);user-select:none}
+        .rl-brand-name{font-size:clamp(18px,2.5vw,26px);font-weight:900;color:rgba(0,0,0,.75);letter-spacing:-1px;text-align:center;padding:0 12px;line-height:1.1;user-select:none}
 
         .rl-body{padding:10px 12px 12px}
         .rl-title-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
@@ -195,7 +171,7 @@ export default function RecentLogos() {
             <div className="rl-grid">
               {loading
                 ? Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)
-                : logos.map(logo => <RecentCard key={logo.id} logo={logo} dark={dark} />)
+                : logos.map(logo => <RecentCard key={logo.id} logo={logo} />)
               }
             </div>
           )}

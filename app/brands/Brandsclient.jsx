@@ -310,24 +310,28 @@ export default function BrandsClient() {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+
+        /* White preview background in both themes; original ratio and image size kept */
         .card-img-wrap {
-          width: 100%; aspect-ratio: 1 / 0.85; background: rgba(255,255,255,0.03);
+          width: 100%; aspect-ratio: 1 / 0.85; background: #ffffff;
           display: flex; align-items: center; justify-content: center;
           overflow: hidden; position: relative;
         }
-        [data-theme="light"] .card-img-wrap { background: rgba(0,0,0,0.03); }
         .card-img { width: 72%; height: 72%; object-fit: contain; transition: transform .3s; }
         .logo-card:hover .card-img { transform: scale(1.06); }
         .card-placeholder {
-          width: 72%; height: 72%; border-radius: 10px; background: var(--skeleton-bg);
+          width: 72%; height: 72%; border-radius: 10px; background: rgba(0,0,0,0.06);
           display: flex; align-items: center; justify-content: center;
-          font-size: 22px; font-weight: 800; color: var(--text-muted); letter-spacing: -1px;
+          font-size: 22px; font-weight: 800; color: rgba(0,0,0,0.45); letter-spacing: -1px;
         }
+
+        /* Badge floats above the image */
         .trend-badge {
-          position: absolute; top: 8px; left: 8px;
-          background: var(--badge-trend-bg); border: 1px solid var(--badge-trend-bdr);
-          color: var(--badge-trend-clr); font-size: 9px; font-weight: 700;
+          position: absolute; top: 8px; left: 8px; z-index: 2;
+          background: rgba(7,166,38,0.85); border: 1px solid rgba(255,255,255,0.15);
+          color: #fff; font-size: 9px; font-weight: 700;
           padding: 2px 7px; border-radius: 100px; display: flex; align-items: center; gap: 3px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
         .trend-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: pulse-dot 2s infinite; }
         .card-body { padding: 10px 12px 12px; }
@@ -566,6 +570,7 @@ function LogoCard({ logo, index }) {
         ) : (
           <div className="card-placeholder">{getInitials(logo.logoName)}</div>
         )}
+        {/* Badge after the image with z-index so it floats on top */}
         {isTrending && (
           <div className="trend-badge"><span className="trend-dot" />Trending</div>
         )}

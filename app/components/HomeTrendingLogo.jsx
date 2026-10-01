@@ -12,27 +12,6 @@ const FORMAT_COLORS = {
   CDR: { bg: "rgba(234,179,8,.12)", border: "rgba(234,179,8,.3)", color: "#fde68a", colorLight: "#92400e" },
 };
 
-// Generate a gradient bg from brand colors, fallback to dark slate
-function gradientFromColors(colors, dark) {
-  if (colors?.length >= 2) {
-    return {
-      bgFrom: dark ? colors[0] : `${colors[0]}22`, // 👈 add opacity
-      bgTo: dark ? colors[1] : `${colors[1]}22`,
-    };
-  }
-
-  if (colors?.length === 1) {
-    return {
-      bgFrom: dark ? colors[0] : `${colors[0]}22`,
-      bgTo: dark ? "#0f1221" : "#f8fafc",
-    };
-  }
-
-  return dark
-    ? { bgFrom: "#1a1f3a", bgTo: "#0f1221" }
-    : { bgFrom: "#f1f5f9", bgTo: "#e2e8f0" };
-}
-
 function SkeletonCard() {
   return (
     <div className="tl-card">
@@ -49,7 +28,6 @@ function SkeletonCard() {
 function TrendingCard({ logo, dark }) {
   const [hovered, setHovered] = useState(false);
   const [imgErr, setImgErr] = useState(false);
-  const { bgFrom, bgTo } = gradientFromColors(logo.brandColors, dark);
   const router = useRouter();
 
   return (
@@ -64,22 +42,11 @@ function TrendingCard({ logo, dark }) {
         }
       }
     >
-      <div
-        className="tl-preview"
-        style={{ background: `linear-gradient(145deg, ${bgFrom}, ${bgTo})` }}
-      >
-        <div className="tl-badge">
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-            <polyline points="17 6 23 6 23 12" />
-          </svg>
-          TRENDING
-        </div>
-
+      {/* Preview background is plain white; image size/padding unchanged */}
+      <div className="tl-preview">
         {!imgErr && logo.webpUrl
           ? <Image
-          
-          unoptimized
+            unoptimized
             src={logo.webpUrl}
             alt={logo.logoName}
             fill
@@ -92,6 +59,15 @@ function TrendingCard({ logo, dark }) {
           />
           : <span className="tl-brand-name">{logo.logoName}</span>
         }
+
+        {/* Badge after the image with z-index so it floats on top */}
+        <div className="tl-badge">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+            <polyline points="17 6 23 6 23 12" />
+          </svg>
+          TRENDING
+        </div>
       </div>
 
       <div className="tl-body">
@@ -182,12 +158,13 @@ export default function TrendingLogos() {
         .tl-card--hovered{border-color:var(--tl-border-h);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.25)}
         [data-theme="dark"] .tl-card--hovered{box-shadow:0 16px 40px rgba(0,0,0,.55)}
 
-       .tl-preview{position:relative;height:160px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-       .tl-logo-img{object-fit:contain;padding:20px}
+        /* White preview background in both themes; original height kept */
+        .tl-preview{position:relative;height:160px;background:#ffffff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        .tl-logo-img{object-fit:contain;padding:20px}
 
-        .tl-badge{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(7,166,38,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
+        .tl-badge{position:absolute;top:10px;left:10px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(7,166,38,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
 
-        .tl-brand-name{font-size:clamp(18px,2.5vw,26px);font-weight:900;color:rgba(255,255,255,.82);letter-spacing:-1px;text-align:center;padding:0 12px;line-height:1.1;text-shadow:0 2px 16px rgba(0,0,0,.4);user-select:none}
+        .tl-brand-name{font-size:clamp(18px,2.5vw,26px);font-weight:900;color:rgba(0,0,0,.75);letter-spacing:-1px;text-align:center;padding:0 12px;line-height:1.1;user-select:none}
 
         .tl-body{padding:10px 12px 12px}
         .tl-title-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}

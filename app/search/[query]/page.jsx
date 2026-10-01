@@ -327,13 +327,14 @@ export default function SearchPage() {
         }
         [data-theme="dark"] .logo-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
 
+        /* White preview background in both themes; original height and image size kept */
         .card-image {
-          width: 100%; height: 130px; background: var(--card-img-bg);
+          width: 100%; height: 130px; background: #ffffff;
           display: flex; align-items: center; justify-content: center;
           overflow: hidden; transition: background 0.3s;
         }
         .card-img { width: 100%; height: 100%; object-fit: contain; padding: 16px; }
-        .card-initials { font-size: 30px; font-weight: 900; color: var(--text-secondary); letter-spacing: -1px; }
+        .card-initials { font-size: 30px; font-weight: 900; color: rgba(0,0,0,0.45); letter-spacing: -1px; }
 
         .card-body { padding: 10px 12px 12px; }
         .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s; }

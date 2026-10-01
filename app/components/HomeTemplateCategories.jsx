@@ -322,33 +322,39 @@ export default function TemplatesPage() {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-       .card-img-wrap {
-  width: 100%; aspect-ratio: 1 / 0.85; background: rgba(255,255,255,0.03);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden; position: relative;
-  padding: 14%;               /* ← yeh add karo, taake 72% wala visual effect wapas aaye */
-  box-sizing: border-box;     /* ← yeh bhi add karo */
-}
-.card-img {
-  object-fit: contain;
-  transition: transform .3s;
-}
-        [data-theme="light"] .card-img-wrap { background: rgba(0,0,0,0.03); }
-      
+
+        /* White preview background in both themes; original ratio and padding kept */
+        .card-img-wrap {
+          width: 100%; aspect-ratio: 1 / 0.85; background: #ffffff;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden; position: relative;
+          padding: 14%;
+          box-sizing: border-box;
+        }
+        /* Normal image size; max-width/height keep it inside the padded box */
+        .card-img {
+          object-fit: contain;
+          max-width: 100%; max-height: 100%;
+          width: auto; height: auto;
+          transition: transform .3s;
+        }
         .logo-card:hover .card-img { transform: scale(1.06); }
         .card-placeholder {
-          width: 72%; height: 72%; border-radius: 10px; background: var(--skeleton-bg);
+          width: 72%; height: 72%; border-radius: 10px; background: rgba(0,0,0,0.06);
           display: flex; align-items: center; justify-content: center;
-          font-size: 22px; font-weight: 800; color: var(--text-muted); letter-spacing: -1px;
+          font-size: 22px; font-weight: 800; color: rgba(0,0,0,0.45); letter-spacing: -1px;
         }
+
+        /* Badge floats above the image */
         .trend-badge {
-          position: absolute; top: 8px; left: 8px;
-          background: var(--badge-trend-bg); border: 1px solid var(--badge-trend-bdr);
-          color: var(--badge-trend-clr); font-size: 9px; font-weight: 700;
+          position: absolute; top: 8px; left: 8px; z-index: 2;
+          background: rgba(7,166,38,0.85); border: 1px solid rgba(255,255,255,0.15);
+          color: #fff; font-size: 9px; font-weight: 700;
           padding: 2px 7px; border-radius: 100px; display: flex; align-items: center; gap: 3px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-        .bc-title{font-size:24px;font-weight:800;color:var(--bc-title);letter-spacing:-.4px;line-height:1;transition:color .3s}
-        .bc-subtitle{font-family:var(--font-sora),sans-serif;font-size:13px;color:var(--bc-sub);margin-top:6px;transition:color .3s}
+        .bc-title{font-size:24px;font-weight:800;color:var(--text-primary);letter-spacing:-.4px;line-height:1;transition:color .3s}
+        .bc-subtitle{font-family:var(--font-sora),sans-serif;font-size:13px;color:var(--text-secondary);margin-top:6px;transition:color .3s}
         .trend-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: pulse-dot 2s infinite; }
         .card-body { padding: 10px 12px 12px; }
         .card-name { font-size: 12px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; margin-bottom: 2px; }
@@ -390,7 +396,7 @@ export default function TemplatesPage() {
           font-size: 12px; font-weight: 600; cursor: pointer;
           border: 1px solid var(--pg-bdr); background: var(--pg-bg); color: var(--pg-clr);
           display: flex; align-items: center; justify-content: center;
-          transition: all .18s; font-family: var(--font-sora),, sans-serif;
+          transition: all .18s; font-family: var(--font-sora), sans-serif;
         }
         .pg-btn:hover:not(:disabled) { border-color: var(--border-hover); color: #07A626; background: var(--accent-glow); }
         .pg-btn:disabled { opacity: .35; cursor: default; }
@@ -503,11 +509,11 @@ function LogoCard({ logo, index }) {
       <div className="card-img-wrap">
         {logo.webpUrl && !imgError ? (
           <Image
-          unoptimized
+            unoptimized
             className="card-img"
             src={logo.webpUrl}
             alt={logo.logoName}
-             width={100}
+            width={100}
             height={100}
             sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
             onError={() => setImgError(true)}
@@ -515,6 +521,7 @@ function LogoCard({ logo, index }) {
         ) : (
           <div className="card-placeholder">{getInitials(logo.logoName)}</div>
         )}
+        {/* Badge after the image with z-index so it floats on top */}
         {isTrending && (
           <div className="trend-badge"><span className="trend-dot" />Trending</div>
         )}
