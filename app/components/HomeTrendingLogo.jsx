@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useTrimmedSrc } from "./useTrimmedSrc";
 
 const FORMAT_COLORS = {
   AI: { bg: "rgba(234,179,8,.12)", border: "rgba(234,179,8,.3)", color: "#fde68a", colorLight: "#92400e" },
@@ -28,6 +29,7 @@ function SkeletonCard() {
 function TrendingCard({ logo, dark }) {
   const [hovered, setHovered] = useState(false);
   const [imgErr, setImgErr] = useState(false);
+  const imgSrc = useTrimmedSrc(logo.webpUrl);
   const router = useRouter();
 
   return (
@@ -42,37 +44,39 @@ function TrendingCard({ logo, dark }) {
         }
       }
     >
-      {/* 1:1 preview on plain white; logo sits inside with 5% space on every side */}
+      {/* Perfect 1:1 white square. The logo lives in .tl-logo-box, which is inset
+          exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
       <div className="tl-preview">
-        {!imgErr && logo.webpUrl
-          ? <Image
-            unoptimized
-            src={logo.webpUrl}
-            alt={logo.logoName}
-            fill
-            quality={65}
-            sizes="(max-width: 560px) min(50vw, 240px), (max-width: 820px) min(33vw, 260px), (max-width: 1100px) min(25vw, 280px), min(16vw, 210px)"
-            onError={() => setImgErr(true)}
-            className="tl-logo-img"
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-          />
-          : <span className="tl-brand-name">{logo.logoName}</span>
-        }
-
-        {/* Badge after the image with z-index so it floats on top */}
-        <div className="tl-badge">
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-            <polyline points="17 6 23 6 23 12" />
-          </svg>
-          TRENDING
+        <div className="tl-logo-box">
+          {!imgErr && logo.webpUrl
+            ? <Image
+              unoptimized
+              src={imgSrc}
+              alt={logo.logoName}
+              fill
+              quality={65}
+              sizes="(max-width: 560px) 45vw, (max-width: 820px) 30vw, (max-width: 1100px) 22vw, 14vw"
+              onError={() => setImgErr(true)}
+              className="tl-logo-img"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+            />
+            : <span className="tl-brand-name">{logo.logoName}</span>
+          }
         </div>
       </div>
 
       <div className="tl-body">
         <div className="tl-title-row">
           <span className="tl-name">{logo.logoName}</span>
+          {/* Badge lives in the body so nothing touches the white margins of the preview */}
+          <span className="tl-badge">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+              <polyline points="17 6 23 6 23 12" />
+            </svg>
+            TRENDING
+          </span>
         </div>
 
         <div className="tl-meta-row">
@@ -158,23 +162,25 @@ export default function TrendingLogos() {
         .tl-card--hovered{border-color:var(--tl-border-h);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.25)}
         [data-theme="dark"] .tl-card--hovered{box-shadow:0 16px 40px rgba(0,0,0,.55)}
 
-        /* White 1:1 preview in both themes */
-        .tl-preview{position:relative;width:100%;aspect-ratio:1/1;background:#ffffff;display:flex;align-items:center;justify-content:center;overflow:hidden}
-        /* 5% of the (square) preview width on every side */
-        .tl-logo-img{object-fit:contain;padding:5%}
+        /* Perfect 1:1 white square in both themes */
+        .tl-preview{position:relative;width:100%;aspect-ratio:1/1;background:#ffffff;overflow:hidden}
 
-        .tl-badge{position:absolute;top:10px;left:10px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(7,166,38,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
+        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        .tl-logo-box{position:absolute;inset:10%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        .tl-logo-img{object-fit:contain}
 
-        .tl-brand-name{font-size:clamp(18px,2.5vw,26px);font-weight:900;color:rgba(0,0,0,.75);letter-spacing:-1px;text-align:center;padding:0 12px;line-height:1.1;user-select:none}
+        .tl-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;padding:3px 8px;background:rgba(7,166,38,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
+
+        .tl-brand-name{font-size:clamp(18px,2.5vw,26px);font-weight:900;color:rgba(0,0,0,.75);letter-spacing:-1px;text-align:center;line-height:1.1;user-select:none;max-width:100%;overflow-wrap:anywhere}
 
         .tl-body{padding:10px 12px 12px}
-        .tl-title-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
-        .tl-name{font-size:13px;font-weight:800;color:var(--tl-name);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s}
-        .tl-meta-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+        .tl-title-row{display:flex;align-items:center;justify-content:space-between;gap:6px;height:22px;margin-bottom:4px}
+        .tl-name{font-size:13px;font-weight:800;color:var(--tl-name);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;transition:color .3s}
+        .tl-meta-row{display:flex;align-items:center;justify-content:space-between;height:14px;margin-bottom:8px}
         .tl-category{font-family:var(--font-sora),sans-serif;font-size:10.5px;color:var(--tl-category);transition:color .3s}
         .tl-colors{display:flex;gap:4px}
         .tl-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--tl-dot-border);flex-shrink:0}
-        .tl-formats{display:flex;flex-wrap:wrap;gap:4px}
+        .tl-formats{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;height:18px;overflow:hidden}
         .tl-fmt{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.3px;border:1px solid;transition:color .3s}
 
         /* skeleton */

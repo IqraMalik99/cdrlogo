@@ -4,6 +4,70 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
+// Auto-trims blank (transparent / white) margins baked into logo files so every
+// logo's content reaches the 5% padding line. Falls back to the original image
+// if the browser blocks pixel access (CORS) or anything fails.
+function useTrimmedSrc(src) {
+  const [out, setOut] = useState(src);
+
+  useEffect(() => {
+    setOut(src);
+    if (!src) return;
+    let cancelled = false;
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const W = img.naturalWidth, H = img.naturalHeight;
+        if (!W || !H) return;
+        const s = Math.min(1, 300 / Math.max(W, H));
+        const sw = Math.max(1, Math.round(W * s)), sh = Math.max(1, Math.round(H * s));
+        const c1 = document.createElement("canvas");
+        c1.width = sw; c1.height = sh;
+        const x1 = c1.getContext("2d", { willReadFrequently: true });
+        x1.drawImage(img, 0, 0, sw, sh);
+        const d = x1.getImageData(0, 0, sw, sh).data;
+        let minX = sw, minY = sh, maxX = -1, maxY = -1;
+        for (let y = 0; y < sh; y++) {
+          for (let x = 0; x < sw; x++) {
+            const i = (y * sw + x) * 4;
+            const blank = d[i + 3] < 20 || (d[i] > 242 && d[i + 1] > 242 && d[i + 2] > 242);
+            if (!blank) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+        if (maxX < 0) return;
+        if (minX <= 1 && minY <= 1 && maxX >= sw - 2 && maxY >= sh - 2) return;
+        const cx = Math.floor(minX / s), cy = Math.floor(minY / s);
+        const cw = Math.min(W - cx, Math.ceil((maxX - minX + 1) / s));
+        const ch = Math.min(H - cy, Math.ceil((maxY - minY + 1) / s));
+        // Place the trimmed logo on a square white canvas (1:1), centered, no stretching.
+        const side = Math.max(cw, ch);
+        const k = Math.min(1, 480 / side);
+        const c2 = document.createElement("canvas");
+        c2.width = Math.max(1, Math.round(side * k));
+        c2.height = c2.width;
+        const ctx2 = c2.getContext("2d");
+        ctx2.fillStyle = "#ffffff";
+        ctx2.fillRect(0, 0, c2.width, c2.height);
+        const dw = cw * k, dh = ch * k;
+        ctx2.drawImage(img, cx, cy, cw, ch, (c2.width - dw) / 2, (c2.height - dh) / 2, dw, dh);
+        const url = c2.toDataURL("image/png");
+        if (!cancelled) setOut(url);
+      } catch (e) { /* tainted canvas / CORS — keep original */ }
+    };
+    img.src = src;
+    return () => { cancelled = true; };
+  }, [src]);
+
+  return out;
+}
+
+
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -32,6 +96,7 @@ function SkeletonCard() {
 function RecentCard({ logo }) {
   const [hovered, setHovered] = useState(false);
   const [imgErr, setImgErr] = useState(false);
+  const imgSrc = useTrimmedSrc(logo.webpUrl);
   const router = useRouter();
 
   return (
@@ -44,37 +109,40 @@ function RecentCard({ logo }) {
         router.push(`/logo/${logo.slug}`);
       }}
     >
-      {/* 1:1 preview on plain white; logo sits inside with 5% space on every side */}
+      {/* Perfect 1:1 white square. The logo lives in .rl-logo-box, which is inset
+          exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
       <div className="rl-preview">
-        {!imgErr && logo.webpUrl
-          ? <Image
-            unoptimized
-            src={logo.webpUrl}
-            alt={logo.logoName}
-            onError={() => setImgErr(true)}
-            className="rl-logo-img"
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-            fill
-            quality={65}
-            sizes="(max-width: 560px) min(50vw, 240px), (max-width: 820px) min(33vw, 260px), (max-width: 1100px) min(25vw, 280px), min(16vw, 210px)"
-          />
-          : <span className="rl-brand-name">{logo.logoName}</span>
-        }
-
-        {/* Badge after the image with z-index so it floats on top */}
-        <div className="rl-badge">
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          NEW
+        <div className="rl-logo-box">
+          {!imgErr && logo.webpUrl ? (
+            <Image
+              unoptimized
+              src={imgSrc}
+              alt={logo.logoName}
+              onError={() => setImgErr(true)}
+              className="rl-logo-img"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+              fill
+              quality={65}
+              sizes="(max-width: 560px) 45vw, (max-width: 820px) 30vw, (max-width: 1100px) 22vw, 14vw"
+            />
+          ) : (
+            <span className="rl-brand-name">{logo.logoName}</span>
+          )}
         </div>
       </div>
 
       <div className="rl-body">
         <div className="rl-title-row">
           <span className="rl-name">{logo.logoName}</span>
+          {/* Badge lives in the body so nothing touches the white margins of the preview */}
+          <span className="rl-badge">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            NEW
+          </span>
         </div>
         <div className="rl-meta-row">
           <span className="rl-category">{logo.category?.[0]}</span>
@@ -130,18 +198,20 @@ export default function RecentLogos() {
         .rl-card--hovered{border-color:var(--rl-border-h);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.25)}
         [data-theme="dark"] .rl-card--hovered{box-shadow:0 16px 40px rgba(0,0,0,.55)}
 
-        /* White 1:1 preview in both themes */
-        .rl-preview{position:relative;width:100%;aspect-ratio:1/1;background:#ffffff;display:flex;align-items:center;justify-content:center;overflow:hidden}
-        /* 5% of the (square) preview width on every side */
-        .rl-logo-img{object-fit:contain;padding:5%}
+        /* Perfect 1:1 white square in both themes */
+        .rl-preview{position:relative;width:100%;aspect-ratio:1/1;background:#ffffff;overflow:hidden}
 
-        .rl-badge{position:absolute;top:10px;left:10px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(59,130,246,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
+        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        .rl-logo-box{position:absolute;inset:10%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        .rl-logo-img{object-fit:contain}
 
-        .rl-brand-name{font-size:clamp(18px,2.5vw,26px);font-weight:900;color:rgba(0,0,0,.75);letter-spacing:-1px;text-align:center;padding:0 12px;line-height:1.1;user-select:none}
+        .rl-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;padding:3px 8px;background:rgba(59,130,246,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
+
+        .rl-brand-name{font-size:clamp(18px,2.5vw,26px);font-weight:900;color:rgba(0,0,0,.75);letter-spacing:-1px;text-align:center;line-height:1.1;user-select:none;max-width:100%;overflow-wrap:anywhere}
 
         .rl-body{padding:10px 12px 12px}
         .rl-title-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
-        .rl-name{font-size:13px;font-weight:800;color:var(--rl-name);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s}
+        .rl-name{font-size:13px;font-weight:800;color:var(--rl-name);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;transition:color .3s}
         .rl-meta-row{display:flex;align-items:center;justify-content:space-between}
         .rl-category{font-family:var(--font-dm-sans),sans-serif;font-size:10.5px;color:var(--rl-category);transition:color .3s}
         .rl-time{font-family:var(--font-dm-sans),sans-serif;font-size:10px;color:var(--rl-time);transition:color .3s}

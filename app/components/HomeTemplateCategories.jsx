@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTheme } from "../context/ThemeContext";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useTrimmedSrc } from "./useTrimmedSrc";
 
-const PER_PAGE = 10;
+const PER_PAGE = 12; // 6 per row x 2 rows
 
 const FORMAT_CHIPS = [
   { label: "AI", cls: "fmt-ai" },
@@ -175,9 +176,9 @@ export default function TemplatesPage() {
         }
         .brands-inner { position: relative; z-index: 1; }
         .bc-header{
-          max-width: 1180px;
+          max-width: 1260px;
           margin: 0 auto 28px;
-          padding: 0 24px;
+          padding: 0 28px;
         }
 
         /* ── Hero ── */
@@ -291,20 +292,23 @@ export default function TemplatesPage() {
           padding: 4px 10px; border-radius: 100px; white-space: nowrap; flex-shrink: 0;
         }
 
-        /* Grid — fixed 5 per row, centered with side space */
+        /* Grid — 6 per row, same size as the Trending / Recent cards */
         .brands-grid {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 12px;
-          max-width: 1180px;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 14px;
+          max-width: 1260px;
           margin: 0 auto;
-          padding: 20px 24px 0;
+          padding: 20px 28px 0;
         }
-        @media (max-width: 1024px) {
+        @media (max-width: 1100px) {
           .brands-grid { grid-template-columns: repeat(4, 1fr); }
         }
-        @media (max-width: 768px) {
-          .brands-grid { grid-template-columns: repeat(3, 1fr); }
+        @media (max-width: 820px) {
+          .brands-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        }
+        @media (max-width: 560px) {
+          .brands-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 16px 14px 0; }
         }
 
         /* Card */
@@ -323,41 +327,38 @@ export default function TemplatesPage() {
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* White 1:1 preview in both themes; 5% space on every side */
+        /* Perfect 1:1 white square preview in both themes */
         .card-img-wrap {
           width: 100%; aspect-ratio: 1 / 1; background: #ffffff;
-          display: flex; align-items: center; justify-content: center;
           overflow: hidden; position: relative;
-          padding: 5%;
-          box-sizing: border-box;
         }
-        /* Image fills the padded box; object-fit: contain keeps it proportional and inside */
-        .card-img {
-          object-fit: contain;
-          width: 100%; height: 100%;
-          max-width: 100%; max-height: 100%;
-          transition: transform .3s;
+        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        .card-logo-box {
+          position: absolute; inset: 10%;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden;
         }
-        .logo-card:hover .card-img { transform: scale(1.06); }
+        /* Proportional scaling: never stretched, never overflows the box */
+        .card-img { object-fit: contain; }
         .card-placeholder {
           width: 72%; height: 72%; border-radius: 10px; background: rgba(0,0,0,0.06);
           display: flex; align-items: center; justify-content: center;
           font-size: 22px; font-weight: 800; color: rgba(0,0,0,0.45); letter-spacing: -1px;
         }
 
-        /* Badge floats above the image */
+        /* Badge sits in the card body, next to the name, so it never touches the image margins */
         .trend-badge {
-          position: absolute; top: 8px; left: 8px; z-index: 2;
+          flex-shrink: 0;
           background: rgba(7,166,38,0.85); border: 1px solid rgba(255,255,255,0.15);
           color: #fff; font-size: 9px; font-weight: 700;
-          padding: 2px 7px; border-radius: 100px; display: flex; align-items: center; gap: 3px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+          padding: 2px 7px; border-radius: 100px; display: inline-flex; align-items: center; gap: 3px;
         }
         .bc-title{font-size:24px;font-weight:800;color:var(--text-primary);letter-spacing:-.4px;line-height:1;transition:color .3s}
         .bc-subtitle{font-family:var(--font-sora),sans-serif;font-size:13px;color:var(--text-secondary);margin-top:6px;transition:color .3s}
         .trend-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: pulse-dot 2s infinite; }
         .card-body { padding: 10px 12px 12px; }
-        .card-name { font-size: 12px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; margin-bottom: 2px; }
+        .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
+        .card-name { font-size: 12px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         .card-cat { font-size: 10px; color: var(--text-secondary); font-weight: 400; margin-bottom: 8px; }
         .card-footer { display: flex; align-items: center; justify-content: space-between; }
         .color-dots { display: flex; gap: 4px; }
@@ -418,7 +419,6 @@ export default function TemplatesPage() {
 
         @media (max-width: 480px) {
           .brands-hero { padding: 36px 16px 0; }
-          .brands-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 16px 14px 0; }
           .bc-header { padding: 0 14px; }
           .filter-count-row { padding-left: 14px; padding-right: 14px; }
           .brands-divider { width: calc(100% - 28px); }
@@ -501,33 +501,37 @@ export default function TemplatesPage() {
 /* ─── Logo Card ─────────────────────────────────────────────────────────────── */
 function LogoCard({ logo, index }) {
   const [imgError, setImgError] = useState(false);
+  const imgSrc = useTrimmedSrc(logo.webpUrl);
   const colors = (logo.brandColors ?? []).slice(0, 3);
   const isTrending = logo.downloads > 8000;
   const router = useRouter();
   return (
     <div className="logo-card" style={{ animationDelay: `${index * 35}ms` }} onClick={() => { router.push(`/logo/${logo.slug?.toLowerCase()}`) }}>
+      {/* Perfect 1:1 white square; logo inset exactly 10% on all four sides */}
       <div className="card-img-wrap">
-        {logo.webpUrl && !imgError ? (
-          <Image
-            unoptimized
-            className="card-img"
-            src={logo.webpUrl}
-            alt={logo.logoName}
-            width={100}
-            height={100}
-            sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="card-placeholder">{getInitials(logo.logoName)}</div>
-        )}
-        {/* Badge after the image with z-index so it floats on top */}
-        {isTrending && (
-          <div className="trend-badge"><span className="trend-dot" />Trending</div>
-        )}
+        <div className="card-logo-box">
+          {logo.webpUrl && !imgError ? (
+            <Image
+              unoptimized
+              className="card-img"
+              src={imgSrc}
+              alt={logo.logoName}
+              fill
+              sizes="(max-width: 480px) 40vw, (max-width: 768px) 28vw, (max-width: 1024px) 22vw, 18vw"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="card-placeholder">{getInitials(logo.logoName)}</div>
+          )}
+        </div>
       </div>
       <div className="card-body">
-        <div className="card-name">{logo.logoName}</div>
+        <div className="card-title-row">
+          <div className="card-name">{logo.logoName}</div>
+          {isTrending && (
+            <div className="trend-badge"><span className="trend-dot" />Trending</div>
+          )}
+        </div>
         <div className="card-cat">{logo.category[0]}</div>
         <div className="card-footer">
 

@@ -4,6 +4,9 @@ import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import Navbar from "../../../components/Navbar";
 import Image from "next/image";
+// Shared hook: trims blank edges and centers the logo on a square (1:1) white canvas.
+// Adjust the path if you saved useTrimmedSrc.js somewhere else.
+import { useTrimmedSrc } from "../../../components/useTrimmedSrc";
 
 const PAGE_SIZE = 12;
 
@@ -25,6 +28,7 @@ function SkeletonCard() {
 function LogoCard({ logo }) {
   const [imgErr, setImgErr] = useState(false);
   const router = useRouter();
+  const imgSrc = useTrimmedSrc(logo.webpUrl);
   const colors = Array.isArray(logo.brandColors) ? logo.brandColors : [];
   const formats = ["SVG", "PNG", "AI", "CDR"];
 
@@ -33,33 +37,39 @@ function LogoCard({ logo }) {
       e.preventDefault();
       router.push(`/logo/${logo.slug}`);
     }}>
-      {logo.trending && (
-        <div className="trending-badge">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-            <polyline points="17 6 23 6 23 12" />
-          </svg>
-          TRENDING
-        </div>
-      )}
-
+      {/* Perfect 1:1 white square. The logo lives in .card-logo-box, which is inset
+          exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
       <div className="card-image">
-        {!imgErr && logo.webpUrl ? (
-          <Image src={logo.webpUrl} alt={logo.logoName}
-            onError={() => setImgErr(true)} className="card-img"
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-            width={150}
-            height={150}
-          />
-        ) : (
-          <span className="card-initials">{logo.logoName?.slice(0, 2).toUpperCase()}</span>
-        )}
+        <div className="card-logo-box">
+          {!imgErr && logo.webpUrl ? (
+            <Image src={imgSrc} alt={logo.logoName}
+              onError={() => setImgErr(true)} className="card-img"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+              fill
+              sizes="(max-width: 640px) 40vw, 160px"
+            />
+          ) : (
+            <span className="card-initials">{logo.logoName?.slice(0, 2).toUpperCase()}</span>
+          )}
+        </div>
       </div>
 
       <div className="card-body">
-        <div className="card-name">{logo.logoName}</div>
+        <div className="card-title-row">
+          <div className="card-name">{logo.logoName}</div>
+          {/* Badge lives in the body so nothing touches the white margins of the preview */}
+          {logo.trending && (
+            <span className="trending-badge">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+              TRENDING
+            </span>
+          )}
+        </div>
         <span className="card-category">
           {logo.category?.[0] || ""}
         </span>
@@ -236,16 +246,19 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
         .logo-card:hover { background: var(--surface-hover); border-color: var(--border-hover); transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.15); }
         [data-theme="dark"] .logo-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
 
-        /* Badge floats above the image */
-        .trending-badge { position: absolute; top: 10px; left: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(7,166,38,0.85); border-radius: 6px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .trending-badge { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 3px 8px; background: rgba(7,166,38,0.85); border-radius: 6px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: #fff; }
 
-        /* White 1:1 preview; 5% space on every side */
-        .card-image { width: 100%; aspect-ratio: 1 / 1; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5%; }
-        .card-img { width: 100%; height: 100%; object-fit: contain; padding: 0; }
+        /* Perfect 1:1 white square preview */
+        .card-image { position: relative; width: 100%; aspect-ratio: 1 / 1; background: #ffffff; overflow: hidden; }
+        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        .card-logo-box { position: absolute; inset: 10%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        /* Proportional scaling: never stretched, never overflows the box */
+        .card-img { object-fit: contain; }
         .card-initials { font-size: 30px; font-weight: 900; color: rgba(0,0,0,0.45); letter-spacing: -1px; }
 
         .card-body { padding: 10px 12px 12px; }
-        .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
+        .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         .card-category { font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px; }
         .card-colors { display: flex; gap: 4px; margin-bottom: 8px; }
         .color-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); }

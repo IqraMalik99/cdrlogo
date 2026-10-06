@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
+import { useTrimmedSrc } from "./useTrimmedSrc";
 
 const ALPHABET = ["All", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
   "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0-9"];
@@ -37,6 +38,7 @@ function SkeletonCard() {
 function LogoCard({ logo }) {
   const [imgErr, setImgErr] = useState(false);
   const router = useRouter();
+  const imgSrc = useTrimmedSrc(logo.webpUrl);
   // backend returns brandColors (array) and webpUrl
   const colors = Array.isArray(logo.brandColors) ? logo.brandColors : [];
   const formats = ["SVG", "PNG", "AI", "CDR"]; // static — backend doesn't return formats
@@ -46,38 +48,51 @@ function LogoCard({ logo }) {
       e.preventDefault();
       router.push(`/logo/${logo.slug}`);
     }}>
-      {logo.trending && (
-        <div className="trending-badge">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-            <polyline points="17 6 23 6 23 12" />
-          </svg>
-          TRENDING
-        </div>
-      )}
-
+      {/* Perfect 1:1 white square. The logo lives in .card-logo-box, which is inset
+          exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
       <div className="card-image">
-        {!imgErr && logo.webpUrl ? (
-          <Image
-            unoptimized
-            src={logo.webpUrl}
-            alt={logo.logoName}
-            width={160}
-            height={160}
-            onError={() => setImgErr(true)}
-            className="card-img"
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-          />
-        ) : (
-          <span className="card-initials">{logo.logoName?.slice(0, 2).toUpperCase()}</span>
-        )}
+        <div className="card-logo-box">
+          {!imgErr && logo.webpUrl ? (
+            <Image
+              unoptimized
+              src={imgSrc}
+              alt={logo.logoName}
+              fill
+              sizes="(max-width: 640px) 40vw, 160px"
+              onError={() => setImgErr(true)}
+              className="card-img"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+            />
+          ) : (
+            <span className="card-initials">{logo.logoName?.slice(0, 2).toUpperCase()}</span>
+          )}
+        </div>
       </div>
 
       <div className="card-body">
-        <div className="card-name">{logo.logoName}</div>
-        <span className="card-category">{logo.category[1] ? logo.category[1] : logo.category[0]}</span>
+        <div className="card-title-row">
+          <div className="card-name">{logo.logoName}</div>
+          {/* Badge lives in the body so nothing touches the white margins of the preview */}
+          {logo.trending && (
+            <span className="trending-badge">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+              TRENDING
+            </span>
+          )}
+        </div>
+        <div className="card-meta-row">
+          <span className="card-category">{logo.category[1] ? logo.category[1] : logo.category[0]}</span>
+          <div className="card-colors">
+            {colors.slice(0, 4).map((c, i) => (
+              <span key={i} className="color-dot" style={{ background: c }} />
+            ))}
+          </div>
+        </div>
 
 
 
@@ -210,7 +225,7 @@ export default function LogosPage() {
           padding: 0px 0 60px;
           transition: background 0.35s;
         }
-        .logos-container { max-width: 1200px; margin: 0 auto; padding: 24px 24px 0; }
+        .logos-container { max-width: 1260px; margin: 0 auto; padding: 24px 28px 0; }
 
         .page-header {
           display: flex; align-items: flex-start;
@@ -259,7 +274,9 @@ export default function LogosPage() {
           background: var(--pill-active-bg); border-color: var(--pill-active-border); color: var(--pill-active-color);
         }
 
-        .logos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 36px; }
+        .logos-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 36px; }
+        @media (max-width: 1100px) { .logos-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 820px) { .logos-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; } }
 
         .logo-card {
           background: var(--surface); border: 1px solid var(--border);
@@ -273,41 +290,42 @@ export default function LogosPage() {
         [data-theme="dark"] .logo-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
 
         .trending-badge {
-          position: absolute; top: 10px; left: 10px; z-index: 2;
-          display: inline-flex; align-items: center; gap: 4px;
+          display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
           padding: 3px 8px; background: rgba(7,166,38,0.85);
           border-radius: 6px; font-size: 9px; font-weight: 700;
-          letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px);
+          letter-spacing: 0.5px; color: #fff;
         }
 
-        /* White 1:1 preview box; 5% space on every side keeps the logo off the edges */
+        /* Perfect 1:1 white square preview */
         .card-image {
           position: relative;
           width: 100%; aspect-ratio: 1 / 1; background: #ffffff;
-          display: flex; align-items: center; justify-content: center;
           overflow: hidden;
-          padding: 5%;
-          box-sizing: border-box;
           transition: background 0.3s;
         }
-        /* Image fills the padded box; object-fit: contain scales it down proportionally, so it never overflows */
-        .card-img {
-          width: 100%; height: 100%;
-          max-width: 100%; max-height: 100%;
-          object-fit: contain;
-          display: block;
+        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        .card-logo-box {
+          position: absolute; inset: 10%;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden;
         }
+        /* Proportional scaling: never stretched, never overflows the box */
+        .card-img { object-fit: contain; }
         .card-initials { font-size: 30px; font-weight: 900; color: rgba(0,0,0,0.45); letter-spacing: -1px; font-family: var(--font-sora), sans-serif; }
 
         .card-body { padding: 10px 12px 12px; }
-        .card-name { font-size: 15px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s; }
-        .card-category { font-family: var(--font-sora), sans-serif; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px; transition: color 0.3s; }
-        .card-colors { display: flex; gap: 4px; margin-bottom: 8px; }
-        .color-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); }
+        .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 22px; margin-bottom: 4px; }
+        .card-name { font-size: 13px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; transition: color 0.3s; }
+        .card-meta-row { display: flex; align-items: center; justify-content: space-between; height: 14px; margin-bottom: 8px; }
+        .card-category { font-family: var(--font-sora), sans-serif; font-size: 10.5px; color: var(--text-muted); display: block; transition: color 0.3s; }
+        .card-colors { display: flex; gap: 4px; }
+        .color-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); flex-shrink: 0; }
         [data-theme="light"] .color-dot { border-color: rgba(0,0,0,0.1); }
 
-        .card-formats { display: flex; flex-wrap: wrap; gap: 4px; }
-        .fmt-tag { padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid; }
+        .card-formats { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; height: 18px; overflow: hidden; }
+        .fmt-tag { padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid; }
+        .fmt-cdr { background:rgba(234,179,8,.1);  border-color:rgba(234,179,8,.25);  color:#fde68a; }
+        [data-theme="light"] .fmt-cdr { color:#92400e; }
         .fmt-ai  { background:rgba(234,179,8,.1);  border-color:rgba(234,179,8,.25);  color:#fde68a; }
         .fmt-svg { background:rgba(34,197,94,.1);  border-color:rgba(34,197,94,.25);  color:#86efac; }
         .fmt-png { background:rgba(59,130,246,.1); border-color:rgba(59,130,246,.25); color:#93c5fd; }

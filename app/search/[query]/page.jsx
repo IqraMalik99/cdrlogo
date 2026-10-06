@@ -6,6 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { toSearchSlug, fromSearchSlug } from "../../utils/searchSlug";
+// Shared hook: trims blank edges and centers the logo on a square (1:1) white canvas.
+// Adjust the path if you saved useTrimmedSrc.js somewhere else.
+import { useTrimmedSrc } from "../../components/useTrimmedSrc";
 
 const PAGE_SIZE = 12;
 
@@ -31,71 +34,6 @@ function SkeletonCard() {
     );
 }
 
-// Auto-trims blank (transparent / white) margins baked into logo files so every
-// logo fills the preview box the same way. Falls back to the original image if
-// the browser blocks pixel access (CORS) or anything fails.
-function useTrimmedSrc(src) {
-    const [out, setOut] = useState(src);
-
-    useEffect(() => {
-        setOut(src);
-        if (!src) return;
-        let cancelled = false;
-        const img = new window.Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-            try {
-                const W = img.naturalWidth, H = img.naturalHeight;
-                if (!W || !H) return;
-
-                // 1) find content bounding box on a small copy
-                const s = Math.min(1, 300 / Math.max(W, H));
-                const sw = Math.max(1, Math.round(W * s)), sh = Math.max(1, Math.round(H * s));
-                const c1 = document.createElement("canvas");
-                c1.width = sw; c1.height = sh;
-                const x1 = c1.getContext("2d", { willReadFrequently: true });
-                x1.drawImage(img, 0, 0, sw, sh);
-                const d = x1.getImageData(0, 0, sw, sh).data;
-
-                let minX = sw, minY = sh, maxX = -1, maxY = -1;
-                for (let y = 0; y < sh; y++) {
-                    for (let x = 0; x < sw; x++) {
-                        const i = (y * sw + x) * 4;
-                        const a = d[i + 3];
-                        const isBlank = a < 20 || (d[i] > 242 && d[i + 1] > 242 && d[i + 2] > 242);
-                        if (!isBlank) {
-                            if (x < minX) minX = x;
-                            if (x > maxX) maxX = x;
-                            if (y < minY) minY = y;
-                            if (y > maxY) maxY = y;
-                        }
-                    }
-                }
-                if (maxX < 0) return;                              // nothing found
-                if (minX <= 1 && minY <= 1 && maxX >= sw - 2 && maxY >= sh - 2) return; // already tight
-
-                // 2) crop from the ORIGINAL resolution so it stays sharp
-                const cx = Math.floor(minX / s), cy = Math.floor(minY / s);
-                const cw = Math.min(W - cx, Math.ceil((maxX - minX + 1) / s));
-                const ch = Math.min(H - cy, Math.ceil((maxY - minY + 1) / s));
-                const k = Math.min(1, 480 / Math.max(cw, ch));
-                const c2 = document.createElement("canvas");
-                c2.width = Math.max(1, Math.round(cw * k));
-                c2.height = Math.max(1, Math.round(ch * k));
-                c2.getContext("2d").drawImage(img, cx, cy, cw, ch, 0, 0, c2.width, c2.height);
-                const url = c2.toDataURL("image/png");
-                if (!cancelled) setOut(url);
-            } catch (e) {
-                /* tainted canvas / CORS — keep original */
-            }
-        };
-        img.src = src;
-        return () => { cancelled = true; };
-    }, [src]);
-
-    return out;
-}
-
 function LogoCard({ logo }) {
     const [imgErr, setImgErr] = useState(false);
     const colors = Array.isArray(logo.brandColors) ? logo.brandColors : [];
@@ -105,15 +43,20 @@ function LogoCard({ logo }) {
 
     return (
         <div className="logo-card" onClick={() => router.push(`/logo/${logo.slug}`)}  >
+            {/* Perfect 1:1 white square. The logo lives in .card-logo-box, which is inset
+                exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
             <div className="card-image">
-                {!imgErr && logo.webpUrl ? (
-                    <img src={imgSrc} alt={logo.logoName}
-                        onError={() => setImgErr(true)} className="card-img" />
-                ) : (
-                    <span className="card-initials">
-                        {(logo.brand || logo.logoName)?.slice(0, 2).toUpperCase()}
-                    </span>
-                )}
+                <div className="card-logo-box">
+                    {!imgErr && logo.webpUrl ? (
+                        <img src={imgSrc} alt={logo.logoName}
+                            onError={() => setImgErr(true)} className="card-img"
+                            draggable={false} onDragStart={(e) => e.preventDefault()} />
+                    ) : (
+                        <span className="card-initials">
+                            {(logo.brand || logo.logoName)?.slice(0, 2).toUpperCase()}
+                        </span>
+                    )}
+                </div>
             </div>
 
             <div className="card-body">
@@ -393,13 +336,20 @@ export default function SearchPage() {
         }
         [data-theme="dark"] .logo-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
 
-        /* 1:1 preview; the logo sits inside with 5% space on every side, never cropped */
+        /* Perfect 1:1 white square preview */
         .card-image {
+          position: relative;
           width: 100%; aspect-ratio: 1 / 1; background: #ffffff;
-          display: flex; align-items: center; justify-content: center;
-          overflow: hidden; padding: 5%; transition: background 0.3s;
+          overflow: hidden; transition: background 0.3s;
         }
-        .card-img { width: 100%; height: 100%; object-fit: contain; padding: 0; display: block; }
+        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        .card-logo-box {
+          position: absolute; inset: 10%;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden;
+        }
+        /* Proportional scaling: never stretched, never overflows the box */
+        .card-img { width: 100%; height: 100%; object-fit: contain; display: block; }
         .card-initials { font-size: 30px; font-weight: 900; color: rgba(0,0,0,0.45); letter-spacing: -1px; }
 
         .card-body { padding: 10px 12px 12px; }
