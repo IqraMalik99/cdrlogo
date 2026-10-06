@@ -42,7 +42,7 @@ function TrendingCard({ logo, dark }) {
         }
       }
     >
-      {/* Preview background is plain white; image size/padding unchanged */}
+      {/* 1:1 preview on plain white; logo sits inside with 5% space on every side */}
       <div className="tl-preview">
         {!imgErr && logo.webpUrl
           ? <Image
@@ -158,9 +158,10 @@ export default function TrendingLogos() {
         .tl-card--hovered{border-color:var(--tl-border-h);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.25)}
         [data-theme="dark"] .tl-card--hovered{box-shadow:0 16px 40px rgba(0,0,0,.55)}
 
-        /* White preview background in both themes; original height kept */
-        .tl-preview{position:relative;height:160px;background:#ffffff;display:flex;align-items:center;justify-content:center;overflow:hidden}
-        .tl-logo-img{object-fit:contain;padding:20px}
+        /* White 1:1 preview in both themes */
+        .tl-preview{position:relative;width:100%;aspect-ratio:1/1;background:#ffffff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        /* 5% of the (square) preview width on every side */
+        .tl-logo-img{object-fit:contain;padding:5%}
 
         .tl-badge{position:absolute;top:10px;left:10px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(7,166,38,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}
 
@@ -187,8 +188,8 @@ export default function TrendingLogos() {
         .tl-error{text-align:center;padding:40px;color:#f87171;font-size:13px}
 
         @media(max-width:1100px){.tl-grid{grid-template-columns:repeat(4,1fr)}}
-        @media(max-width:820px){.tl-grid{grid-template-columns:repeat(3,1fr);gap:10px}.tl-preview{height:130px}}
-        @media(max-width:560px){.tl-grid{grid-template-columns:repeat(2,1fr);gap:8px}.tl-container{padding:0 14px}.tl-title{font-size:20px}.tl-preview{height:115px}}
+        @media(max-width:820px){.tl-grid{grid-template-columns:repeat(3,1fr);gap:10px}}
+        @media(max-width:560px){.tl-grid{grid-template-columns:repeat(2,1fr);gap:8px}.tl-container{padding:0 14px}.tl-title{font-size:20px}}
       `}</style>
 
       <section className="tl-section">

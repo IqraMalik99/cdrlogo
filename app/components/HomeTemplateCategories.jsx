@@ -323,19 +323,19 @@ export default function TemplatesPage() {
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* White preview background in both themes; original ratio and padding kept */
+        /* White 1:1 preview in both themes; 5% space on every side */
         .card-img-wrap {
-          width: 100%; aspect-ratio: 1 / 0.85; background: #ffffff;
+          width: 100%; aspect-ratio: 1 / 1; background: #ffffff;
           display: flex; align-items: center; justify-content: center;
           overflow: hidden; position: relative;
-          padding: 14%;
+          padding: 5%;
           box-sizing: border-box;
         }
-        /* Normal image size; max-width/height keep it inside the padded box */
+        /* Image fills the padded box; object-fit: contain keeps it proportional and inside */
         .card-img {
           object-fit: contain;
+          width: 100%; height: 100%;
           max-width: 100%; max-height: 100%;
-          width: auto; height: auto;
           transition: transform .3s;
         }
         .logo-card:hover .card-img { transform: scale(1.06); }
@@ -379,7 +379,7 @@ export default function TemplatesPage() {
           border-radius: 14px; overflow: hidden;
           animation: shimmer 1.5s ease-in-out infinite alternate;
         }
-        .skeleton-img  { width:100%; aspect-ratio:1/0.85; background:var(--skeleton-bg); }
+        .skeleton-img  { width:100%; aspect-ratio:1/1; background:var(--skeleton-bg); }
         .skeleton-body { padding:10px 12px 12px; }
         .skeleton-line { height: 10px; border-radius: 5px; background: var(--skeleton-bg); margin-bottom: 6px; }
         @keyframes shimmer { from { opacity: .6; } to { opacity: 1; } }

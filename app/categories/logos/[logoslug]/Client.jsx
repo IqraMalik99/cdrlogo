@@ -239,9 +239,9 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
         /* Badge floats above the image */
         .trending-badge { position: absolute; top: 10px; left: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(7,166,38,0.85); border-radius: 6px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 
-        /* White preview background in both themes; original height and image size kept */
-        .card-image { width: 100%; height: 130px; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .card-img { width: 100%; height: 100%; object-fit: contain; padding: 16px; }
+        /* White 1:1 preview; 5% space on every side */
+        .card-image { width: 100%; aspect-ratio: 1 / 1; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5%; }
+        .card-img { width: 100%; height: 100%; object-fit: contain; padding: 0; }
         .card-initials { font-size: 30px; font-weight: 900; color: rgba(0,0,0,0.45); letter-spacing: -1px; }
 
         .card-body { padding: 10px 12px 12px; }
@@ -261,7 +261,7 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
         [data-theme="light"] .fmt-png { color:#1e40af; }
 
         .skeleton-card { pointer-events: none; }
-        .skeleton-img { width: 100%; height: 130px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
+        .skeleton-img { width: 100%; aspect-ratio: 1 / 1; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
         .skeleton-line { height: 10px; border-radius: 5px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
         .w60{width:60%} .w40{width:40%} .mt4{margin-top:4px}
         .skeleton-badge { width:28px; height:16px; border-radius:4px; background:var(--skeleton); animation:shimmer 1.6s infinite linear; }
@@ -290,7 +290,6 @@ export default function CategoryClient({ slug: slugProp, initialCategoryName }) 
           .header-stat { padding: 8px 14px; }
           .header-stat-num { font-size: 18px; }
           .logos-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
-          .card-image { height: 105px; }
           .card-name { font-size: 13px; }
           .pagination { gap: 4px; }
           .page-btn { min-width: 32px; height: 32px; font-size: 12px; }

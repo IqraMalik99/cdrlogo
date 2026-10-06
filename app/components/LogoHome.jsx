@@ -280,13 +280,13 @@ export default function LogosPage() {
           letter-spacing: 0.5px; color: #fff; backdrop-filter: blur(4px);
         }
 
-        /* White preview box; padding keeps the logo off the edges */
+        /* White 1:1 preview box; 5% space on every side keeps the logo off the edges */
         .card-image {
           position: relative;
-          width: 100%; height: 160px; background: #ffffff;
+          width: 100%; aspect-ratio: 1 / 1; background: #ffffff;
           display: flex; align-items: center; justify-content: center;
           overflow: hidden;
-          padding: 14px;
+          padding: 5%;
           box-sizing: border-box;
           transition: background 0.3s;
         }
@@ -316,7 +316,7 @@ export default function LogosPage() {
         [data-theme="light"] .fmt-png { color:#1e40af; }
 
         .skeleton-card { pointer-events: none; }
-        .skeleton-img { width: 100%; height: 160px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
+        .skeleton-img { width: 100%; aspect-ratio: 1 / 1; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
         .skeleton-line { height: 10px; border-radius: 5px; background: var(--skeleton); animation: shimmer 1.6s infinite linear; }
         .w60{width:60%} .w40{width:40%} .mt4{margin-top:4px}
         .skeleton-badge { width:28px; height:16px; border-radius:4px; background:var(--skeleton); animation:shimmer 1.6s infinite linear; }
@@ -348,8 +348,6 @@ export default function LogosPage() {
           .cat-row::-webkit-scrollbar { display: none; }
           .cat-btn { flex-shrink: 0; font-size: 11.5px; padding: 4px 12px; }
           .logos-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
-          .card-image { height: 105px; padding: 10px; }
-          .skeleton-img { height: 105px; }
           .card-name { font-size: 13px; }
           .card-formats { gap: 3px; }
           .pagination { gap: 4px; }

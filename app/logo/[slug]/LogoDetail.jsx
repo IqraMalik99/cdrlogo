@@ -394,9 +394,10 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
 
   .preview-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; position:relative; width:100%; }
 
+  /* 1:1 preview, 5% breathing room from the border */
   .preview-img-wrap {
-    position:relative; width:100%; aspect-ratio:3/2;
-    display:flex; align-items:center; justify-content:center; padding:20px;
+    position:relative; width:100%; aspect-ratio:1/1;
+    display:flex; align-items:center; justify-content:center; padding:5%;
     background:repeating-conic-gradient(rgba(128,128,128,0.06) 0% 25%,transparent 0% 50%) 0 0/20px 20px;
   }
   .preview-img-wrap img { width:100%; height:100%; object-fit:contain; user-select:none; pointer-events:none; -webkit-user-drag:none; }
@@ -605,8 +606,9 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
   .related-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; cursor:pointer; text-decoration:none; display:block; transition:border-color .2s,transform .2s,box-shadow .2s; }
   .related-card:hover { border-color:var(--border2); transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,0.18); }
   [data-theme="dark"] .related-card:hover { box-shadow:0 10px 28px rgba(0,0,0,0.45); }
-  .related-img-wrap { width:100%; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; padding:16px; background:repeating-conic-gradient(rgba(128,128,128,0.05) 0% 25%,transparent 0% 50%) 0 0/16px 16px; }
-  .related-img-wrap img { width:100%; height:100%; object-fit:contain; }
+
+  /* 1:1 thumbnail, 5% breathing room from the border */
+  .related-img-wrap { width:100%; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; padding:5%; background:repeating-conic-gradient(rgba(128,128,128,0.05) 0% 25%,transparent 0% 50%) 0 0/16px 16px; }
   .related-img-wrap img { width:100%; height:100%; object-fit:contain; }
 
 /* NEW — related logo thumbnails render via CSS background-image instead of
@@ -648,7 +650,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
     .related-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
   }
   @media (max-width:480px) {
-    .preview-img-wrap { padding:16px; }
+    .preview-img-wrap { padding:5%; }
     .info-grid { grid-template-columns:1fr; }
     .meta-strip { flex-direction:column; }
     .meta-item { border-right:none; border-bottom:1px solid var(--border); }
@@ -738,7 +740,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
                                             src={logo.webpUrl}
                                             alt={logo.altText || `${logo.logoName} logo PNG SVG vector`}
                                             width={550}
-                                            height={367}
+                                            height={550}
                                             priority
                                             fetchPriority="high"
                                             style={{ width: "100%", height: "100%", objectFit: "contain" }}
