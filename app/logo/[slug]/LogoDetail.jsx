@@ -390,9 +390,20 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
     gap:20px; align-items:start;
   }
 
-  .left { display:flex; flex-direction:column; gap:16px; position:sticky; top:96px; align-self:start; }
+  /* CHANGED: align-items:center so the smaller preview card sits centered */
+  .left { display:flex; flex-direction:column; gap:16px; position:sticky; top:96px; align-self:start; align-items:center; }
 
-  .preview-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; position:relative; width:100%; }
+  /* NEW: keep the other cards in the left column full width */
+  .left > .card,
+  .left > .ad-card { width:100%; align-self:stretch; }
+
+  /* CHANGED: capped width → smaller preview box (adjust 380px to taste) */
+  .preview-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; position:relative;
+    width:100%; max-width:380px;
+    margin:0 auto;
+  }
 
   /* 1:1 preview, 5% breathing room from the border */
   .preview-img-wrap {
@@ -602,25 +613,33 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
   .related-header { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
   .related-title { font-size:16px; font-weight:800; color:var(--heading); letter-spacing:-0.3px; }
   .related-badge { padding:2px 8px; border-radius:100px; background:rgba(7,166,38,.1); border:1px solid rgba(7,166,38,.2); font-size:10px; font-weight:700; color:#07A626; }
-  .related-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+
+  /* CHANGED: smaller tiles, capped at 150px so they never stretch */
+  .related-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,150px)); gap:10px; }
+
   .related-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; cursor:pointer; text-decoration:none; display:block; transition:border-color .2s,transform .2s,box-shadow .2s; }
   .related-card:hover { border-color:var(--border2); transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,0.18); }
   [data-theme="dark"] .related-card:hover { box-shadow:0 10px 28px rgba(0,0,0,0.45); }
 
   /* 1:1 thumbnail, 5% breathing room from the border */
-  .related-img-wrap { width:100%; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; padding:5%; background:repeating-conic-gradient(rgba(128,128,128,0.05) 0% 25%,transparent 0% 50%) 0 0/16px 16px; }
+  .related-img-wrap {
+    width:100%; aspect-ratio:1/1; padding:5%;
+    display:flex; align-items:center; justify-content:center;
+    background:repeating-conic-gradient(rgba(128,128,128,0.05) 0% 25%,transparent 0% 50%) 0 0/16px 16px;
+  }
   .related-img-wrap img { width:100%; height:100%; object-fit:contain; }
 
-/* NEW — related logo thumbnails render via CSS background-image instead of
-   <img>/<Image>, so Google Images crawler doesn't discover/index them as
-   standalone content images. Purely decorative from a crawler's POV. */
-.related-img-bg {
-  width:100%;
-  height:100%;
-  background-size:contain;
-  background-repeat:no-repeat;
-  background-position:center;
-}
+  /* Related logo thumbnails render via CSS background-image instead of
+     <img>/<Image>, so Google Images crawler doesn't discover/index them as
+     standalone content images. Purely decorative from a crawler's POV.
+     CHANGED: explicit 1:1 so the square never collapses. */
+  .related-img-bg {
+    width:100%;
+    aspect-ratio:1/1;
+    background-size:contain;
+    background-repeat:no-repeat;
+    background-position:center;
+  }
   .related-initials { font-size:22px; font-weight:900; color:var(--muted); letter-spacing:-1px; }
   .related-body { padding:8px 10px 10px; }
   .related-name { font-size:12px; font-weight:700; color:var(--heading); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px; }
@@ -641,21 +660,23 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
   @media (max-width:768px) {
     .layout { grid-template-columns:1fr; padding:16px 16px 0; }
     .left { position:static; }
+    .preview-card { max-width:320px; }
     .info-grid { grid-template-columns:1fr 1fr; }
     .meta-strip { flex-direction:row; flex-wrap:wrap; }
     .meta-item { min-width:0; flex:1; border-right:1px solid var(--border); border-bottom:none; }
     .meta-item:last-child { border-right:none; }
     .related-section { padding:0 16px; }
     .tags-section { padding:0 16px; }
-    .related-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
+    .related-grid { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); }
   }
   @media (max-width:480px) {
+    .preview-card { max-width:100%; }
     .preview-img-wrap { padding:5%; }
     .info-grid { grid-template-columns:1fr; }
     .meta-strip { flex-direction:column; }
     .meta-item { border-right:none; border-bottom:1px solid var(--border); }
     .meta-item:last-child { border-bottom:none; }
-    .related-grid { grid-template-columns:repeat(2,1fr); }
+    .related-grid { grid-template-columns:repeat(3,1fr); }
     .policy-form-row { grid-template-columns:1fr; }
   }
   @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
