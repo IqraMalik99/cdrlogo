@@ -12,13 +12,17 @@ export async function GET() {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-
+  // Saare logos: koi owner filter nahi, koi publishStatus filter nahi
   const logos = await prisma.logo.findMany({
-    where: { owner: user.id },
     orderBy: { createdAt: "desc" },
     select: {
-      id: true, logoName: true, slug: true, webpUrl: true,
-      category: true, publishStatus: true, createdAt: true,
+      id: true,
+      logoName: true,
+      slug: true,
+      webpUrl: true,
+      category: true,
+      createdAt: true,
+      publishStatus: true, // UI me Draft / Published / Needs Review dikhane ke liye
     },
   });
 

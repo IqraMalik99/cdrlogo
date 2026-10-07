@@ -19,6 +19,8 @@ export default function ProfilePage() {
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [count, setCount] = useState(0);
   const [join, setJoin] = useState(null);
+  const [logosCount, setLogosCount] = useState(0);
+  const [draftCount, setDraftCount] = useState(0);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -35,11 +37,21 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/user/favorites");
-      const data = await res.json();
+      const [favRes, logosRes] = await Promise.all([
+        fetch("/api/user/favorites"),
+        fetch("/api/user/logos"), // apne logos wale route ka asli path likho
+      ]);
+
+      const data = await favRes.json();
       setJoin(new Date(data.joined));
       setCount(data.downloadCountUsed);
       setFavoritesCount((data.favorites ?? []).length);
+
+      if (logosRes.ok) {
+        const { logos = [] } = await logosRes.json();
+        setLogosCount(logos.length); // draft + published, sab
+        setDraftCount(logos.filter((l) => l.publishStatus === "Draft").length);
+      }
     } catch {
       // keep defaults
     } finally {
@@ -110,6 +122,12 @@ export default function ProfilePage() {
           <div className="pg-glass pg-stat-box">
             <div className="pg-stat-n">{loading ? "–" : count ?? 0}</div>
             <div className="pg-stat-lbl">Downloads</div>
+          </div>
+          <div className="pg-glass pg-stat-box">
+            <div className="pg-stat-n">{loading ? "–" : logosCount}</div>
+            <div className="pg-stat-lbl">
+              Logos{!loading && draftCount > 0 ? ` · ${draftCount} draft` : ""}
+            </div>
           </div>
         </div>
 
