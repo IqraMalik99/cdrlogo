@@ -384,26 +384,26 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
 
   .layout {
     position:relative; z-index:1;
-    max-width:900px; margin:0 auto;
+    max-width:1100px; margin:0 auto;
     padding:20px 24px 0;
-    display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    display:grid; grid-template-columns:1fr 1fr;
     gap:20px; align-items:start;
   }
 
-  /* align-items:center so the smaller preview card sits centered */
-  .left { display:flex; flex-direction:column; gap:16px; position:sticky; top:96px; align-self:start; align-items:stretch; width:100%; min-width:0; }
+  /* CHANGED: align-items:center so the smaller preview card sits centered */
+  .left { display:flex; flex-direction:column; gap:16px; position:sticky; top:96px; align-self:start; align-items:center; }
 
-  /* keep the other cards in the left column full width */
+  /* NEW: keep the other cards in the left column full width */
   .left > .card,
-  .left > .ad-card,
-  .left > .preview-card { width:100% !important; max-width:none !important; align-self:stretch; margin:0 !important; }
+  .left > .ad-card { width:100%; align-self:stretch; }
 
-  /* capped width → smaller preview box (adjust 380px to taste) */
+  /* CHANGED: capped width → smaller preview box (adjust 380px to taste) */
   .preview-card {
     background:var(--surface); border:1px solid var(--border); border-radius:14px;
     overflow:hidden; position:relative;
     width:100%; max-width:none;
     margin:0;
+    align-self:stretch;
   }
 
   /* Locked 1:1 square. The image sits in the square with 5% space on every side
@@ -413,7 +413,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
     width:100%;
     aspect-ratio:1 / 1;
     overflow:hidden;
-    background:repeating-conic-gradient(rgba(128,128,128,0.06) 0% 25%,transparent 0% 50%) 0 0/20px 20px;
+    background:#ffffff;
   }
   .preview-img-wrap img {
     position:absolute !important;
@@ -443,12 +443,12 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
   .img-fmt-pill { font-size:10px; font-weight:700; color:rgba(255,255,255,0.9); background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 7px; backdrop-filter:blur(4px); letter-spacing:.4px; }
   .img-dl-count { display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:rgba(255,255,255,0.85); }
 
-  .meta-strip { display:flex; flex-wrap:nowrap; gap:0; border-top:1px solid var(--border); flex-shrink:0; }
-  .meta-item { flex:1 1 0; min-width:0; padding:9px 10px; border-right:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+  .meta-strip { display:flex; flex-wrap:wrap; gap:0; border-top:1px solid var(--border); flex-shrink:0; }
+  .meta-item { flex:1; min-width:100px; padding:12px 14px; border-right:1px solid var(--border); display:flex; align-items:center; gap:8px; }
   .meta-item:last-child { border-right:none; }
   .meta-icon { color:var(--muted); flex-shrink:0; }
-  .meta-label { font-size:8px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-bottom:2px; }
-  .meta-value { font-size:10px; font-weight:600; color:var(--body); line-height:1.3; overflow-wrap:anywhere; }
+  .meta-label { font-size:9px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-bottom:2px; }
+  .meta-value { font-size:11px; font-weight:600; color:var(--body); }
   .meta-value a { color:#07A626; text-decoration:none; }
   .meta-value a:hover { text-decoration:underline; }
   .license-free { color:#f59e0b !important; }
@@ -633,7 +633,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
   .related-title { font-size:16px; font-weight:800; color:var(--heading); letter-spacing:-0.3px; }
   .related-badge { padding:2px 8px; border-radius:100px; background:rgba(7,166,38,.1); border:1px solid rgba(7,166,38,.2); font-size:10px; font-weight:700; color:#07A626; }
 
-  /* smaller tiles, capped at 150px so they never stretch */
+  /* CHANGED: smaller tiles, capped at 150px so they never stretch */
   .related-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,150px)); gap:10px; }
 
   .related-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; cursor:pointer; text-decoration:none; display:block; transition:border-color .2s,transform .2s,box-shadow .2s; }
@@ -644,14 +644,14 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
   .related-img-wrap {
     width:100%; aspect-ratio:1/1; padding:5%;
     display:flex; align-items:center; justify-content:center;
-    background:#ffffff;
+    background:repeating-conic-gradient(rgba(128,128,128,0.05) 0% 25%,transparent 0% 50%) 0 0/16px 16px;
   }
   .related-img-wrap img { width:100%; height:100%; object-fit:contain; }
 
   /* Related logo thumbnails render via CSS background-image instead of
      <img>/<Image>, so Google Images crawler doesn't discover/index them as
      standalone content images. Purely decorative from a crawler's POV.
-     Explicit 1:1 so the square never collapses. */
+     CHANGED: explicit 1:1 so the square never collapses. */
   .related-img-bg {
     width:100%;
     aspect-ratio:1/1;
@@ -677,10 +677,10 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
   .d0{transition-delay:0ms;} .d1{transition-delay:60ms;} .d2{transition-delay:120ms;} .d3{transition-delay:180ms;} .d4{transition-delay:240ms;}
 
   @media (max-width:768px) {
-    .layout { grid-template-columns:minmax(0,1fr); padding:16px 16px 0; }
+    .layout { grid-template-columns:1fr; padding:16px 16px 0; }
     .left { position:static; }
     .info-grid { grid-template-columns:1fr 1fr; }
-    .meta-strip { flex-direction:row; flex-wrap:nowrap; }
+    .meta-strip { flex-direction:row; flex-wrap:wrap; }
     .meta-item { min-width:0; flex:1; border-right:1px solid var(--border); border-bottom:none; }
     .meta-item:last-child { border-right:none; }
     .related-section { padding:0 16px; }

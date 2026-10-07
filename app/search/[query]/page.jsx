@@ -44,7 +44,7 @@ function LogoCard({ logo }) {
     return (
         <div className="logo-card" onClick={() => router.push(`/logo/${logo.slug}`)}  >
             {/* Perfect 1:1 white square. The logo lives in .card-logo-box, which is inset
-                exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
+                exactly 5% on all four sides, so content only occupies the center 90% x 90%. */}
             <div className="card-image">
                 <div className="card-logo-box">
                     {!imgErr && logo.webpUrl ? (
@@ -342,14 +342,18 @@ export default function SearchPage() {
           width: 100%; aspect-ratio: 1 / 1; background: #ffffff;
           overflow: hidden; transition: background 0.3s;
         }
-        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        /* The 90% x 90% content area: exactly 5% white on left, right, top and bottom */
         .card-logo-box {
-          position: absolute; inset: 10%;
+          position: absolute; inset: 5%;
           display: flex; align-items: center; justify-content: center;
           overflow: hidden;
         }
         /* Proportional scaling: never stretched, never overflows the box */
-        .card-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .card-img {
+          width: 100%; height: 100%; max-width: none;
+          object-fit: contain !important; object-position: center;
+          display: block;
+        }
         .card-initials { font-size: 30px; font-weight: 900; color: rgba(0,0,0,0.45); letter-spacing: -1px; }
 
         .card-body { padding: 10px 12px 12px; }
