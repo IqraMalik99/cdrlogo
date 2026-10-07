@@ -45,7 +45,7 @@ function TrendingCard({ logo, dark }) {
       }
     >
       {/* Perfect 1:1 white square. The logo lives in .tl-logo-box, which is inset
-          exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
+          exactly 5% on all four sides, so content only occupies the center 90% x 90%. */}
       <div className="tl-preview">
         <div className="tl-logo-box">
           {!imgErr && logo.webpUrl
@@ -165,8 +165,8 @@ export default function TrendingLogos() {
         /* Perfect 1:1 white square in both themes */
         .tl-preview{position:relative;width:100%;aspect-ratio:1/1;background:#ffffff;overflow:hidden}
 
-        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
-        .tl-logo-box{position:absolute;inset:10%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        /* The 90% x 90% content area: exactly 5% white on left, right, top and bottom */
+        .tl-logo-box{position:absolute;inset:5%;display:flex;align-items:center;justify-content:center;overflow:hidden}
         .tl-logo-img{object-fit:contain}
 
         .tl-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;padding:3px 8px;background:rgba(7,166,38,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}

@@ -39,8 +39,6 @@ function LogoCard({ logo }) {
   const [imgErr, setImgErr] = useState(false);
   const router = useRouter();
   const imgSrc = useTrimmedSrc(logo.webpUrl);
-  // backend returns brandColors (array) and webpUrl
-  const colors = Array.isArray(logo.brandColors) ? logo.brandColors : [];
   const formats = ["SVG", "PNG", "AI", "CDR"]; // static — backend doesn't return formats
 
   return (
@@ -49,7 +47,7 @@ function LogoCard({ logo }) {
       router.push(`/logo/${logo.slug}`);
     }}>
       {/* Perfect 1:1 white square. The logo lives in .card-logo-box, which is inset
-          exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
+          exactly 5% on all four sides, so content only occupies the center 90% x 90%. */}
       <div className="card-image">
         <div className="card-logo-box">
           {!imgErr && logo.webpUrl ? (
@@ -87,11 +85,6 @@ function LogoCard({ logo }) {
         </div>
         <div className="card-meta-row">
           <span className="card-category">{logo.category[1] ? logo.category[1] : logo.category[0]}</span>
-          <div className="card-colors">
-            {colors.slice(0, 4).map((c, i) => (
-              <span key={i} className="color-dot" style={{ background: c }} />
-            ))}
-          </div>
         </div>
 
 
@@ -303,9 +296,9 @@ export default function LogosPage() {
           overflow: hidden;
           transition: background 0.3s;
         }
-        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        /* The 90% x 90% content area: exactly 5% white on left, right, top and bottom */
         .card-logo-box {
-          position: absolute; inset: 10%;
+          position: absolute; inset: 5%;
           display: flex; align-items: center; justify-content: center;
           overflow: hidden;
         }
@@ -318,9 +311,6 @@ export default function LogosPage() {
         .card-name { font-size: 13px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; transition: color 0.3s; }
         .card-meta-row { display: flex; align-items: center; justify-content: space-between; height: 14px; margin-bottom: 8px; }
         .card-category { font-family: var(--font-sora), sans-serif; font-size: 10.5px; color: var(--text-muted); display: block; transition: color 0.3s; }
-        .card-colors { display: flex; gap: 4px; }
-        .color-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); flex-shrink: 0; }
-        [data-theme="light"] .color-dot { border-color: rgba(0,0,0,0.1); }
 
         .card-formats { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; height: 18px; overflow: hidden; }
         .fmt-tag { padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid; }

@@ -332,9 +332,9 @@ export default function TemplatesPage() {
           width: 100%; aspect-ratio: 1 / 1; background: #ffffff;
           overflow: hidden; position: relative;
         }
-        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
+        /* The 90% x 90% content area: exactly 5% white on left, right, top and bottom */
         .card-logo-box {
-          position: absolute; inset: 10%;
+          position: absolute; inset: 5%;
           display: flex; align-items: center; justify-content: center;
           overflow: hidden;
         }
@@ -507,7 +507,7 @@ function LogoCard({ logo, index }) {
   const router = useRouter();
   return (
     <div className="logo-card" style={{ animationDelay: `${index * 35}ms` }} onClick={() => { router.push(`/logo/${logo.slug?.toLowerCase()}`) }}>
-      {/* Perfect 1:1 white square; logo inset exactly 10% on all four sides */}
+      {/* Perfect 1:1 white square; logo inset exactly 5% on all four sides */}
       <div className="card-img-wrap">
         <div className="card-logo-box">
           {logo.webpUrl && !imgError ? (
