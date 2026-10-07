@@ -644,7 +644,7 @@ export default function LogoDetail({ logo: initialLogo, initialRelated = [], pag
   .related-img-wrap {
     width:100%; aspect-ratio:1/1; padding:5%;
     display:flex; align-items:center; justify-content:center;
-    background:repeating-conic-gradient(rgba(128,128,128,0.05) 0% 25%,transparent 0% 50%) 0 0/16px 16px;
+    background:#ffffff;
   }
   .related-img-wrap img { width:100%; height:100%; object-fit:contain; }
 
