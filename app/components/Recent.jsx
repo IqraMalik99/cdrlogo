@@ -3,70 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-
-// Auto-trims blank (transparent / white) margins baked into logo files so every
-// logo's content reaches the 5% padding line. Falls back to the original image
-// if the browser blocks pixel access (CORS) or anything fails.
-function useTrimmedSrc(src) {
-  const [out, setOut] = useState(src);
-
-  useEffect(() => {
-    setOut(src);
-    if (!src) return;
-    let cancelled = false;
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const W = img.naturalWidth, H = img.naturalHeight;
-        if (!W || !H) return;
-        const s = Math.min(1, 300 / Math.max(W, H));
-        const sw = Math.max(1, Math.round(W * s)), sh = Math.max(1, Math.round(H * s));
-        const c1 = document.createElement("canvas");
-        c1.width = sw; c1.height = sh;
-        const x1 = c1.getContext("2d", { willReadFrequently: true });
-        x1.drawImage(img, 0, 0, sw, sh);
-        const d = x1.getImageData(0, 0, sw, sh).data;
-        let minX = sw, minY = sh, maxX = -1, maxY = -1;
-        for (let y = 0; y < sh; y++) {
-          for (let x = 0; x < sw; x++) {
-            const i = (y * sw + x) * 4;
-            const blank = d[i + 3] < 20 || (d[i] > 242 && d[i + 1] > 242 && d[i + 2] > 242);
-            if (!blank) {
-              if (x < minX) minX = x;
-              if (x > maxX) maxX = x;
-              if (y < minY) minY = y;
-              if (y > maxY) maxY = y;
-            }
-          }
-        }
-        if (maxX < 0) return;
-        if (minX <= 1 && minY <= 1 && maxX >= sw - 2 && maxY >= sh - 2) return;
-        const cx = Math.floor(minX / s), cy = Math.floor(minY / s);
-        const cw = Math.min(W - cx, Math.ceil((maxX - minX + 1) / s));
-        const ch = Math.min(H - cy, Math.ceil((maxY - minY + 1) / s));
-        // Place the trimmed logo on a square white canvas (1:1), centered, no stretching.
-        const side = Math.max(cw, ch);
-        const k = Math.min(1, 480 / side);
-        const c2 = document.createElement("canvas");
-        c2.width = Math.max(1, Math.round(side * k));
-        c2.height = c2.width;
-        const ctx2 = c2.getContext("2d");
-        ctx2.fillStyle = "#ffffff";
-        ctx2.fillRect(0, 0, c2.width, c2.height);
-        const dw = cw * k, dh = ch * k;
-        ctx2.drawImage(img, cx, cy, cw, ch, (c2.width - dw) / 2, (c2.height - dh) / 2, dw, dh);
-        const url = c2.toDataURL("image/png");
-        if (!cancelled) setOut(url);
-      } catch (e) { /* tainted canvas / CORS — keep original */ }
-    };
-    img.src = src;
-    return () => { cancelled = true; };
-  }, [src]);
-
-  return out;
-}
-
+import { useTrimmedSrc } from "./useTrimmedSrc"; // use your actual path to the shared hook
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -110,7 +47,7 @@ function RecentCard({ logo }) {
       }}
     >
       {/* Perfect 1:1 white square. The logo lives in .rl-logo-box, which is inset
-          exactly 10% on all four sides, so content only occupies the center 80% x 80%. */}
+          exactly 5% on all four sides, so content only occupies the center 90% x 90%. */}
       <div className="rl-preview">
         <div className="rl-logo-box">
           {!imgErr && logo.webpUrl ? (
@@ -201,8 +138,8 @@ export default function RecentLogos() {
         /* Perfect 1:1 white square in both themes */
         .rl-preview{position:relative;width:100%;aspect-ratio:1/1;background:#ffffff;overflow:hidden}
 
-        /* The 80% x 80% content area: exactly 10% white on left, right, top and bottom */
-        .rl-logo-box{position:absolute;inset:10%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        /* The 90% x 90% content area: exactly 5% white on left, right, top and bottom */
+        .rl-logo-box{position:absolute;inset:5%;display:flex;align-items:center;justify-content:center;overflow:hidden}
         .rl-logo-img{object-fit:contain}
 
         .rl-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;padding:3px 8px;background:rgba(59,130,246,0.85);border-radius:100px;font-size:8.5px;font-weight:700;letter-spacing:.6px;color:#fff}

@@ -164,17 +164,17 @@ async function applyWatermark(buffer, wm) {
 
 // ── Preview generator: logo ko white canvas ke center mein rakhta hai ────────
 // fit:"inside" → na stretch, na crop. Canvas exact width×height hi banta hai.
-const PREVIEW_PADDING = 0.12; // har taraf 12% white space (range 10–15%)
+const PREVIEW_PADDING = 0.12; // default (OG image ke liye)
 
-async function buildPreviewWebp(pngBuffer, width, height, watermark) {
+async function buildPreviewWebp(pngBuffer, width, height, watermark, padding = PREVIEW_PADDING) {
   // Transparent margin hata do taaki padding sahi ginti ho (fail ho to original use hoga)
   let source = pngBuffer;
   try {
     source = await sharp(pngBuffer).trim().toBuffer();
   } catch { source = pngBuffer; }
 
-  const innerW = Math.round(width * (1 - PREVIEW_PADDING * 2));
-  const innerH = Math.round(height * (1 - PREVIEW_PADDING * 2));
+  const innerW = Math.round(width * (1 - padding * 2));
+  const innerH = Math.round(height * (1 - padding * 2));
 
   const resizedLogo = await sharp(source)
     .resize(innerW, innerH, { fit: "inside", withoutEnlargement: false })
@@ -3330,11 +3330,11 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
           previewsDone = true;
           const baseName = safeFilename.replace(/\.png$/i, "");
 
-          // 1) Square 1200×1200 → webpUrl
-          const squareWebp = await buildPreviewWebp(fileBuffer, 1200, 1200, watermark);
+          // 1) Square 1200×1200 → webpUrl  (5% white space on all sides)
+          const squareWebp = await buildPreviewWebp(fileBuffer, 1200, 1200, watermark, 0.05);
           publicFiles.push({ key: `public/${finalSlug}/${baseName}.webp`, buffer: squareWebp, contentType: "image/webp" });
 
-          // 2) OG 1200×630 → ogImageUrl
+          // 2) OG 1200×630 → ogImageUrl  (unchanged, still 12%)
           const ogWebp = await buildPreviewWebp(fileBuffer, 1200, 630, watermark);
           publicFiles.push({ key: `public/${finalSlug}/${baseName}-og.webp`, buffer: ogWebp, contentType: "image/webp" });
         }
