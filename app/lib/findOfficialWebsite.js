@@ -1,11 +1,6 @@
 // lib/findOfficialWebsite.js
 // Finds a brand's official website using Tavily web search (up to 3 attempts).
-// Returns "" if no website can be confirmed.
-//
-// Verification now uses the Tavily results themselves (the site must appear in the
-// search results AND be tied to the brand). The live check only rejects a site that is
-// clearly dead (DNS failure / 404 / 410) — bot blocking or slow sites no longer cause
-// a false "blank".
+// Returns "" if no website can be confirmed. It never guesses a domain.
 
 import OpenAI from "openai";
 
@@ -24,6 +19,7 @@ const BLOCKLIST = [
   "google.com", "bing.com", "yahoo.com", "mapquest.com",
   "cbinsights.com", "preqin.com", "dealroom.co", "pitchbook.com", "ifninvestor.com",
   "altss.com", "washingtontimes.com", "gulfnews.com", "wikiwand.com", "ipfs.aleph.im",
+  "indeed.com", "naukri.com", "oraclecloud.com", "scribd.com", "slideshare.net",
 ];
 
 function norm(s) {
@@ -35,6 +31,16 @@ function hostOf(urlStr) {
     return new URL(urlStr).hostname.toLowerCase().replace(/^www\./, "");
   } catch {
     return "";
+  }
+}
+
+function isHomepageUrl(urlStr) {
+  try {
+    const u = new URL(urlStr);
+    const p = u.pathname.replace(/\/+$/, "");
+    return p === "" || /^\/(en|ar|us|uk|home|index(\.\w+)?)$/i.test(p);
+  } catch {
+    return false;
   }
 }
 
@@ -61,7 +67,7 @@ function isBlocked(host, brand) {
   return listed && !brandMatchesDomain(brand, host);
 }
 
-async function tavily(query, max = 10) {
+async function tavily(query, depth = "basic", max = 10) {
   const key = process.env.TAVILY_API_KEY;
   if (!key) {
     console.warn(`  [website] TAVILY_API_KEY is NOT set in this environment — search skipped, website will be blank`);
@@ -70,14 +76,11 @@ async function tavily(query, max = 10) {
   try {
     const res = await fetch("https://api.tavily.com/search", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         api_key: key,
         query,
-        search_depth: "basic",
+        search_depth: depth,
         max_results: max,
         include_answer: false,
         include_raw_content: false,
@@ -105,29 +108,40 @@ function collectCandidates(results, brand) {
     const host = hostOf(r?.url || "");
     if (!host || isBlocked(host, brand)) continue;
 
-    const e = map.get(host) || { host, title: "", snippet: "", hits: 0, strong: false, mentionsBrand: false };
+    const e = map.get(host) || {
+      host, title: "", snippet: "", hits: 0, maxScore: 0,
+      strong: false, exact: false, homepage: false, mentionsBrand: false,
+    };
     e.hits += 1;
+    e.maxScore = Math.max(e.maxScore, Number(r.score) || 0);
     if (!e.title && r.title) e.title = String(r.title).slice(0, 120);
-    if (!e.snippet && r.content) e.snippet = String(r.content).slice(0, 200);
+    if (!e.snippet && r.content) e.snippet = String(r.content).slice(0, 220);
+    if (isHomepageUrl(r.url)) e.homepage = true;
 
-    const blob = norm(`${r.title || ""} ${r.content || ""} ${r.url || ""}`);
+    const blob = norm(`${r.title || ""} ${r.content || ""}`);
     if ((b && blob.includes(b)) || (first.length >= 3 && blob.includes(first))) e.mentionsBrand = true;
 
     e.strong = e.strong || brandMatchesDomain(brand, host);
+    e.exact = e.exact || (!!b && norm(domainLabel(host)) === b);
     map.set(host, e);
   }
 
-  return [...map.values()].sort(
-    (a, c) => Number(c.strong) - Number(a.strong) || c.hits - a.hits
-  );
+  const score = (c) =>
+    (c.exact ? 5 : 0) + (c.strong ? 2 : 0) + (c.homepage ? 2 : 0) +
+    (c.mentionsBrand ? 1 : 0) + c.maxScore + Math.min(c.hits, 3) * 0.3;
+
+  return [...map.values()].sort((a, c) => score(c) - score(a));
 }
 
 // The LLM may only PICK from real Tavily results — it can never invent a domain.
 async function pickFromCandidates({ brand, country, industry, candidates }) {
-  const pool = candidates.filter((c) => c.mentionsBrand).slice(0, 8);
+  const pool = candidates.slice(0, 10);
   if (!pool.length) return "";
 
-  const list = pool.map((c, i) => `${i + 1}. ${c.host} — ${c.title} | ${c.snippet}`).join("\n");
+  const list = pool
+    .map((c, i) => `${i + 1}. ${c.host}${c.homepage ? " [homepage result]" : ""} — ${c.title} | ${c.snippet}`)
+    .join("\n");
+
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
@@ -136,11 +150,11 @@ async function pickFromCandidates({ brand, country, industry, candidates }) {
         {
           role: "system",
           content:
-            "You choose a company's OWN official website from a list of real web-search results. Only choose a domain that appears in the list. If none is clearly the company's own site (not news, a directory, a reseller, or a different company), return an empty string. Return only JSON.",
+            "You choose an organization's OWN official website from a list of real web-search results. Only choose a domain from the list. The official site is operated by the organization itself (often its own name or abbreviation as the domain, possibly with a country domain like .ae or .co.uk). Reject travel guides, booking or flight-info sites, directories, job boards, news, resellers, fan sites, and sites that only have a similar-looking name. If none is clearly the organization's own site, return an empty domain. Return only JSON.",
         },
         {
           role: "user",
-          content: `Brand: ${brand}\nCountry: ${country || "unknown"}\nIndustry: ${industry || "unknown"}\n\nRESULTS:\n${list}\n\nReturn ONLY: { "domain": "example.com" or "" }`,
+          content: `Organization: ${brand}\nCountry: ${country || "unknown"}\nIndustry: ${industry || "unknown"}\n\nRESULTS:\n${list}\n\nReturn ONLY: { "domain": "example.com" or "", "reason": "one short sentence" }`,
         },
       ],
       response_format: { type: "json_object" },
@@ -149,6 +163,7 @@ async function pickFromCandidates({ brand, country, industry, candidates }) {
     try { parsed = JSON.parse(completion.choices[0]?.message?.content || "{}"); } catch { }
     const domain = String(parsed.domain || "")
       .toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").trim();
+    console.log(`  [website] LLM pick: "${domain || "(none)"}" — ${parsed.reason || ""}`);
     return pool.some((c) => c.host === domain) ? domain : "";
   } catch (err) {
     console.warn(`  [website] LLM pick failed: ${err.message}`);
@@ -178,28 +193,30 @@ async function isClearlyDead(host) {
 export async function findOfficialWebsite({ brand, country, industry }) {
   if (!brand) return "";
 
-  const queries = [
-    `${brand} official website`,
-    `${brand} ${country || ""} ${industry || ""} official site`.replace(/\s+/g, " ").trim(),
-    `${brand} company homepage`,
+  const attempts = [
+    { q: `${brand} official website`, depth: "basic" },
+    { q: `${brand} ${country || ""} official site homepage`.replace(/\s+/g, " ").trim(), depth: "basic" },
+    { q: `${brand} ${industry || ""} official website`.replace(/\s+/g, " ").trim(), depth: "advanced" },
   ];
   const rejected = new Set();
 
-  for (let i = 0; i < queries.length; i++) {
-    console.log(`  [website] Attempt ${i + 1}/3 — Tavily: "${queries[i]}"`);
-    const results = await tavily(queries[i]);
+  for (let i = 0; i < attempts.length; i++) {
+    const { q, depth } = attempts[i];
+    console.log(`  [website] Attempt ${i + 1}/3 — Tavily (${depth}): "${q}"`);
+    const results = await tavily(q, depth);
     const candidates = collectCandidates(results, brand).filter((c) => !rejected.has(c.host));
 
     console.log(
-      `  [website] Attempt ${i + 1}: ${results.length} result(s), candidates: ${
-        candidates.map((c) => `${c.host}${c.strong ? "*" : ""}`).join(", ") || "(none)"
-      }`
+      `  [website] Attempt ${i + 1}: ${results.length} result(s). Candidates (best first): ${
+        candidates.slice(0, 8).map((c) => `${c.host}${c.exact ? "=" : c.strong ? "*" : ""}${c.homepage ? "^" : ""}`).join(", ") || "(none)"
+      }   [= exact name, * similar name, ^ homepage result]`
     );
     if (!candidates.length) continue;
 
     const tryHosts = [];
-    const strong = candidates.find((c) => c.strong);
-    if (strong) tryHosts.push(strong.host);
+    // Only an EXACT name match (nike -> nike.com) is trusted without asking the LLM.
+    const exact = candidates.find((c) => c.exact);
+    if (exact) tryHosts.push(exact.host);
 
     const picked = await pickFromCandidates({ brand, country, industry, candidates });
     if (picked && !tryHosts.includes(picked)) tryHosts.push(picked);

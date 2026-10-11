@@ -3145,6 +3145,9 @@ async function buildTags({
   }
   return tags;
 }
+// Replace the whole existing processOneLogoFolder function in your route file with this one.
+// Only change: the slug-uniqueness guard right after "let versioned" (marked  ← CHANGED).
+
 async function processOneLogoFolder({ folderName, folderFiles, sharedFields, watermark }) {
   const rawLogoName = stripSpecialChars(logoNameFromFolderName(folderName));
   console.log(`\n  ── Processing folder: "${folderName}" → "${rawLogoName}"`);
@@ -3164,7 +3167,22 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       console.log(`  [name] Auto-versioned: "${rawLogoName}" → "${finalLogoName}"`);
     }
 
-    const finalSlug = generateSlugFromName(finalLogoName);
+    // ── CHANGED: slug must be unique in the DB. If it already exists (for example because an
+    // earlier upload was saved under a spelling-corrected name), bump to V2, V3, ... ──────────
+    let finalSlug = generateSlugFromName(finalLogoName);
+    {
+      const baseForVersion = finalLogoName.replace(/\s+V\d+$/i, "");
+      let n = 2;
+      while (await prisma.logo.findFirst({ where: { slug: finalSlug }, select: { id: true } })) {
+        finalLogoName = `${baseForVersion} V${n}`;
+        finalSlug = generateSlugFromName(finalLogoName);
+        versioned = true;
+        console.log(`  [name] Slug already exists — bumped to "${finalLogoName}" (${finalSlug})`);
+        n++;
+      }
+    }
+    // ── end CHANGED ──────────────────────────────────────────────────────────────────────────
+
     const canonicalUrl = stripTrailingSlash(`https://www.cdrlogo.com/logo/${finalSlug}`);
     console.log(`  [slug] ${finalSlug}`);
 
@@ -3299,7 +3317,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     const separateFiles = [];
     let svgContent = null;
     const fileSizes = { svg: 0, png: 0, ai: 0, cdr: 0 };
-    let previewsDone = false; // CHANGED: sirf pehle PNG se previews banenge
+    let previewsDone = false; // sirf pehle PNG se previews banenge
 
     for (const { filename, buffer: fileBuffer } of folderFiles) {
       const safeFilename = sanitizeFilename(filename);
@@ -3323,7 +3341,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
         fileSizes.png = fileBuffer.length;
 
-        // CHANGED: 2 preview images (square + og)
+        // 2 preview images (square + og)
         if (!previewsDone) {
           previewsDone = true;
           const baseName = safeFilename.replace(/\.png$/i, "");
@@ -3332,7 +3350,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
           const squareWebp = await buildPreviewWebp(fileBuffer, 1200, 1200, watermark, 0.05);
           publicFiles.push({ key: `public/${finalSlug}/${baseName}.webp`, buffer: squareWebp, contentType: "image/webp" });
 
-          // 2) OG 1200×630 → ogImageUrl  (unchanged, still 12%)
+          // 2) OG 1200×630 → ogImageUrl  (still 12%)
           const ogWebp = await buildPreviewWebp(fileBuffer, 1200, 630, watermark);
           publicFiles.push({ key: `public/${finalSlug}/${baseName}-og.webp`, buffer: ogWebp, contentType: "image/webp" });
         }
@@ -3376,14 +3394,14 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     const aiUrl = findUrl((f) => f.key.endsWith(".ai"));
     const cdrUrl = findUrl((f) => f.key.endsWith(".cdr"));
 
-    // CHANGED: square = webpUrl, OG = ogImageUrl (alag-alag files)
+    // square = webpUrl, OG = ogImageUrl (alag-alag files)
     const webpUrl = findUrl((f) => f.key.endsWith(".webp") && !f.key.endsWith("-og.webp"));
     const ogImageUrl = findUrl((f) => f.key.endsWith("-og.webp")) || null;
     console.log(`  [urls] webp(square): ${webpUrl || "null"} | ogImageUrl(1200x630): ${ogImageUrl || "null"}`);
 
     // ── Step E: build schema JSON-LD ────────────────────────────────────────
     const imageObjectSchema = buildImageObjectSchema({
-      imageUrl: webpUrl, // CHANGED: square 1200×1200 URL
+      imageUrl: webpUrl, // square 1200×1200 URL
       logoName: displayLogoName,
       brand: aiContent.brand,
       canonicalUrl,
@@ -3461,7 +3479,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       country: aiContent.country,
       industry: aiContent.industry,
       canonicalUrl,
-      webpUrl,          // CHANGED: return mein bhi
+      webpUrl,
       ogImageUrl,
       id: logo.id,
       needsReview,
@@ -3479,7 +3497,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     };
   }
 }
-
 export const maxDuration = 60;
 
 export async function POST(req) {
