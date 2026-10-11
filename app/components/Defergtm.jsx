@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { GoogleTagManager } from "@next/third-parties/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 
-export default function DeferredGTM({ gtmId }) {
+export default function DeferredGTM({ gaId }) {
   const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
@@ -27,5 +27,5 @@ export default function DeferredGTM({ gtmId }) {
 
   if (!shouldLoad) return null;
 
-  return <GoogleTagManager gtmId={gtmId} />;
+  return <GoogleAnalytics gaId={gaId} />;
 }

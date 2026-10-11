@@ -6,6 +6,7 @@ import { uploadToR2 } from "../../../../lib/uploadToR2";
 import { prisma } from "../../../../lib/prisma";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { r2 } from "../../../../lib/r2";
+import { findOfficialWebsite } from "../../../../lib/findOfficialWebsite";
 import {
   buildCategoryTreeFromText,
   validateMainSubAgainstTree,
@@ -2090,13 +2091,11 @@ Sub Category : ${subCategory}
 TASK:
 1. Identify the real-world company/brand this logo name refers to.
 2. State the country the brand is headquartered / originates from.
-3. State the specific industry/sector it operates in (a short phrase, e.g. "Athletic Footwear & Apparel", "Fast Food Restaurants", "Consumer Electronics").
-4. Identify the brand's real, official website — the root domain the company itself owns (e.g. "https://nike.com"), NOT a Wikipedia page, news article, social profile, or marketplace listing.
-
+3. State the specific industry/sector it operates in (...).
 CONFIDENCE RULE:
 - If "${logoName}" corresponds to a real, identifiable brand you have genuine knowledge of, you MUST fill in brand, country, industry, and website — do not leave them blank out of general caution. Commit to the answer.
 - Only return empty strings for a field (or all fields) if the logo name does NOT correspond to any real, identifiable brand you actually know (e.g. it looks like a generic/made-up/placeholder name). Never fabricate a plausible-looking answer for a brand you don't actually recognize.
-- For website specifically: return it only if you are near-certain of the exact domain. If confident about brand/country/industry but unsure of the exact domain, still return brand/country/industry and leave website as "".
+ 
 
 Return ONLY valid JSON:
 {
@@ -2104,9 +2103,10 @@ Return ONLY valid JSON:
   "reasoning": "one short sentence",
   "brand": "...",
   "country": "...",
-  "industry": "...",
-  "website": "https://example.com" or ""
+   "industry": "..."
 }`;
+
+  let brand = "", country = "", industry = "";
 
   try {
     const completion = await callOpenAIWithRetry({
@@ -2116,7 +2116,7 @@ Return ONLY valid JSON:
         {
           role: "system",
           content:
-            "You identify real-world brands, their country, industry, and official website from genuine knowledge only. You commit confidently when you actually know the brand, and you only return blanks when the name truly doesn't correspond to any real brand you recognize. You never fabricate a plausible-looking website domain you aren't sure about. Return only JSON. ",
+          "You identify real-world brands, their country and industry from genuine knowledge only. You commit confidently when you actually know the brand, and only return blanks when the name truly doesn't correspond to any real brand you recognize. Return only JSON.",
         },
         { role: "user", content: prompt },
       ],
@@ -2127,19 +2127,17 @@ Return ONLY valid JSON:
     let parsed = {};
     try { parsed = JSON.parse(raw); } catch { parsed = {}; }
 
-    const brand = (parsed.brand && String(parsed.brand).trim()) || "";
-    const country = (parsed.country && String(parsed.country).trim()) || "";
-    const industry = (parsed.industry && String(parsed.industry).trim()) || "";
-    const website = isPlausibleUrl(parsed.website) ? String(parsed.website).trim() : "";
-
-    if (parsed.reasoning) console.log(`  [brand+website:llm] reasoning: ${parsed.reasoning}`);
-    console.log(`  [brand+website:llm] brand="${brand || "(none)"}" | country="${country || "(none)"}" | industry="${industry || "(none)"}" | website="${website || "(none)"}"`);
-
-    return { brand, country, industry, website };
+    brand = (parsed.brand && String(parsed.brand).trim()) || "";
+    country = (parsed.country && String(parsed.country).trim()) || "";
+    industry = (parsed.industry && String(parsed.industry).trim()) || "";
   } catch (err) {
-    console.warn(`  [brand+website:llm] Failed: ${err.message}`);
-    return { brand: "", country: "", industry: "", website: "" };
+    console.warn(`  [brand:llm] Failed: ${err.message}`);
   }
+
+  // NEW: website comes only from real web search (3 attempts), else ""
+  const website = brand ? await findOfficialWebsite({ brand, country, industry }) : "";
+
+  return { brand, country, industry, website };
 }
 
 // ── FAQ question bank — client's exact 46 questions, 9 categories ───────────

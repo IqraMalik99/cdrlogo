@@ -35,7 +35,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-full flex flex-col">
       
-        <DeferredGTM gtmId="G-CEG962163M" />
+        <DeferredGTM gaId="G-CEG962163M" />
         <Providers>
           <ThemeProvider>
             {children}
