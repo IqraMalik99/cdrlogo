@@ -2381,18 +2381,125 @@ function getFaqPool(isRestricted, seed = "") {
   return seededShuffle(full, seed);
 }
 
-// ── resolveLogoFacts ─────────────────────────────────────────────────────
-// Resolves category, brand/country/industry/website, and the main
-// description — the "facts" side of the pipeline. This is expensive
-// (Tavily research + up to 3 description-generation attempts + 2 LLM
-// calls for category/brand), so it now runs EXACTLY ONCE per upload,
-// regardless of how many times the meta/FAQ step below needs to retry.
-// Previously this whole thing was nested inside the outer validation
-// retry loop and could run up to 3 times per upload (9x with the
-// description's own internal retries), risking timeout and occasionally
-// producing a DIFFERENT brand/category on each pass.
+
+// ── TEMPLATE CATEGORIES (fixed IDs/definitions — GPT can only pick from these) ──
+const TEMPLATE_CATEGORIES = [
+  { id: "business-professional", name: "Business & Professional", definition: "Consulting, finance, legal, accounting, insurance, real estate, corporate services, HR, general business." },
+  { id: "digital-innovation", name: "Digital & Innovation", definition: "Software, apps, SaaS, IT services, AI, gaming tech, telecom, electronics, startups, e-commerce, cybersecurity." },
+  { id: "building-engineering", name: "Building & Engineering", definition: "Construction, architecture, interior/home improvement, plumbing, electrical, mechanical, industrial and energy work." },
+  { id: "food-dining", name: "Food & Dining", definition: "Restaurants, cafes, bakeries, fast food, bars, catering, beverages, food products and food delivery." },
+  { id: "clothing-beauty", name: "Clothing & Beauty", definition: "Fashion, apparel, jewelry, accessories, salons, barbers, spas, cosmetics, skincare and tailoring." },
+  { id: "vehicles-logistics", name: "Vehicles & Logistics", definition: "Cars, auto repair, motorcycles, trucking, shipping, delivery, courier, aviation, marine and transport services." },
+  { id: "fitness-team", name: "Fitness & Team", definition: "Gyms, yoga, martial arts, sports clubs and teams, esports teams, coaching and athletic brands." },
+  { id: "health-wellness", name: "Health & Wellness", definition: "Clinics, hospitals, dental, pharmacy, therapy, mental health, medical devices, wellness and alternative medicine." },
+  { id: "learning-research", name: "Learning & Research", definition: "Schools, universities, tutoring, training, libraries, laboratories, science and research institutes." },
+  { id: "tourism-accommodation", name: "Tourism & Accommodation", definition: "Hotels, resorts, travel agencies, tours, vacation rentals, hostels, camping and destinations." },
+  { id: "creative-arts-leisure", name: "Creative Arts & Leisure", definition: "Music, film, photography, design studios, art, entertainment, events, hobbies, toys, games and publishing." },
+  { id: "community-charity", name: "Community & Charity", definition: "Non-profits, charities, religious organizations, clubs, associations, foundations and community groups." },
+  { id: "civic-public-service", name: "Civic & Public Service", definition: "Government bodies, municipalities, police, fire, military, public agencies, political and civic organizations." },
+  { id: "agriculture-eco", name: "Agriculture & Eco", definition: "Farming, gardening, landscaping, forestry, organic products, recycling, renewable/green and environmental causes." },
+  { id: "animal-pet", name: "Animal & Pet", definition: "Pet shops, veterinary, grooming, pet food, animal shelters, zoos and wildlife." },
+  { id: "abstract-geometric", name: "Abstract & Geometric", definition: "Purely abstract marks, shapes, swirls, gradients and geometric symbols with NO clear industry. Use as primary ONLY when the industry is unclear." },
+  { id: "lettermark-monogram", name: "Lettermark & Monogram", definition: "Initials, single letters or monogram-based marks with NO clear industry. Use as primary ONLY when the industry is unclear." },
+];
+
+const TEMPLATE_CATEGORY_BY_ID = new Map(TEMPLATE_CATEGORIES.map((c) => [c.id, c]));
+const TEMPLATE_STYLE_TAGS = ["abstract", "monogram"];
+
+// ── classifyTemplateCategory ─────────────────────────────────────────────
+// Image + name + visual facts → ONE primary template category.
+// Industry clear  → industry category is primary (abstract/monogram only as style tags).
+// Industry unclear → abstract-geometric / lettermark-monogram becomes primary.
+// Invalid ID / low confidence / failure → needsReview = true (admin fixes manually).
+async function classifyTemplateCategory({ logoName, pngBuffer, visualFacts }) {
+  const categoryList = TEMPLATE_CATEGORIES
+    .map((c) => `- ${c.id} | ${c.name}: ${c.definition}`)
+    .join("\n");
+
+  const visualBlock = visualFacts?.hasVisualFacts
+    ? visualFacts.visualFactsText
+    : "(no image analysis available)";
+
+  const prompt = `You are assigning a logo TEMPLATE to exactly ONE primary category from a FIXED list.
+
+LOGO NAME: ${logoName}
+VISUAL FACTS (what is literally visible): ${visualBlock}
+
+CATEGORY LIST (copy the id EXACTLY — never invent one):
+${categoryList}
+
+RULES:
+1. Use the IMAGE, the NAME, and the business context they suggest (e.g. a pizza slice, a dumbbell, a house, a paw print).
+2. If the industry/business is CLEAR, the matching industry category is the primary category.
+3. "abstract-geometric" and "lettermark-monogram" are primary ONLY when the industry is genuinely unclear. If the industry is clear, return the industry category and add "abstract" and/or "monogram" in style_tags instead.
+4. style_tags may contain only: "abstract", "monogram" (can be empty).
+5. If you cannot decide with reasonable confidence, set confidence to "low" — do not guess.
+
+Return ONLY JSON:
+{
+  "category_id": "...",
+  "style_tags": [],
+  "confidence": "high" | "medium" | "low",
+  "reason": "one short sentence"
+}`;
+
+  const userContent = [{ type: "text", text: prompt }];
+  if (pngBuffer) {
+    userContent.push({
+      type: "image_url",
+      image_url: { url: `data:image/png;base64,${pngBuffer.toString("base64")}` },
+    });
+  }
+
+  try {
+    const completion = await callOpenAIWithRetry({
+      model: "gpt-4.1-mini",
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: "You classify logo templates into a fixed category list using the image and name. You never invent category ids. Return only JSON.",
+        },
+        { role: "user", content: userContent },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    let parsed = {};
+    try { parsed = JSON.parse(completion.choices[0]?.message?.content || "{}"); } catch { parsed = {}; }
+
+    const picked = TEMPLATE_CATEGORY_BY_ID.get(String(parsed.category_id || "").trim());
+    const confidence = ["high", "medium", "low"].includes(parsed.confidence) ? parsed.confidence : "low";
+    const styleTags = (Array.isArray(parsed.style_tags) ? parsed.style_tags : [])
+      .map((t) => String(t).toLowerCase().trim())
+      .filter((t) => TEMPLATE_STYLE_TAGS.includes(t));
+    const reason = String(parsed.reason || "").trim();
+
+    const needsReview = !picked || confidence === "low";
+    console.log(`  [template:category] ${picked ? picked.id : "INVALID"} | confidence=${confidence} | styleTags=[${styleTags.join(", ")}] | ${reason}`);
+
+    return {
+      categoryId: picked ? picked.id : "",
+      categoryName: picked ? picked.name : "",
+      categorySlug: picked ? picked.id : "",
+      styleTags: [...new Set(styleTags)],
+      confidence,
+      reason,
+      needsReview,
+    };
+  } catch (err) {
+    console.warn(`  [template:category] Failed: ${err.message} — flagged for review.`);
+    return {
+      categoryId: "", categoryName: "", categorySlug: "",
+      styleTags: [], confidence: "low",
+      reason: `classification call failed (${err.message})`,
+      needsReview: true,
+    };
+  }
+}
+
 async function resolveLogoFacts({
-  logoName, researchName, isManualTemplate, relatedLogos, canonicalUrl, visualFacts,
+  logoName, researchName, isManualTemplate, relatedLogos, canonicalUrl, visualFacts, pngBuffer = null,
 }) {
   const brandLookupName = researchName || logoName;
 
@@ -2425,6 +2532,17 @@ async function resolveLogoFacts({
   }
 
   const isTemplate = mainCategory === "template";
+
+  // ── STEP 1b: template-only category (17 fixed categories) ─────────────
+  // Runs for BOTH manual template override and LLM-fallback "template".
+  let templateCategory = null;
+  if (isTemplate) {
+    templateCategory = await classifyTemplateCategory({
+      logoName: brandLookupName,
+      pngBuffer,
+      visualFacts,
+    });
+  }
 
   // ── STEP 2: brand + country + industry + website ─────────────────────
   let resolvedBrand = "";
@@ -2471,9 +2589,15 @@ async function resolveLogoFacts({
     description: descResult.description,
     descriptionAttemptsExhausted: descResult.attemptsExhausted,
     descriptionIsWeak: !isTemplate && !!descResult.isEmergencyFallback,
+
+    // template category fields (empty/false for brand logos)
+    templateCategory: isTemplate ? templateCategory.categoryId : "",
+    templateCategoryName: isTemplate ? templateCategory.categoryName : "",
+    templateStyleTags: isTemplate ? templateCategory.styleTags : [],
+    templateCategoryReason: isTemplate ? templateCategory.reason : "",
+    templateNeedsReview: isTemplate ? templateCategory.needsReview : false,
   };
 }
-
 // ── generateMetaAndFaqContent ─────────────────────────────────────────────
 // Takes the ALREADY-RESOLVED facts (category, brand, description) from
 // resolveLogoFacts and generates only meta/OG/Twitter/FAQ content. This is
@@ -3075,13 +3199,15 @@ const CURATED_TAGS_BY_SUBCATEGORY = {
   // "Fast Food Restaurants": ["fast food", "restaurant chain", "food brand"],
 };
 
-// DB frequency = "high volume" ka proxy. Brand-specific tags (nike, adidas)
-// exclude hote hain taaki ek brand ka tag doosre brand ke page par na chale jaye.
-async function fetchPopularTags(categoryKey, limit = 8) {
+// Template logos are now grouped by templateCategory (not by category: has "template"),
+// brand logos still use category: { has: subCategory }.
+async function fetchPopularTags(categoryKey, limit = 8, { byTemplateCategory = false } = {}) {
   if (!categoryKey) return [];
   try {
     const rows = await prisma.logo.findMany({
-      where: { category: { has: categoryKey } },
+      where: byTemplateCategory
+        ? { templateCategory: categoryKey }
+        : { category: { has: categoryKey } },
       select: { tags: true, brand: true, logoName: true },
       orderBy: { createdAt: "desc" },
       take: 500,
@@ -3115,15 +3241,21 @@ async function fetchPopularTags(categoryKey, limit = 8) {
 
 async function buildTags({
   isTemplate, brand, logoName, mainCategory, subCategory, industry, country,
+  templateCategory = "", templateCategoryName = "", templateStyleTags = [],
 }) {
   const categoryKey = isTemplate ? "template" : subCategory;
+
+  const popular = isTemplate
+    ? await fetchPopularTags(templateCategory, 8, { byTemplateCategory: true })
+    : await fetchPopularTags(categoryKey);
 
   const candidates = [
     brand || logoName,
     isTemplate ? "template" : subCategory,
-    isTemplate ? "" : mainCategory,
+    isTemplate ? templateCategoryName : mainCategory,
+    ...(isTemplate ? templateStyleTags : []),
     ...(CURATED_TAGS_BY_SUBCATEGORY[categoryKey] || []),
-    ...(await fetchPopularTags(categoryKey)),
+    ...popular,
     isTemplate ? "" : country,
     isTemplate ? "" : industry,
   ];
@@ -3140,13 +3272,11 @@ async function buildTags({
 
   if (tags.length < MIN_TAGS) {
     console.warn(
-      `  [tags] Only ${tags.length} tag(s) for "${logoName}" (category: ${categoryKey}) — curated list / DB data thin hai.`
+      `  [tags] Only ${tags.length} tag(s) for "${logoName}" (category: ${isTemplate ? templateCategory || "template" : categoryKey}) — curated list / DB data thin hai.`
     );
   }
   return tags;
 }
-// Replace the whole existing processOneLogoFolder function in your route file with this one.
-// Only change: the slug-uniqueness guard right after "let versioned" (marked  ← CHANGED).
 
 async function processOneLogoFolder({ folderName, folderFiles, sharedFields, watermark }) {
   const rawLogoName = stripSpecialChars(logoNameFromFolderName(folderName));
@@ -3167,8 +3297,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       console.log(`  [name] Auto-versioned: "${rawLogoName}" → "${finalLogoName}"`);
     }
 
-    // ── CHANGED: slug must be unique in the DB. If it already exists (for example because an
-    // earlier upload was saved under a spelling-corrected name), bump to V2, V3, ... ──────────
+    // slug must be unique in the DB. If it already exists, bump to V2, V3, ...
     let finalSlug = generateSlugFromName(finalLogoName);
     {
       const baseForVersion = finalLogoName.replace(/\s+V\d+$/i, "");
@@ -3181,7 +3310,6 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         n++;
       }
     }
-    // ── end CHANGED ──────────────────────────────────────────────────────────────────────────
 
     const canonicalUrl = stripTrailingSlash(`https://www.cdrlogo.com/logo/${finalSlug}`);
     console.log(`  [slug] ${finalSlug}`);
@@ -3202,6 +3330,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       relatedLogos: related,
       canonicalUrl,
       visualFacts,
+      pngBuffer: pngFile ? pngFile.buffer : null, // CHANGED
     });
 
     const nameCorrection = correctLogoNameSpelling({
@@ -3223,6 +3352,9 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       subCategory: facts.subCategory,
       industry: facts.industry,
       country: facts.country,
+      templateCategory: facts.templateCategory,          // CHANGED
+      templateCategoryName: facts.templateCategoryName,  // CHANGED
+      templateStyleTags: facts.templateStyleTags,        // CHANGED
     });
     console.log(`  [tags] ${tags.length} → ${tags.join(", ")}`);
 
@@ -3289,10 +3421,16 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       );
     }
 
-    const needsReview = !facts.isTemplate && !!facts.descriptionIsWeak;
+    // CHANGED: review can now be triggered by a weak description (brands) OR an unclear template category
+    const weakDescription = !facts.isTemplate && !!facts.descriptionIsWeak;
+    const templateCategoryUnclear = facts.isTemplate && !!facts.templateNeedsReview;
+    const needsReview = weakDescription || templateCategoryUnclear;
 
-    if (needsReview) {
+    if (weakDescription) {
       console.warn(`  [review] "${displayLogoName}" flagged for review — description fell back to the static emergency template after all retries.`);
+    }
+    if (templateCategoryUnclear) {
+      console.warn(`  [review] "${displayLogoName}" flagged for review — template category unclear (${facts.templateCategoryReason || "no reason"}).`);
     }
 
     const allReasons = [
@@ -3302,12 +3440,18 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       ...(nameCorrection.wasCorrected
         ? [`Logo name auto-corrected from "${finalLogoName}" to "${displayLogoName}" to match identified brand "${facts.brand}".`]
         : []),
-      ...(needsReview
+      ...(weakDescription
         ? [`Description for "${displayLogoName}" could not be reliably generated even after retries and the relaxed fallback — needs manual review.`]
+        : []),
+      ...(templateCategoryUnclear
+        ? [`Template category for "${displayLogoName}" is unclear${facts.templateCategory ? ` (best guess: ${facts.templateCategoryName})` : " (no valid category returned)"} — admin must assign the correct category. ${facts.templateCategoryReason || ""}`.trim()]
         : []),
     ];
 
     console.log(`  [ai] main: "${aiContent.mainCategory}" | sub: "${aiContent.subCategory}" | brand: "${aiContent.brand || "(none — template)"}" | website: "${aiContent.website || "(none)"}" | country: "${aiContent.country || "(none)"}" | industry: "${aiContent.industry || "(none)"}"`);
+    if (facts.isTemplate) {
+      console.log(`  [ai] templateCategory: "${facts.templateCategory || "(unassigned)"}" | styleTags: [${facts.templateStyleTags.join(", ")}]`);
+    }
     console.log(`  [ai] metaTitle (${aiContent.metaTitle.length} chars): "${aiContent.metaTitle.substring(0, 60)}"`);
     console.log(`  [ai] ogTitle: "${aiContent.ogTitle}" | twitterTitle: "${aiContent.twitterTitle}"`);
     console.log(`  [ai] tags: ${aiContent.tags.length} | faq pairs: ${aiContent.faqPairs.length}`);
@@ -3317,7 +3461,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     const separateFiles = [];
     let svgContent = null;
     const fileSizes = { svg: 0, png: 0, ai: 0, cdr: 0 };
-    let previewsDone = false; // sirf pehle PNG se previews banenge
+    let previewsDone = false;
 
     for (const { filename, buffer: fileBuffer } of folderFiles) {
       const safeFilename = sanitizeFilename(filename);
@@ -3337,20 +3481,16 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         if (!svgContent) svgContent = fileBuffer.toString("utf-8");
 
       } else if (fileExt === "png") {
-        // Original PNG bilkul untouched upload hota hai
         separateFiles.push({ key: `separate/${finalSlug}/${safeFilename}`, buffer: fileBuffer, contentType: mime(safeFilename) });
         fileSizes.png = fileBuffer.length;
 
-        // 2 preview images (square + og)
         if (!previewsDone) {
           previewsDone = true;
           const baseName = safeFilename.replace(/\.png$/i, "");
 
-          // 1) Square 1200×1200 → webpUrl  (5% white space on all sides)
           const squareWebp = await buildPreviewWebp(fileBuffer, 1200, 1200, watermark, 0.05);
           publicFiles.push({ key: `public/${finalSlug}/${baseName}.webp`, buffer: squareWebp, contentType: "image/webp" });
 
-          // 2) OG 1200×630 → ogImageUrl  (still 12%)
           const ogWebp = await buildPreviewWebp(fileBuffer, 1200, 630, watermark);
           publicFiles.push({ key: `public/${finalSlug}/${baseName}-og.webp`, buffer: ogWebp, contentType: "image/webp" });
         }
@@ -3394,14 +3534,13 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     const aiUrl = findUrl((f) => f.key.endsWith(".ai"));
     const cdrUrl = findUrl((f) => f.key.endsWith(".cdr"));
 
-    // square = webpUrl, OG = ogImageUrl (alag-alag files)
     const webpUrl = findUrl((f) => f.key.endsWith(".webp") && !f.key.endsWith("-og.webp"));
     const ogImageUrl = findUrl((f) => f.key.endsWith("-og.webp")) || null;
     console.log(`  [urls] webp(square): ${webpUrl || "null"} | ogImageUrl(1200x630): ${ogImageUrl || "null"}`);
 
     // ── Step E: build schema JSON-LD ────────────────────────────────────────
     const imageObjectSchema = buildImageObjectSchema({
-      imageUrl: webpUrl, // square 1200×1200 URL
+      imageUrl: webpUrl,
       logoName: displayLogoName,
       brand: aiContent.brand,
       canonicalUrl,
@@ -3426,7 +3565,9 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         slug: finalSlug,
         brand: aiContent.brand,
         website: aiContent.website,
-        category: isManualTemplate ? ["template"] : aiContent.category,
+        category: isManualTemplate ? ["template"] : aiContent.category, // unchanged — existing URLs/queries keep working
+        templateCategory: facts.isTemplate ? facts.templateCategory : "",       // CHANGED (new field)
+        templateStyleTags: facts.isTemplate ? facts.templateStyleTags : [],     // CHANGED (new field)
         industry: aiContent.industry,
         country: aiContent.country,
         license: sharedFields.license,
@@ -3439,7 +3580,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         downloadCount: sharedFields.downloadCount,
         svgUrl,
         pngUrl,
-        webpUrl,          // square 1200×1200
+        webpUrl,
         aiUrl,
         cdrUrl,
         svgContent,
@@ -3453,7 +3594,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         canonicalUrl,
         ogTitle: aiContent.ogTitle,
         ogDescription: aiContent.ogDescription,
-        ogImageUrl,       // OG 1200×630
+        ogImageUrl,
         ogType: "website",
         twitterTitle: aiContent.twitterTitle,
         twitterDescription: aiContent.twitterDescription,
@@ -3474,6 +3615,8 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       versioned,
       originalName: rawLogoName,
       category: aiContent.category,
+      templateCategory: facts.isTemplate ? facts.templateCategory : "", // CHANGED
+      templateStyleTags: facts.isTemplate ? facts.templateStyleTags : [], // CHANGED
       brand: aiContent.brand,
       website: aiContent.website,
       country: aiContent.country,

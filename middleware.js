@@ -5,7 +5,7 @@ const OLD_CATEGORY_SINGULAR = /^\/category\/([^/]+)\/?$/;
 
 
 export async function middleware(req) {
-  const { pathname, origin } = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
   // ---- 301 redirects for legacy category URLs ----
   const singularMatch = pathname.match(OLD_CATEGORY_SINGULAR);
@@ -16,10 +16,10 @@ export async function middleware(req) {
   }
 
   if (pathname === "/category" || pathname.startsWith("/category/")) {
-  const url = req.nextUrl.clone();
-  url.pathname = pathname.replace(/^\/category/, "/categories");
-  return NextResponse.redirect(url, 301);
-}
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/category/, "/categories");
+    return NextResponse.redirect(url, 301);
+  }
 
   // const pluralMatch = pathname.match(OLD_CATEGORY_PLURAL);
   // if (pluralMatch && pluralMatch[1] !== "logos") {
@@ -27,7 +27,28 @@ export async function middleware(req) {
   //   url.pathname = `/categories/logos/${pluralMatch[1].toLowerCase()}`;
   //   return NextResponse.redirect(url, 301);
   // }
+
+  // ---- 301 redirect: /template → /logo-templates (keeps sub-paths + query string) ----
+  if (pathname === "/template" || pathname.startsWith("/template/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/template/, "/logo-templates");
+    return NextResponse.redirect(url, 301);
+  }
   // ---- END redirect block ----
+
+  // ---- 301 redirect: /logos → /all-logos (query string is kept by clone()) ----
+  if (pathname === "/logos" || pathname === "/logos/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/all-logos";
+    return NextResponse.redirect(url, 301);
+  }
+
+  // ---- 301 redirect: /request → /Request-Logo ----
+  if (pathname === "/request" || pathname === "/request/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/Request-Logo";
+    return NextResponse.redirect(url, 301);
+  }
 
   if (pathname === "/sitemap.xml") {
     const res = await fetch(`https://www.cdrlogo.com/api/sitemap-data`);
@@ -69,7 +90,7 @@ export async function middleware(req) {
 > Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for designers and students.
 
 ## Main Pages
-- [All Logos](https://www.cdrlogo.com/logos)
+- [All Logos](https://www.cdrlogo.com/all-logos)
 - [Sports & Athletics](https://www.cdrlogo.com/categories/logos/sports-athletics)
 - [Corporate & Finance](https://www.cdrlogo.com/categories/logos/corporate-finance)
 - [Technology & Media](https://www.cdrlogo.com/categories/logos/technology-media)
@@ -109,5 +130,10 @@ export const config = {
     "/llms.txt",
     "/category/:path*",
     "/categories/:path*",
+    "/template/:path*",
+    "/logos",
+    "/logos/",
+    "/request",
+    "/request/",
   ],
 };

@@ -23,6 +23,10 @@ model Logo {
   country  String?
   license  String?
 
+  templateCategory  String   @default("")
+templateStyleTags String[] @default([])
+
+
   // ── Content ────────────────────────────────────────────────────────────────
   description String
   history     String?
@@ -88,6 +92,7 @@ model Logo {
   updatedAt DateTime @updatedAt
 
   // ── Indexes ────────────────────────────────────────────────────────────────
+  @@index([templateCategory])
   @@index([slug])
   @@index([category])
   @@index([publishStatus])

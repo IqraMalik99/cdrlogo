@@ -10,7 +10,7 @@ import Image from "next/image";
 const STATIC_NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Brands", href: "/brands" },
-  { label: "Logo Templates", href: "/template" },
+  { label: "Logo Templates", href: "/logo-templates" },
   { label: "Categories", href: "/categories" },
   { label: "Blog", href: "/blog" },
   { label: "Contact", href: "/contact-us" },

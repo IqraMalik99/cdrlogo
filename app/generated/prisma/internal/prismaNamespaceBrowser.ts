@@ -90,6 +90,8 @@ export const LogoScalarFieldEnum = {
   industry: 'industry',
   country: 'country',
   license: 'license',
+  templateCategory: 'templateCategory',
+  templateStyleTags: 'templateStyleTags',
   description: 'description',
   history: 'history',
   tags: 'tags',

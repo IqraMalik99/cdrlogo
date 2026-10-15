@@ -44,6 +44,7 @@ export type LogoMinAggregateOutputType = {
   industry: string | null
   country: string | null
   license: string | null
+  templateCategory: string | null
   description: string | null
   history: string | null
   webpUrl: string | null
@@ -86,6 +87,7 @@ export type LogoMaxAggregateOutputType = {
   industry: string | null
   country: string | null
   license: string | null
+  templateCategory: string | null
   description: string | null
   history: string | null
   webpUrl: string | null
@@ -129,6 +131,8 @@ export type LogoCountAggregateOutputType = {
   industry: number
   country: number
   license: number
+  templateCategory: number
+  templateStyleTags: number
   description: number
   history: number
   tags: number
@@ -187,6 +191,7 @@ export type LogoMinAggregateInputType = {
   industry?: true
   country?: true
   license?: true
+  templateCategory?: true
   description?: true
   history?: true
   webpUrl?: true
@@ -229,6 +234,7 @@ export type LogoMaxAggregateInputType = {
   industry?: true
   country?: true
   license?: true
+  templateCategory?: true
   description?: true
   history?: true
   webpUrl?: true
@@ -272,6 +278,8 @@ export type LogoCountAggregateInputType = {
   industry?: true
   country?: true
   license?: true
+  templateCategory?: true
+  templateStyleTags?: true
   description?: true
   history?: true
   tags?: true
@@ -408,6 +416,8 @@ export type LogoGroupByOutputType = {
   industry: string | null
   country: string | null
   license: string | null
+  templateCategory: string
+  templateStyleTags: string[]
   description: string
   history: string | null
   tags: runtime.JsonValue
@@ -480,6 +490,8 @@ export type LogoWhereInput = {
   industry?: Prisma.StringNullableFilter<"Logo"> | string | null
   country?: Prisma.StringNullableFilter<"Logo"> | string | null
   license?: Prisma.StringNullableFilter<"Logo"> | string | null
+  templateCategory?: Prisma.StringFilter<"Logo"> | string
+  templateStyleTags?: Prisma.StringNullableListFilter<"Logo">
   description?: Prisma.StringFilter<"Logo"> | string
   history?: Prisma.StringNullableFilter<"Logo"> | string | null
   tags?: Prisma.JsonFilter<"Logo">
@@ -530,6 +542,8 @@ export type LogoOrderByWithRelationInput = {
   industry?: Prisma.SortOrderInput | Prisma.SortOrder
   country?: Prisma.SortOrderInput | Prisma.SortOrder
   license?: Prisma.SortOrderInput | Prisma.SortOrder
+  templateCategory?: Prisma.SortOrder
+  templateStyleTags?: Prisma.SortOrder
   description?: Prisma.SortOrder
   history?: Prisma.SortOrderInput | Prisma.SortOrder
   tags?: Prisma.SortOrder
@@ -583,6 +597,8 @@ export type LogoWhereUniqueInput = Prisma.AtLeast<{
   industry?: Prisma.StringNullableFilter<"Logo"> | string | null
   country?: Prisma.StringNullableFilter<"Logo"> | string | null
   license?: Prisma.StringNullableFilter<"Logo"> | string | null
+  templateCategory?: Prisma.StringFilter<"Logo"> | string
+  templateStyleTags?: Prisma.StringNullableListFilter<"Logo">
   description?: Prisma.StringFilter<"Logo"> | string
   history?: Prisma.StringNullableFilter<"Logo"> | string | null
   tags?: Prisma.JsonFilter<"Logo">
@@ -633,6 +649,8 @@ export type LogoOrderByWithAggregationInput = {
   industry?: Prisma.SortOrderInput | Prisma.SortOrder
   country?: Prisma.SortOrderInput | Prisma.SortOrder
   license?: Prisma.SortOrderInput | Prisma.SortOrder
+  templateCategory?: Prisma.SortOrder
+  templateStyleTags?: Prisma.SortOrder
   description?: Prisma.SortOrder
   history?: Prisma.SortOrderInput | Prisma.SortOrder
   tags?: Prisma.SortOrder
@@ -690,6 +708,8 @@ export type LogoScalarWhereWithAggregatesInput = {
   industry?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   country?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   license?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
+  templateCategory?: Prisma.StringWithAggregatesFilter<"Logo"> | string
+  templateStyleTags?: Prisma.StringNullableListFilter<"Logo">
   description?: Prisma.StringWithAggregatesFilter<"Logo"> | string
   history?: Prisma.StringNullableWithAggregatesFilter<"Logo"> | string | null
   tags?: Prisma.JsonWithAggregatesFilter<"Logo">
@@ -739,6 +759,8 @@ export type LogoCreateInput = {
   industry?: string | null
   country?: string | null
   license?: string | null
+  templateCategory?: string
+  templateStyleTags?: Prisma.LogoCreatetemplateStyleTagsInput | string[]
   description: string
   history?: string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -789,6 +811,8 @@ export type LogoUncheckedCreateInput = {
   industry?: string | null
   country?: string | null
   license?: string | null
+  templateCategory?: string
+  templateStyleTags?: Prisma.LogoCreatetemplateStyleTagsInput | string[]
   description: string
   history?: string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -839,6 +863,8 @@ export type LogoUpdateInput = {
   industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  templateCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  templateStyleTags?: Prisma.LogoUpdatetemplateStyleTagsInput | string[]
   description?: Prisma.StringFieldUpdateOperationsInput | string
   history?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -889,6 +915,8 @@ export type LogoUncheckedUpdateInput = {
   industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  templateCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  templateStyleTags?: Prisma.LogoUpdatetemplateStyleTagsInput | string[]
   description?: Prisma.StringFieldUpdateOperationsInput | string
   history?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -939,6 +967,8 @@ export type LogoCreateManyInput = {
   industry?: string | null
   country?: string | null
   license?: string | null
+  templateCategory?: string
+  templateStyleTags?: Prisma.LogoCreatetemplateStyleTagsInput | string[]
   description: string
   history?: string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -988,6 +1018,8 @@ export type LogoUpdateManyMutationInput = {
   industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  templateCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  templateStyleTags?: Prisma.LogoUpdatetemplateStyleTagsInput | string[]
   description?: Prisma.StringFieldUpdateOperationsInput | string
   history?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1037,6 +1069,8 @@ export type LogoUncheckedUpdateManyInput = {
   industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  templateCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  templateStyleTags?: Prisma.LogoUpdatetemplateStyleTagsInput | string[]
   description?: Prisma.StringFieldUpdateOperationsInput | string
   history?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1094,6 +1128,8 @@ export type LogoCountOrderByAggregateInput = {
   industry?: Prisma.SortOrder
   country?: Prisma.SortOrder
   license?: Prisma.SortOrder
+  templateCategory?: Prisma.SortOrder
+  templateStyleTags?: Prisma.SortOrder
   description?: Prisma.SortOrder
   history?: Prisma.SortOrder
   tags?: Prisma.SortOrder
@@ -1146,6 +1182,7 @@ export type LogoMaxOrderByAggregateInput = {
   industry?: Prisma.SortOrder
   country?: Prisma.SortOrder
   license?: Prisma.SortOrder
+  templateCategory?: Prisma.SortOrder
   description?: Prisma.SortOrder
   history?: Prisma.SortOrder
   webpUrl?: Prisma.SortOrder
@@ -1188,6 +1225,7 @@ export type LogoMinOrderByAggregateInput = {
   industry?: Prisma.SortOrder
   country?: Prisma.SortOrder
   license?: Prisma.SortOrder
+  templateCategory?: Prisma.SortOrder
   description?: Prisma.SortOrder
   history?: Prisma.SortOrder
   webpUrl?: Prisma.SortOrder
@@ -1238,6 +1276,10 @@ export type LogoCreatecategoryInput = {
   set: string[]
 }
 
+export type LogoCreatetemplateStyleTagsInput = {
+  set: string[]
+}
+
 export type LogoCreatevalidationReasonsInput = {
   set: string[]
 }
@@ -1251,6 +1293,11 @@ export type NullableStringFieldUpdateOperationsInput = {
 }
 
 export type LogoUpdatecategoryInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type LogoUpdatetemplateStyleTagsInput = {
   set?: string[]
   push?: string | string[]
 }
@@ -1321,6 +1368,8 @@ export type LogoCreateWithoutFavoritedByInput = {
   industry?: string | null
   country?: string | null
   license?: string | null
+  templateCategory?: string
+  templateStyleTags?: Prisma.LogoCreatetemplateStyleTagsInput | string[]
   description: string
   history?: string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1370,6 +1419,8 @@ export type LogoUncheckedCreateWithoutFavoritedByInput = {
   industry?: string | null
   country?: string | null
   license?: string | null
+  templateCategory?: string
+  templateStyleTags?: Prisma.LogoCreatetemplateStyleTagsInput | string[]
   description: string
   history?: string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1443,6 +1494,8 @@ export type LogoScalarWhereInput = {
   industry?: Prisma.StringNullableFilter<"Logo"> | string | null
   country?: Prisma.StringNullableFilter<"Logo"> | string | null
   license?: Prisma.StringNullableFilter<"Logo"> | string | null
+  templateCategory?: Prisma.StringFilter<"Logo"> | string
+  templateStyleTags?: Prisma.StringNullableListFilter<"Logo">
   description?: Prisma.StringFilter<"Logo"> | string
   history?: Prisma.StringNullableFilter<"Logo"> | string | null
   tags?: Prisma.JsonFilter<"Logo">
@@ -1492,6 +1545,8 @@ export type LogoUpdateWithoutFavoritedByInput = {
   industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  templateCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  templateStyleTags?: Prisma.LogoUpdatetemplateStyleTagsInput | string[]
   description?: Prisma.StringFieldUpdateOperationsInput | string
   history?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1541,6 +1596,8 @@ export type LogoUncheckedUpdateWithoutFavoritedByInput = {
   industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  templateCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  templateStyleTags?: Prisma.LogoUpdatetemplateStyleTagsInput | string[]
   description?: Prisma.StringFieldUpdateOperationsInput | string
   history?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1590,6 +1647,8 @@ export type LogoUncheckedUpdateManyWithoutFavoritedByInput = {
   industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   country?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  templateCategory?: Prisma.StringFieldUpdateOperationsInput | string
+  templateStyleTags?: Prisma.LogoUpdatetemplateStyleTagsInput | string[]
   description?: Prisma.StringFieldUpdateOperationsInput | string
   history?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -1670,6 +1729,8 @@ export type LogoSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   industry?: boolean
   country?: boolean
   license?: boolean
+  templateCategory?: boolean
+  templateStyleTags?: boolean
   description?: boolean
   history?: boolean
   tags?: boolean
@@ -1721,6 +1782,8 @@ export type LogoSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   industry?: boolean
   country?: boolean
   license?: boolean
+  templateCategory?: boolean
+  templateStyleTags?: boolean
   description?: boolean
   history?: boolean
   tags?: boolean
@@ -1770,6 +1833,8 @@ export type LogoSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   industry?: boolean
   country?: boolean
   license?: boolean
+  templateCategory?: boolean
+  templateStyleTags?: boolean
   description?: boolean
   history?: boolean
   tags?: boolean
@@ -1819,6 +1884,8 @@ export type LogoSelectScalar = {
   industry?: boolean
   country?: boolean
   license?: boolean
+  templateCategory?: boolean
+  templateStyleTags?: boolean
   description?: boolean
   history?: boolean
   tags?: boolean
@@ -1857,7 +1924,7 @@ export type LogoSelectScalar = {
   updatedAt?: boolean
 }
 
-export type LogoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "owner" | "logoName" | "slug" | "brand" | "website" | "category" | "industry" | "country" | "license" | "description" | "history" | "tags" | "brandColors" | "webpUrl" | "svgUrl" | "pngUrl" | "aiUrl" | "cdrUrl" | "svgfilesize" | "pngfilesize" | "aifilesize" | "cdrfilesize" | "svgContent" | "metaTitle" | "metaDescription" | "altText" | "canonicalUrl" | "ogImageUrl" | "ogTitle" | "ogDescription" | "ogType" | "twitterTitle" | "twitterDescription" | "twitterImage" | "twitterCardType" | "imageObjectSchema" | "breadcrumbSchema" | "faqSchema" | "validationStatus" | "validationReasons" | "publishStatus" | "downloadCount" | "downloadedNumberByPeople" | "createdAt" | "updatedAt", ExtArgs["result"]["logo"]>
+export type LogoOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "owner" | "logoName" | "slug" | "brand" | "website" | "category" | "industry" | "country" | "license" | "templateCategory" | "templateStyleTags" | "description" | "history" | "tags" | "brandColors" | "webpUrl" | "svgUrl" | "pngUrl" | "aiUrl" | "cdrUrl" | "svgfilesize" | "pngfilesize" | "aifilesize" | "cdrfilesize" | "svgContent" | "metaTitle" | "metaDescription" | "altText" | "canonicalUrl" | "ogImageUrl" | "ogTitle" | "ogDescription" | "ogType" | "twitterTitle" | "twitterDescription" | "twitterImage" | "twitterCardType" | "imageObjectSchema" | "breadcrumbSchema" | "faqSchema" | "validationStatus" | "validationReasons" | "publishStatus" | "downloadCount" | "downloadedNumberByPeople" | "createdAt" | "updatedAt", ExtArgs["result"]["logo"]>
 export type LogoInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   favoritedBy?: boolean | Prisma.Logo$favoritedByArgs<ExtArgs>
   _count?: boolean | Prisma.LogoCountOutputTypeDefaultArgs<ExtArgs>
@@ -1881,6 +1948,8 @@ export type $LogoPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     industry: string | null
     country: string | null
     license: string | null
+    templateCategory: string
+    templateStyleTags: string[]
     description: string
     history: string | null
     tags: runtime.JsonValue
@@ -2351,6 +2420,8 @@ export interface LogoFieldRefs {
   readonly industry: Prisma.FieldRef<"Logo", 'String'>
   readonly country: Prisma.FieldRef<"Logo", 'String'>
   readonly license: Prisma.FieldRef<"Logo", 'String'>
+  readonly templateCategory: Prisma.FieldRef<"Logo", 'String'>
+  readonly templateStyleTags: Prisma.FieldRef<"Logo", 'String[]'>
   readonly description: Prisma.FieldRef<"Logo", 'String'>
   readonly history: Prisma.FieldRef<"Logo", 'String'>
   readonly tags: Prisma.FieldRef<"Logo", 'Json'>

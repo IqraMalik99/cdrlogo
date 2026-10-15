@@ -43,16 +43,16 @@ export async function GET() {
     { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/brands`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/categories`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/template`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/logo-templates`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/about-us`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/logos`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/all-logos`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
   ];
 
   // -------------------------------
   // CATEGORY ROUTES (real lastmod now)  ← CHANGED
   // -------------------------------
   const categoryRoutes = categories.map((cat) => ({
-    url: `${baseUrl}/categories/logos/${encodeURIComponent(cat)}`,
+    url: `${baseUrl}/categories/all-logos/${encodeURIComponent(cat)}`,
     lastModified: categoryLastMod[cat] || new Date(), // ← CHANGED: was new Date() hardcoded
     changeFrequency: "daily",
     priority: 0.7,
