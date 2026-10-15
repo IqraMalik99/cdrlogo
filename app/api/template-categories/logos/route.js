@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getTemplateCategory } from "../../../../lib/templateCategories";
-import { getTemplateLogos } from "../../../../lib/templateQueries";
+import { getTemplateCategory } from "../../../lib/templateCategories";
+import { getTemplateLogos } from "../../../lib/templateQueries";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
