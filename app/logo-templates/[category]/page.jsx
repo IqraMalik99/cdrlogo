@@ -1,3 +1,4 @@
+// app/logo-templates/[category]/page.js
 import { notFound } from "next/navigation";
 import CategoryClient from "./client.jsx";
 import { TEMPLATE_CATEGORIES, getTemplateCategory } from "../../lib/templateCategories";
@@ -7,9 +8,12 @@ const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com").
 const LIMIT = 48;
 
 export const revalidate = 3600;
+export const dynamicParams = true;
 
+// Return an empty list so no pages (and no Prisma queries) run at build time.
+// Each category page is generated on first visit, then cached and revalidated hourly.
 export function generateStaticParams() {
-  return TEMPLATE_CATEGORIES.map((c) => ({ category: c.id }));
+  return [];
 }
 
 export async function generateMetadata({ params }) {
