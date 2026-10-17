@@ -9,6 +9,14 @@
 * 🟢 You can import this file directly.
 */
 
+export const SearchProvider = {
+  tavily: 'tavily',
+  serper: 'serper'
+} as const
+
+export type SearchProvider = (typeof SearchProvider)[keyof typeof SearchProvider]
+
+
 export const ContactStatus = {
   pending: 'pending',
   replied: 'replied'

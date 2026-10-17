@@ -1271,6 +1271,7 @@ export const WebsiteScalarFieldEnum = {
   MaintanceMessage: 'MaintanceMessage',
   tags: 'tags',
   showmode: 'showmode',
+  searchProvider: 'searchProvider',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1515,6 +1516,20 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
  * Reference to a field of type 'Boolean'
  */
 export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+/**
+ * Reference to a field of type 'SearchProvider'
+ */
+export type EnumSearchProviderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SearchProvider'>
+    
+
+
+/**
+ * Reference to a field of type 'SearchProvider[]'
+ */
+export type ListEnumSearchProviderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SearchProvider[]'>
     
 
 

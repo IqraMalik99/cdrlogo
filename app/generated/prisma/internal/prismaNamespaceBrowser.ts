@@ -145,6 +145,7 @@ export const WebsiteScalarFieldEnum = {
   MaintanceMessage: 'MaintanceMessage',
   tags: 'tags',
   showmode: 'showmode',
+  searchProvider: 'searchProvider',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

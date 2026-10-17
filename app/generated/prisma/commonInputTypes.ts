@@ -244,12 +244,29 @@ export type BoolFilter<$PrismaModel = never> = {
   not?: Prisma.NestedBoolFilter<$PrismaModel> | boolean
 }
 
+export type EnumSearchProviderFilter<$PrismaModel = never> = {
+  equals?: $Enums.SearchProvider | Prisma.EnumSearchProviderFieldRefInput<$PrismaModel>
+  in?: $Enums.SearchProvider[] | Prisma.ListEnumSearchProviderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SearchProvider[] | Prisma.ListEnumSearchProviderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSearchProviderFilter<$PrismaModel> | $Enums.SearchProvider
+}
+
 export type BoolWithAggregatesFilter<$PrismaModel = never> = {
   equals?: boolean | Prisma.BooleanFieldRefInput<$PrismaModel>
   not?: Prisma.NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedBoolFilter<$PrismaModel>
   _max?: Prisma.NestedBoolFilter<$PrismaModel>
+}
+
+export type EnumSearchProviderWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.SearchProvider | Prisma.EnumSearchProviderFieldRefInput<$PrismaModel>
+  in?: $Enums.SearchProvider[] | Prisma.ListEnumSearchProviderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SearchProvider[] | Prisma.ListEnumSearchProviderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSearchProviderWithAggregatesFilter<$PrismaModel> | $Enums.SearchProvider
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumSearchProviderFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumSearchProviderFilter<$PrismaModel>
 }
 
 export type EnumContactStatusFilter<$PrismaModel = never> = {
@@ -475,12 +492,29 @@ export type NestedBoolFilter<$PrismaModel = never> = {
   not?: Prisma.NestedBoolFilter<$PrismaModel> | boolean
 }
 
+export type NestedEnumSearchProviderFilter<$PrismaModel = never> = {
+  equals?: $Enums.SearchProvider | Prisma.EnumSearchProviderFieldRefInput<$PrismaModel>
+  in?: $Enums.SearchProvider[] | Prisma.ListEnumSearchProviderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SearchProvider[] | Prisma.ListEnumSearchProviderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSearchProviderFilter<$PrismaModel> | $Enums.SearchProvider
+}
+
 export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
   equals?: boolean | Prisma.BooleanFieldRefInput<$PrismaModel>
   not?: Prisma.NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedBoolFilter<$PrismaModel>
   _max?: Prisma.NestedBoolFilter<$PrismaModel>
+}
+
+export type NestedEnumSearchProviderWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.SearchProvider | Prisma.EnumSearchProviderFieldRefInput<$PrismaModel>
+  in?: $Enums.SearchProvider[] | Prisma.ListEnumSearchProviderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.SearchProvider[] | Prisma.ListEnumSearchProviderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumSearchProviderWithAggregatesFilter<$PrismaModel> | $Enums.SearchProvider
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumSearchProviderFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumSearchProviderFilter<$PrismaModel>
 }
 
 export type NestedEnumContactStatusFilter<$PrismaModel = never> = {
