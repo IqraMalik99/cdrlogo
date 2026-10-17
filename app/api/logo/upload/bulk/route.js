@@ -712,11 +712,116 @@ async function tavilySearch(query, maxResults = 4) {
   }
 }
 
-// ── Real visual facts from the actual logo file ──────────────────────────
-// Text search (Tavily) often describes a DIFFERENT era, sub-brand, or
-// unrelated product using the same brand name. This looks at the actual
-// uploaded image and reports only what's literally visible — this becomes
-// the ONLY allowed source for color/shape/symbol claims.
+// ── Serper (Google Search API) ──────────────────────────────────────────────
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
+const SERPER_ENDPOINT = "https://google.serper.dev/search";
+
+async function serperSearch(query, maxResults = 4) {
+  if (!SERPER_API_KEY) {
+    console.warn(`  [serper] SERPER_API_KEY not set — skipping search for "${query}"`);
+    return [];
+  }
+  try {
+    const res = await fetch(SERPER_ENDPOINT, {
+      method: "POST",
+      headers: { "X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: query, num: maxResults }),
+    });
+    if (!res.ok) {
+      console.warn(`  [serper] Search failed (${res.status}) for "${query}"`);
+      return [];
+    }
+    const data = await res.json();
+    const results = [];
+
+    const kg = data?.knowledgeGraph;
+    if (kg?.description) {
+      const attrs = kg.attributes
+        ? Object.entries(kg.attributes).map(([k, v]) => `${k}: ${v}`).join("; ")
+        : "";
+      results.push({
+        url: kg.descriptionLink || kg.website || `knowledge-graph:${query}`,
+        content: `${kg.title || ""} (${kg.type || ""}). ${kg.description} ${attrs}`.trim(),
+      });
+    }
+
+    for (const r of data?.organic || []) {
+      if (!r?.link) continue;
+      results.push({
+        url: r.link,
+        content: [r.title, r.snippet].filter(Boolean).join(" — "),
+      });
+    }
+
+    return results.slice(0, maxResults + 1);
+  } catch (err) {
+    console.warn(`  [serper] Error searching "${query}": ${err.message}`);
+    return [];
+  }
+}
+
+// ── DB se dekho kaun sa provider "on" hai (Website.searchProvider) ─────────
+async function getSearchProvider() {
+  try {
+    const site = await prisma.website.findFirst({ select: { searchProvider: true } });
+    const wanted = site?.searchProvider === "serper" ? "serper" : "tavily";
+
+    if (wanted === "serper" && !SERPER_API_KEY) {
+      console.warn(`  [search] searchProvider=serper but SERPER_API_KEY missing — using tavily.`);
+      return "tavily";
+    }
+    return wanted;
+  } catch (err) {
+    console.warn(`  [search] Could not read searchProvider (${err.message}) — using tavily.`);
+    return "tavily";
+  }
+}
+
+async function webSearch(query, maxResults = 4, provider = "tavily") {
+  return provider === "serper"
+    ? serperSearch(query, maxResults)
+    : tavilySearch(query, maxResults);
+}
+
+async function researchBrandFacts(logoName, brand, searchProvider) {
+  const subject = (brand && brand.trim()) || logoName;
+  const provider = searchProvider || (await getSearchProvider());
+
+  const queries = [
+    `${subject} what does the company do products services`,
+    `${subject} logo history design meaning`,
+    `${subject} official brand colors hex code`,
+    `${subject} founded headquarters official website`,
+    `${subject} logo redesign year designer typography change`,
+  ];
+
+  const resultsArrays = await Promise.all(
+    queries.map((q) => webSearch(q, 4, provider))
+  );
+  const allResults = resultsArrays.flat();
+
+  const seen = new Set();
+  const deduped = allResults.filter((r) => {
+    if (!r?.url || seen.has(r.url)) return false;
+    seen.add(r.url);
+    return true;
+  });
+
+  if (!deduped.length) {
+    console.log(`  [research:${provider}] No usable search results for "${subject}"`);
+    return { hasResults: false, contextText: "" };
+  }
+
+  const contextText = deduped
+    .slice(0, 10)
+    .map((r, i) => `Source ${i + 1} (${r.url}):\n${(r.content || "").slice(0, 900)}`)
+    .join("\n\n");
+
+  console.log(`  [research:${provider}] ${deduped.length} source(s) found for "${subject}"`);
+  return { hasResults: true, contextText };
+}
+
+
 async function analyzeLogoImageVisually(pngBuffer) {
   if (!pngBuffer) return { hasVisualFacts: false, visualFactsText: "", rawColors: [] };
 
@@ -785,40 +890,7 @@ Return ONLY this JSON:
   }
 }
 
-async function researchBrandFacts(logoName, brand) {
-  const subject = (brand && brand.trim()) || logoName;
 
-  const queries = [
-    `${subject} what does the company do products services`,
-    `${subject} logo history design meaning`,
-    `${subject} official brand colors hex code`,
-    `${subject} founded headquarters official website`,
-    `${subject} logo redesign year designer typography change`,
-  ];
-
-  const resultsArrays = await Promise.all(queries.map((q) => tavilySearch(q, 4)));
-  const allResults = resultsArrays.flat();
-
-  const seen = new Set();
-  const deduped = allResults.filter((r) => {
-    if (!r?.url || seen.has(r.url)) return false;
-    seen.add(r.url);
-    return true;
-  });
-
-  if (!deduped.length) {
-    console.log(`  [research] No usable search results for "${subject}"`);
-    return { hasResults: false, contextText: "" };
-  }
-
-  const contextText = deduped
-    .slice(0, 10)
-    .map((r, i) => `Source ${i + 1} (${r.url}):\n${(r.content || "").slice(0, 900)}`)
-    .join("\n\n");
-
-  console.log(`  [research] ${deduped.length} source(s) found for "${subject}"`);
-  return { hasResults: true, contextText };
-}
 
 
 function buildStaticEmergencyFallback(logoName, { brand, website, country, industry } = {}, relatedDescriptions = [], visualFacts = null) {
@@ -1669,13 +1741,14 @@ Return ONLY JSON: { "description": "..." }`;
 async function generateMainDescription({
   logoName, brand, website, country, industry, isTemplate,
   canonicalUrl, relatedDescriptions = [], visualFacts = null,
+  searchProvider = "tavily", 
 }) {
   if (isTemplate) {
     const description = await generateTemplateDescription({ logoName, visualFacts });
     return { description, attemptsExhausted: false, attemptsUsed: 1, isEmergencyFallback: false };
   }
 
-  const { hasResults, contextText } = await researchBrandFacts(logoName, brand);
+const { hasResults, contextText } = await researchBrandFacts(logoName, brand);
 
   const focus = pickFocusAngle(relatedDescriptions.length, FOCUS_ANGLES, logoName);
 

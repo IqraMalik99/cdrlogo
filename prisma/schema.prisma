@@ -98,20 +98,26 @@ templateStyleTags String[] @default([])
   @@index([publishStatus])
 }
 
+enum SearchProvider {
+  tavily
+  serper
+}
+
 model Website {
-  id               String   @id @default(uuid())
+  id               String         @id @default(uuid())
   categories       Json?
   navItems         Json?
   watermark        Json?
   Footer           Json?
   metaTitle        String?
   metaDescription  String?
-  limit            Int      @default(12)
+  limit            Int            @default(12)
   MaintanceMessage String?
-  tags             Json     @default("[]")
-  showmode         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  tags             Json           @default("[]")
+  showmode         Boolean        @default(true)
+  searchProvider   SearchProvider @default(tavily)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model User {

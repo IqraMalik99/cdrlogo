@@ -3,8 +3,14 @@
 import { useState, useEffect } from "react";
 import {
   Globe, FileText, Moon, AlertTriangle,
-  Save, RefreshCw, CheckCircle, Layers
+  Save, RefreshCw, CheckCircle, Layers, Search
 } from "lucide-react";
+
+// ─── search provider options ─────────────────────────────────────────────────
+const PROVIDERS = [
+  { value: "tavily", name: "Tavily", desc: "AI-optimized search API" },
+  { value: "serper", name: "Serper", desc: "Google Search results API" },
+];
 
 // ─── tiny helpers ────────────────────────────────────────────────────────────
 const field = (dark) => ({
@@ -144,6 +150,7 @@ export default function SiteSettings({ dark = true }) {
     metaDescription:  "",
     showmode:         true,   // true = dark mode ON by default
     MaintanceMessage: "",
+    searchProvider:   "tavily",
   });
 
   // ── Fetch site settings on mount ────────────────────────────────────────────
@@ -158,6 +165,7 @@ export default function SiteSettings({ dark = true }) {
             metaDescription:  data.metaDescription  ?? "",
             showmode:         data.showmode         ?? true,
             MaintanceMessage: data.MaintanceMessage ?? "",
+            searchProvider:   data.searchProvider   ?? "tavily",
           });
         }
       })
@@ -364,6 +372,56 @@ export default function SiteSettings({ dark = true }) {
               onChange={(v) => set("showmode", v)}
               dark={dark}
             />
+          </div>
+        </Section>
+
+        {/* ── Search Provider ───────────────────────────────────────────── */}
+        <Section
+          icon={Search}
+          title="Search Provider"
+          subtitle="Choose which API powers search on the site"
+          dark={dark}
+        >
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {PROVIDERS.map((p) => {
+              const active = form.searchProvider === p.value;
+              return (
+                <button
+                  key={p.value}
+                  onClick={() => set("searchProvider", p.value)}
+                  style={{
+                    flex: "1 1 220px",
+                    textAlign: "left",
+                    padding: "14px 16px",
+                    borderRadius: 10,
+                    border: `1px solid ${active ? "#22c55e" : border}`,
+                    background: active
+                      ? "rgba(34,197,94,0.12)"
+                      : dark ? "#0f1117" : "#FFFFFF",
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                    transition: "all 0.18s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <div style={{
+                      fontSize: 14, fontWeight: 600,
+                      color: active ? "#22c55e" : text,
+                    }}>
+                      {p.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: muted, marginTop: 2 }}>
+                      {p.desc}
+                    </div>
+                  </div>
+                  {active && <CheckCircle size={18} color="#22c55e" />}
+                </button>
+              );
+            })}
           </div>
         </Section>
 

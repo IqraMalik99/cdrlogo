@@ -1,11 +1,13 @@
-// app/api/admin/site-settings/route.js
+// app/api/admin/site-setting/route.js
+// (folder name must match the URL the component fetches: /api/admin/site-setting)
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma"; // adjust to your prisma client path
+
+const PROVIDERS = ["tavily", "serper"];
 
 // ─── GET — fetch the single Website record ────────────────────────────────────
 export async function GET() {
   try {
-    // We only ever have one Website config row; grab the first one
     const website = await prisma.website.findFirst({
       select: {
         id:               true,
@@ -14,17 +16,18 @@ export async function GET() {
         showmode:         true,
         limit:            true,
         MaintanceMessage: true,
+        searchProvider:   true,
       },
     });
 
     if (!website) {
-      // Return sensible defaults if no row exists yet
       return NextResponse.json({
         metaTitle:        "",
         metaDescription:  "",
         showmode:         true,
-        limit:            20,
+        limit:            12,
         MaintanceMessage: "",
+        searchProvider:   "tavily",
       });
     }
 
@@ -39,28 +42,28 @@ export async function GET() {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { id, metaTitle, metaDescription, showmode, limit, MaintanceMessage } = body;
+    const {
+      id, metaTitle, metaDescription, showmode,
+      limit, MaintanceMessage, searchProvider,
+    } = body;
 
-    const data = {
-      metaTitle:        metaTitle        ?? "",
-      metaDescription:  metaDescription  ?? "",
-      showmode:         showmode         ?? true,
-      limit:            Number(limit)    || 20,
-      MaintanceMessage: MaintanceMessage ?? "",
-    };
-
-    let website;
-
-    if (id) {
-      // Update existing record
-      website = await prisma.website.update({
-        where: { id },
-        data,
-      });
-    } else {
-      // Create first record
-      website = await prisma.website.create({ data });
+    if (searchProvider !== undefined && !PROVIDERS.includes(searchProvider)) {
+      return NextResponse.json({ error: "Invalid search provider" }, { status: 400 });
     }
+
+    // Only include fields that were actually sent, so a save never
+    // resets values the form doesn't manage (e.g. limit).
+    const data = {};
+    if (metaTitle !== undefined)        data.metaTitle        = metaTitle;
+    if (metaDescription !== undefined)  data.metaDescription  = metaDescription;
+    if (showmode !== undefined)         data.showmode         = showmode;
+    if (MaintanceMessage !== undefined) data.MaintanceMessage = MaintanceMessage;
+    if (searchProvider !== undefined)   data.searchProvider   = searchProvider;
+    if (limit !== undefined)            data.limit            = Number(limit) || 12;
+
+    const website = id
+      ? await prisma.website.update({ where: { id }, data })
+      : await prisma.website.create({ data });
 
     return NextResponse.json(website);
   } catch (err) {
