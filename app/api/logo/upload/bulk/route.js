@@ -935,6 +935,23 @@ function buildStaticEmergencyFallback(logoName, { brand, website, country, indus
 //     is only used when the description GENUINELY has nothing behind it.
 // ============================================================================
 
+// ── Template rule: sirf form category ya naam/folder mein "template" word ──
+function detectManualTemplate({ formCategory, logoName, folderName }) {
+  const cat = String(formCategory || "").toLowerCase().trim();
+  if (cat === "template") return { isManual: true, reason: 'form category = "template"' };
+
+  // camelCase todo: "ArrowLogoTemplate" → "Arrow Logo Template"
+  const split = (s) => String(s || "").replace(/([a-z])([A-Z])/g, "$1 $2");
+  const re = /\btemplates?\b/i;
+
+  if (re.test(split(logoName))) return { isManual: true, reason: 'logo name contains "template"' };
+  if (re.test(split(folderName).replace(/[-_]+/g, " "))) {
+    return { isManual: true, reason: 'folder name contains "template"' };
+  }
+  return { isManual: false, reason: "" };
+}
+
+
 // stable hash so the same logoName always gets the same rotation
 function hashString(str) {
   let h = 0;
@@ -2570,7 +2587,6 @@ Return ONLY JSON:
     };
   }
 }
-
 async function resolveLogoFacts({
   logoName, researchName, isManualTemplate, relatedLogos, canonicalUrl, visualFacts, pngBuffer = null,
 }) {
@@ -2604,7 +2620,19 @@ async function resolveLogoFacts({
     console.log(`  [ai:category] VALIDATED pick unchanged → main: "${mainCategory}" | sub: "${subCategory}"`);
   }
 
+  // Manual template ko validation/taxonomy kabhi template se bahar na karne dein
+  if (isManualTemplate) {
+    mainCategory = "template";
+    subCategory = "";
+  }
+
   const isTemplate = mainCategory === "template";
+
+  // Template rule se nahi bana, AI fallback se bana → review chahiye
+  const templateByFallback = !isManualTemplate && isTemplate;
+  if (templateByFallback) {
+    console.warn(`  [template] "${brandLookupName}" became TEMPLATE via AI fallback, not by rule — flagging for review.`);
+  }
 
   // ── STEP 1b: template-only category (17 fixed categories) ─────────────
   // Runs for BOTH manual template override and LLM-fallback "template".
@@ -2615,6 +2643,16 @@ async function resolveLogoFacts({
       pngBuffer,
       visualFacts,
     });
+
+    // Ek baar khali aaye to dobara try karo
+    if (!templateCategory.categoryId) {
+      console.warn(`  [template:category] empty result — retrying once...`);
+      templateCategory = await classifyTemplateCategory({
+        logoName: brandLookupName,
+        pngBuffer,
+        visualFacts,
+      });
+    }
   }
 
   // ── STEP 2: brand + country + industry + website ─────────────────────
@@ -2655,6 +2693,7 @@ async function resolveLogoFacts({
     mainCategory,
     subCategory,
     isTemplate,
+    templateByFallback,
     brand: isTemplate ? "" : stripSpecialChars(resolvedBrand),
     country: isTemplate ? "" : (resolvedCountry || ""),
     industry: isTemplate ? "" : (resolvedIndustry || "Logo Design & Graphics"),
@@ -3350,7 +3389,6 @@ async function buildTags({
   }
   return tags;
 }
-
 async function processOneLogoFolder({ folderName, folderFiles, sharedFields, watermark }) {
   const rawLogoName = stripSpecialChars(logoNameFromFolderName(folderName));
   console.log(`\n  ── Processing folder: "${folderName}" → "${rawLogoName}"`);
@@ -3392,9 +3430,14 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       ? await analyzeLogoImageVisually(pngFile.buffer)
       : { hasVisualFacts: false, visualFactsText: "", rawColors: [] };
 
-    const isManualTemplate =
-      sharedFields.category.toLowerCase().trim() === "template" ||
-      /\btemplate\b/i.test(finalLogoName);
+    // ── Template rule: form category ya naam/folder mein "template" ──────
+    const templateRule = detectManualTemplate({
+      formCategory: sharedFields.category,
+      logoName: finalLogoName,
+      folderName,
+    });
+    const isManualTemplate = templateRule.isManual;
+    if (isManualTemplate) console.log(`  [template] Manual template — ${templateRule.reason}`);
 
     const facts = await resolveLogoFacts({
       logoName: stripSpecialChars(finalLogoName),
@@ -3403,7 +3446,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       relatedLogos: related,
       canonicalUrl,
       visualFacts,
-      pngBuffer: pngFile ? pngFile.buffer : null, // CHANGED
+      pngBuffer: pngFile ? pngFile.buffer : null,
     });
 
     const nameCorrection = correctLogoNameSpelling({
@@ -3425,9 +3468,9 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       subCategory: facts.subCategory,
       industry: facts.industry,
       country: facts.country,
-      templateCategory: facts.templateCategory,          // CHANGED
-      templateCategoryName: facts.templateCategoryName,  // CHANGED
-      templateStyleTags: facts.templateStyleTags,        // CHANGED
+      templateCategory: facts.templateCategory,
+      templateCategoryName: facts.templateCategoryName,
+      templateStyleTags: facts.templateStyleTags,
     });
     console.log(`  [tags] ${tags.length} → ${tags.join(", ")}`);
 
@@ -3494,16 +3537,20 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       );
     }
 
-    // CHANGED: review can now be triggered by a weak description (brands) OR an unclear template category
+    // Review: weak description (brand), unclear template category, ya template AI-fallback se bana
     const weakDescription = !facts.isTemplate && !!facts.descriptionIsWeak;
     const templateCategoryUnclear = facts.isTemplate && !!facts.templateNeedsReview;
-    const needsReview = weakDescription || templateCategoryUnclear;
+    const templateByFallback = !!facts.templateByFallback;
+    const needsReview = weakDescription || templateCategoryUnclear || templateByFallback;
 
     if (weakDescription) {
       console.warn(`  [review] "${displayLogoName}" flagged for review — description fell back to the static emergency template after all retries.`);
     }
     if (templateCategoryUnclear) {
       console.warn(`  [review] "${displayLogoName}" flagged for review — template category unclear (${facts.templateCategoryReason || "no reason"}).`);
+    }
+    if (templateByFallback) {
+      console.warn(`  [review] "${displayLogoName}" flagged for review — became TEMPLATE via AI fallback, not by rule.`);
     }
 
     const allReasons = [
@@ -3518,6 +3565,9 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         : []),
       ...(templateCategoryUnclear
         ? [`Template category for "${displayLogoName}" is unclear${facts.templateCategory ? ` (best guess: ${facts.templateCategoryName})` : " (no valid category returned)"} — admin must assign the correct category. ${facts.templateCategoryReason || ""}`.trim()]
+        : []),
+      ...(templateByFallback
+        ? [`"${displayLogoName}" was treated as a TEMPLATE only because AI category classification failed or returned "template" — it has no "template" in its name and the form category was not "template". Check if this is a real brand logo.`]
         : []),
     ];
 
@@ -3638,9 +3688,9 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
         slug: finalSlug,
         brand: aiContent.brand,
         website: aiContent.website,
-        category: isManualTemplate ? ["template"] : aiContent.category, // unchanged — existing URLs/queries keep working
-        templateCategory: facts.isTemplate ? facts.templateCategory : "",       // CHANGED (new field)
-        templateStyleTags: facts.isTemplate ? facts.templateStyleTags : [],     // CHANGED (new field)
+        category: facts.isTemplate || isManualTemplate ? ["template"] : aiContent.category,
+        templateCategory: facts.isTemplate ? facts.templateCategory : "",
+        templateStyleTags: facts.isTemplate ? facts.templateStyleTags : [],
         industry: aiContent.industry,
         country: aiContent.country,
         license: sharedFields.license,
@@ -3679,7 +3729,19 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       },
     });
 
-    console.log(`  [db] ✓ Saved ID: ${logo.id}`);
+console.log(`  [db] ✓ Saved ID: ${logo.id}`);
+
+// ── Published summary: category + template category ──────────────────────
+console.log(
+  `  [published] "${displayLogoName}" (${finalSlug}) | status: ${logo.publishStatus}\n` +
+  `    ├─ type            : ${facts.isTemplate ? "TEMPLATE" : "BRAND LOGO"}\n` +
+  `    ├─ main category   : ${facts.mainCategory || "(none)"}\n` +
+  `    ├─ sub category    : ${facts.isTemplate ? "template" : (facts.subCategory || "(none)")}\n` +
+  `    ├─ db category[]   : [${(logo.category || []).join(", ")}]\n` +
+  `    ├─ template cat.   : ${facts.isTemplate ? `${facts.templateCategory || "(UNASSIGNED)"} (${facts.templateCategoryName || "-"})` : "n/a"}\n` +
+  `    ├─ template styles : ${facts.isTemplate ? `[${(facts.templateStyleTags || []).join(", ")}]` : "n/a"}\n` +
+  `    └─ needs review    : ${needsReview ? "YES" : "no"}`
+);
 
     return {
       success: true,
@@ -3688,8 +3750,8 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
       versioned,
       originalName: rawLogoName,
       category: aiContent.category,
-      templateCategory: facts.isTemplate ? facts.templateCategory : "", // CHANGED
-      templateStyleTags: facts.isTemplate ? facts.templateStyleTags : [], // CHANGED
+      templateCategory: facts.isTemplate ? facts.templateCategory : "",
+      templateStyleTags: facts.isTemplate ? facts.templateStyleTags : [],
       brand: aiContent.brand,
       website: aiContent.website,
       country: aiContent.country,
@@ -3713,6 +3775,7 @@ async function processOneLogoFolder({ folderName, folderFiles, sharedFields, wat
     };
   }
 }
+
 export const maxDuration = 60;
 
 export async function POST(req) {
