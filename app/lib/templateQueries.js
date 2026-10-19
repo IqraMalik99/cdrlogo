@@ -2,31 +2,32 @@ import { prisma } from "./prisma";
 import { TEMPLATE_CATEGORIES } from "./templateCategories";
 
 const PUBLISHED = "Published";
-
 const publishedFilter = { publishStatus: { equals: PUBLISHED, mode: "insensitive" } };
 
+// Counts are done in JS from a single light query, so casing / stray
+// whitespace in templateCategory can never cause a mismatch.
 export async function getTemplateCategoryCounts() {
-  const rows = await prisma.logo.groupBy({
-    by: ["templateCategory"],
+  const rows = await prisma.logo.findMany({
     where: { templateCategory: { not: "" }, ...publishedFilter },
-    _count: { _all: true },
+    select: { templateCategory: true },
   });
 
-  // normalize ids so "Food-Dining " and "food-dining" count together
   const map = new Map();
   for (const r of rows) {
     const key = String(r.templateCategory || "").trim().toLowerCase();
-    map.set(key, (map.get(key) || 0) + r._count._all);
+    if (key) map.set(key, (map.get(key) || 0) + 1);
   }
 
   return TEMPLATE_CATEGORIES.map((c) => ({
-    id: c.id, name: c.name, intro: c.intro, count: map.get(c.id) || 0,
+    id: c.id,
+    name: c.name,
+    count: map.get(c.id) || 0,
   }));
 }
 
 export async function getTemplateLogos({ categoryId, page = 1, limit = 48 }) {
   const where = {
-    templateCategory: { equals: categoryId, mode: "insensitive" },
+    templateCategory: { equals: String(categoryId).trim(), mode: "insensitive" },
     ...publishedFilter,
   };
   const [logos, total] = await Promise.all([
@@ -40,18 +41,4 @@ export async function getTemplateLogos({ categoryId, page = 1, limit = 48 }) {
     prisma.logo.count({ where }),
   ]);
   return { logos, total, totalPages: Math.max(1, Math.ceil(total / limit)) };
-}
-
-// Debug helper: template logos that are not counted anywhere
-export async function getUncountedTemplateStats() {
-  const [unassigned, notPublished] = await Promise.all([
-    prisma.logo.count({ where: { category: { has: "template" }, templateCategory: "" } }),
-    prisma.logo.count({
-      where: {
-        templateCategory: { not: "" },
-        NOT: publishedFilter,
-      },
-    }),
-  ]);
-  return { unassigned, notPublished };
 }

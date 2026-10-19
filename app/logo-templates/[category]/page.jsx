@@ -1,19 +1,16 @@
-// app/logo-templates/[category]/page.js
+// app/logo-templates/[category]/page.js — NO database access, NO caching logic.
+// Logos are fetched live in the browser by CategoryClient.
 import { notFound } from "next/navigation";
 import CategoryClient from "./client.jsx";
 import { TEMPLATE_CATEGORIES, getTemplateCategory } from "../../lib/templateCategories";
-import { getTemplateLogos } from "../../lib/templateQueries";
 
 const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com").replace(/\/$/, "");
 const LIMIT = 48;
 
-export const revalidate = 3600;
 export const dynamicParams = true;
 
-// Return an empty list so no pages (and no Prisma queries) run at build time.
-// Each category page is generated on first visit, then cached and revalidated hourly.
 export function generateStaticParams() {
-  return [];
+  return TEMPLATE_CATEGORIES.map((c) => ({ category: c.id }));
 }
 
 export async function generateMetadata({ params }) {
@@ -42,7 +39,6 @@ export default async function Page({ params }) {
   const cat = getTemplateCategory(category);
   if (!cat) notFound();
 
-  const initial = await getTemplateLogos({ categoryId: cat.id, page: 1, limit: LIMIT });
   const url = `${baseUrl}/logo-templates/${cat.id}`;
 
   const collectionSchema = {
@@ -64,10 +60,6 @@ export default async function Page({ params }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <CategoryClient
         category={{ id: cat.id, name: cat.name, intro: cat.intro }}
-        otherCategories={TEMPLATE_CATEGORIES.filter((c) => c.id !== cat.id).map((c) => ({ id: c.id, name: c.name }))}
-        initialLogos={initial.logos}
-        initialTotal={initial.total}
-        initialTotalPages={initial.totalPages}
         limit={LIMIT}
       />
     </>

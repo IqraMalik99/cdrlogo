@@ -6,25 +6,20 @@ import Navbar from "../components/Navbar";
 import { TEMPLATE_PAGE_CSS } from "../lib/templateStyles";
 
 export default function TemplatesClient({ categories: initialCategories }) {
-  // Start with the server-rendered (cached) counts, then refresh from the API
-  // in the browser. This only runs after mount, so it never touches the build.
   const [categories, setCategories] = useState(initialCategories);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-
-    fetch("/api/template-categories", { cache: "no-store" })
+    fetch(`/api/template-categories/list?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data) => {
         if (!cancelled && Array.isArray(data?.categories)) {
           setCategories(data.categories);
+          setLoaded(true);
         }
       })
-      .catch((err) => {
-        // keep the server-rendered counts if the refresh fails
-        console.error("[TemplatesClient] count refresh failed", err);
-      });
-
+      .catch((err) => console.error("[TemplatesClient] count fetch failed", err));
     return () => { cancelled = true; };
   }, []);
 
@@ -47,7 +42,9 @@ export default function TemplatesClient({ categories: initialCategories }) {
                 <div className="tp-cat-top">
                   <span className="tp-cat-name">{c.name}</span>
                   <span className="tp-cat-count">
-                    {c.count} template{c.count === 1 ? "" : "s"}
+                    {loaded && c.count !== null
+                      ? `${c.count} template${c.count === 1 ? "" : "s"}`
+                      : "…"}
                   </span>
                 </div>
               </Link>

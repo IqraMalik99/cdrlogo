@@ -1,13 +1,13 @@
+// app/logo-templates/page.js — NO database access, NO caching logic.
+// Counts are fetched live in the browser by TemplatesPageClient.
 import TemplatesClient from "./TemplatesPageClient";
-import { getTemplateCategoryCounts } from "../lib/templateQueries";
+import { TEMPLATE_CATEGORIES } from "../lib/templateCategories";
 
 const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com").replace(/\/$/, "");
 const title = "Logo Templates by Category – CDRLogo";
 const description =
   "Browse logo templates by category, from food and fitness to tech, health and abstract marks. Pick a category to see its templates.";
 const pageUrl = `${baseUrl}/logo-templates`;
-
-export const revalidate = 3600;
 
 export async function generateMetadata() {
   const image = `${baseUrl}/og-image.jpg`;
@@ -22,8 +22,9 @@ export async function generateMetadata() {
   };
 }
 
-export default async function Page() {
-  const categories = await getTemplateCategoryCounts();
+export default function Page() {
+  // count: null = "not loaded yet" (client fills it in)
+  const categories = TEMPLATE_CATEGORIES.map((c) => ({ id: c.id, name: c.name, count: null }));
 
   const collectionSchema = {
     "@context": "https://schema.org", "@type": "CollectionPage",

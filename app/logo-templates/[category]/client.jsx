@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "../../components/Navbar";
 import { TEMPLATE_PAGE_CSS } from "../../lib/templateStyles";
@@ -90,33 +90,46 @@ const CARD_CSS = `
 
 const DEFAULT_FORMATS = ["AI", "CDR", "SVG", "PNG"];
 
-export default function CategoryClient({
-  category, otherCategories, initialLogos, initialTotal, initialTotalPages, limit,
-}) {
-  const [logos, setLogos] = useState(initialLogos);
-  const [total, setTotal] = useState(initialTotal);
-  const [totalPages, setTotalPages] = useState(initialTotalPages);
+export default function CategoryClient({ category, limit }) {
+  const [logos, setLogos] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // first load happens in the browser
+  const [error, setError] = useState(false);
 
-  async function goToPage(p) {
-    if (p < 1 || p > totalPages || p === page) return;
+  async function load(p, { scroll = false } = {}) {
     setLoading(true);
+    setError(false);
     try {
       const res = await fetch(
-        `/api/template-categories/logos?category=${category.id}&page=${p}&limit=${limit}`
+        `/api/template-categories/logos?category=${category.id}&page=${p}&limit=${limit}&t=${Date.now()}`,
+        { cache: "no-store" }
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setLogos(data.logos || []);
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
       setPage(p);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("[CategoryClient] fetch failed", err);
+      setError(true);
     } finally {
       setLoading(false);
     }
+  }
+
+  // initial load, runs only in the browser
+  useEffect(() => {
+    load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category.id]);
+
+  function goToPage(p) {
+    if (p < 1 || p > totalPages || p === page) return;
+    load(p, { scroll: true });
   }
 
   const pageNumbers = (() => {
@@ -146,6 +159,11 @@ export default function CategoryClient({
           {loading ? (
             <div className="tp-grid">
               {Array.from({ length: 12 }).map((_, i) => <div key={i} className="tp-skel" />)}
+            </div>
+          ) : error ? (
+            <div className="tp-empty">
+              <strong>Could not load templates</strong>
+              <button className="tp-pbtn" onClick={() => load(page)}>Try again</button>
             </div>
           ) : logos.length === 0 ? (
             <div className="tp-empty">
@@ -202,10 +220,9 @@ export default function CategoryClient({
               <button className="tp-pbtn" onClick={() => goToPage(page + 1)} disabled={page === totalPages || loading}>›</button>
             </div>
           )}
-
         </div>
       </div>
-      <Footer/>
+      <Footer />
     </>
   );
 }
