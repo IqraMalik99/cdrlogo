@@ -1,11 +1,9 @@
 // app/api/template-categories/logos/route.js
 import { NextResponse } from "next/server";
-import { getTemplateLogos } from "../../../../lib/templateQueries";
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+import { getTemplateLogos } from "../../../lib/templateQueries";
 
 export async function GET(req) {
+
   try {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category") || "";
@@ -15,9 +13,10 @@ export async function GET(req) {
     if (!category) return NextResponse.json({ error: "category required" }, { status: 400 });
 
     const data = await getTemplateLogos({ categoryId: category, page, limit });
-    return NextResponse.json(data, { headers: { "Cache-Control": "no-store, max-age=0" } });
+    return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     console.error("[template-categories/logos GET]", err);
     return NextResponse.json({ error: "Failed to load logos" }, { status: 500 });
   }
+
 }
