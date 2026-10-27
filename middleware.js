@@ -3,9 +3,19 @@ import { NextResponse } from "next/server";
 // Old singular pattern → /category/football
 const OLD_CATEGORY_SINGULAR = /^\/category\/([^/]+)\/?$/;
 
+// Old indexed URLs: /category/all-logos/<slug> and /categories/all-logos/<slug>
+const LEGACY_ALL_LOGOS = /^\/(?:category|categories)\/all-logos(?=\/|$)/;
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
+
+  // ---- 301 (single hop): /category/all-logos/* and /categories/all-logos/* → /categories/logos/* ----
+  // Must stay FIRST so the generic /category → /categories rule below doesn't create a redirect chain.
+  if (LEGACY_ALL_LOGOS.test(pathname)) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.replace(LEGACY_ALL_LOGOS, "/categories/logos");
+    return NextResponse.redirect(url, 301);
+  }
 
   // ---- 301 redirects for legacy category URLs ----
   const singularMatch = pathname.match(OLD_CATEGORY_SINGULAR);

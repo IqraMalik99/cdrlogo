@@ -1,149 +1,98 @@
 import { NextResponse } from "next/server";
+import { prisma } from "../../lib/prisma";
 
-// Old singular pattern → /category/football
-const OLD_CATEGORY_SINGULAR = /^\/category\/([^/]+)\/?$/;
+export async function GET() {
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com").replace(/\/$/, "");
 
-// Old indexed URLs: /category/all-logos/<slug> and /categories/all-logos/<slug>
-const LEGACY_ALL_LOGOS = /^\/(?:category|categories)\/all-logos(?=\/|$)/;
+  const [logos, blogs] = await Promise.all([
+    prisma.logo.findMany({
+      where: { publishStatus: "Published" },
+      select: { slug: true, updatedAt: true, category: true, webpUrl: true, logoName: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.blog.findMany({
+      where: { published: true },
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+  ]);
 
-export async function middleware(req) {
-  const { pathname } = req.nextUrl;
+  // -------------------------------
+  // CATEGORY EXTRACTION + REAL LASTMOD  ← CHANGED (this whole block)
+  // -------------------------------
+  const excludedCategories = ["template"];
+  const categoryLastMod = {}; // ← ADDED: slug -> most recent Date across its logos
 
-  // ---- 301 (single hop): /category/all-logos/* and /categories/all-logos/* → /categories/logos/* ----
-  // Must stay FIRST so the generic /category → /categories rule below doesn't create a redirect chain.
-  if (LEGACY_ALL_LOGOS.test(pathname)) {
-    const url = req.nextUrl.clone();
-    url.pathname = pathname.replace(LEGACY_ALL_LOGOS, "/categories/logos");
-    return NextResponse.redirect(url, 301);
-  }
+  logos.forEach((l) => {
+    const cats = Array.isArray(l.category) ? l.category : [];
+    cats.forEach((c) => {
+      const slug = String(c).trim().toLowerCase().replace(/\s+/g, "-");
+      if (!slug || excludedCategories.includes(slug)) return;
 
-  // ---- 301 redirects for legacy category URLs ----
-  const singularMatch = pathname.match(OLD_CATEGORY_SINGULAR);
-  if (singularMatch) {
-    const url = req.nextUrl.clone();
-    url.pathname = `/categories/logos/${singularMatch[1].toLowerCase()}`;
-    return NextResponse.redirect(url, 301);
-  }
-
-  if (pathname === "/category" || pathname.startsWith("/category/")) {
-    const url = req.nextUrl.clone();
-    url.pathname = pathname.replace(/^\/category/, "/categories");
-    return NextResponse.redirect(url, 301);
-  }
-
-  // const pluralMatch = pathname.match(OLD_CATEGORY_PLURAL);
-  // if (pluralMatch && pluralMatch[1] !== "logos") {
-  //   const url = req.nextUrl.clone();
-  //   url.pathname = `/categories/logos/${pluralMatch[1].toLowerCase()}`;
-  //   return NextResponse.redirect(url, 301);
-  // }
-
-  // ---- 301 redirect: /template → /logo-templates (keeps sub-paths + query string) ----
-  if (pathname === "/template" || pathname.startsWith("/template/")) {
-    const url = req.nextUrl.clone();
-    url.pathname = pathname.replace(/^\/template/, "/logo-templates");
-    return NextResponse.redirect(url, 301);
-  }
-  // ---- END redirect block ----
-
-  // ---- 301 redirect: /logos → /all-logos (query string is kept by clone()) ----
-  if (pathname === "/logos" || pathname === "/logos/") {
-    const url = req.nextUrl.clone();
-    url.pathname = "/all-logos";
-    return NextResponse.redirect(url, 301);
-  }
-
-  // ---- 301 redirect: /request → /Request-Logo ----
-  if (pathname === "/request" || pathname === "/request/") {
-    const url = req.nextUrl.clone();
-    url.pathname = "/Request-Logo";
-    return NextResponse.redirect(url, 301);
-  }
-
-  if (pathname === "/sitemap.xml") {
-    const res = await fetch(`https://www.cdrlogo.com/api/sitemap-data`);
-    const routes = await res.json();
-
-    const escapeXml = (str) =>
-      String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&apos;");
-
-    const urlEntries = routes.map(r => `
-  <url>
-    <loc>${escapeXml(r.url)}</loc>
-    <lastmod>${new Date(r.lastModified).toISOString()}</lastmod>
-    <changefreq>${r.changeFrequency}</changefreq>
-    <priority>${r.priority}</priority>${r.image ? `
-    <image:image>
-      <image:loc>${escapeXml(r.image)}</image:loc>
-      <image:title>${escapeXml(r.imageTitle || "")}</image:title>
-    </image:image>` : ""}
-  </url>`).join("");
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">${urlEntries}
-</urlset>`;
-
-    return new NextResponse(xml, {
-      headers: { "Content-Type": "application/xml" },
+      const updated = l.updatedAt ? new Date(l.updatedAt) : null;
+      if (updated && (!categoryLastMod[slug] || updated > categoryLastMod[slug])) {
+        categoryLastMod[slug] = updated; // ← ADDED: keep the newest updatedAt per category
+      }
     });
-  }
+  });
 
-  if (pathname === "/llms.txt") {
-    const content = `# CDRLogo
+  const categories = Object.keys(categoryLastMod); // ← CHANGED: derived from categoryLastMod instead of a separate Set
 
-> Vector logo downloads in CDR, SVG, AI, EPS and PNG formats for designers and students.
+  const staticRoutes = [
+    { url: baseUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1.0 },
+    { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/brands`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/categories`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/logo-templates`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/about-us`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/all-logos`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+  ];
 
-## Main Pages
-- [All Logos](https://www.cdrlogo.com/all-logos)
-- [Sports & Athletics](https://www.cdrlogo.com/categories/logos/sports-athletics)
-- [Corporate & Finance](https://www.cdrlogo.com/categories/logos/corporate-finance)
-- [Technology & Media](https://www.cdrlogo.com/categories/logos/technology-media)
-- [Automotive & Transport](https://www.cdrlogo.com/categories/logos/automotive-transport)
-- [Food & Beverages](https://www.cdrlogo.com/categories/logos/food-beverages)
-- [Fashion & Retail](https://www.cdrlogo.com/categories/logos/fashion-retail)
-- [Industry, Energy & Construction](https://www.cdrlogo.com/categories/logos/industry-energy-construction)
-- [Government & Politics](https://www.cdrlogo.com/categories/logos/government-politics)
-- [Education & Science](https://www.cdrlogo.com/categories/logos/education-science)
-- [Entertainment & Lifestyle](https://www.cdrlogo.com/categories/logos/entertainment-lifestyle)
-- [Healthcare & Pharma](https://www.cdrlogo.com/categories/logos/healthcare-pharma)
-- [Travel & Hospitality](https://www.cdrlogo.com/categories/logos/travel-hospitality)
-- [Non-Profit & Culture](https://www.cdrlogo.com/categories/logos/non-profit-culture)
+  // -------------------------------
+  // CATEGORY ROUTES (real lastmod now)  ← CHANGED
+  // -------------------------------
+  const categoryRoutes = categories.map((cat) => ({
+    url: `${baseUrl}/categories/logos/${encodeURIComponent(cat)}`,
+    lastModified: categoryLastMod[cat] || new Date(), // ← CHANGED: was new Date() hardcoded
+    changeFrequency: "daily",
+    priority: 0.7,
+  }));
 
-## Optional
-- [About Us](https://www.cdrlogo.com/about-us)
-- [Blog](https://www.cdrlogo.com/blog)
-- [Privacy Policy](https://www.cdrlogo.com/privacy-policy)
-- [Terms of Service](https://www.cdrlogo.com/terms-of-service)
-- [DMCA & Copyright Policy](https://www.cdrlogo.com/dmca-copyright-policy)
+  // -------------------------------
+  // LOGO ROUTES (unchanged)
+  // -------------------------------
+  const logoRoutes = logos
+    .filter(l => typeof l.slug === "string" && l.slug.trim() !== "")
+    .map(l => ({
+      url: `${baseUrl}/logo/${l.slug.replace(/^\/+/, "").trim()}`,
+      lastModified: l.updatedAt || new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+      image: l.webpUrl || null,
+      imageTitle: l.logoName || null,
+    }));
 
-## Guidelines
-Educational reference library. Logos provided for design reference and learning purposes only.
-`;
+  // -------------------------------
+  // BLOG ROUTES (unchanged)
+  // -------------------------------
+  const blogRoutes = blogs
+    .filter(b => typeof b.slug === "string" && b.slug.trim() !== "")
+    .map(b => ({
+      url: `${baseUrl}/blog/${b.slug.replace(/^\/+/, "").trim()}`,
+      lastModified: b.updatedAt || new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    }));
 
-    return new NextResponse(content, {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  }
+  // -------------------------------
+  // FINAL OUTPUT (unchanged)
+  // -------------------------------
+  const allRoutes = [
+    ...staticRoutes,
+    ...categoryRoutes,
+    ...logoRoutes,
+    ...blogRoutes,
+  ];
 
-  return NextResponse.next();
+  return NextResponse.json(allRoutes.filter(r => r.url && typeof r.url === "string"));
 }
-
-export const config = {
-  matcher: [
-    "/sitemap.xml",
-    "/llms.txt",
-    "/category/:path*",
-    "/categories/:path*",
-    "/template/:path*",
-    "/logos",
-    "/logos/",
-    "/request",
-    "/request/",
-  ],
-};
