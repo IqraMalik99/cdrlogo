@@ -34,7 +34,7 @@ export async function generateMetadata({ searchParams }) {
       : `Explore the complete index of ${totalCount.toLocaleString()} logos on CDRLogo, sorted alphabetically from A to Z. Find any logo instantly.`;
 
   const canonicalUrl =
-    page > 1 ? `${SITE_URL}/logos?page=${page}` : `${SITE_URL}/logos`;
+    page > 1 ? `${SITE_URL}/logos?page=${page}` : `${SITE_URL}/all-logos`;
 
   return {
     title,

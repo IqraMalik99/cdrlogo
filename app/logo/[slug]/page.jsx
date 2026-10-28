@@ -10,12 +10,61 @@ const GLOBAL_IMAGE_LICENSE_META = {
   acquireLicensePage: "https://www.cdrlogo.com/terms-of-service",
 };
 
+// ---------------------------------------------------------------------------
+// Text sanitizing (display-side safety net)
+// ---------------------------------------------------------------------------
+
+// Sentences that are internal/generator notes and must never be shown to users.
+const INTERNAL_NOTE_PATTERNS = [
+  /research notes/i,
+  /no specific information/i,
+  /not available from/i,
+  /no information (is )?available/i,
+  /as an ai/i,
+];
+
+// "Vector" is not a file format (SVG, AI, CDR are). Replace it with CDR,
+// or drop it if CDR is already listed.
+function fixVectorFormat(text) {
+  const hasCdr = /\bCDR\b/.test(text);
+  return text.replace(
+    /,?\s*(?:and\s+)?Vector(?=\s+formats?\b)/gi,
+    hasCdr ? "" : ", and CDR"
+  );
+}
+
+function cleanText(text) {
+  if (!text || typeof text !== "string") return text;
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const kept = sentences.filter(
+    (s) => !INTERNAL_NOTE_PATTERNS.some((re) => re.test(s))
+  );
+  return fixVectorFormat(kept.join(" ")).trim();
+}
+
+function sanitizeLogo(logo) {
+  if (!logo) return logo;
+  const out = { ...logo };
+  for (const key of [
+    "description",
+    "metaDescription",
+    "ogDescription",
+    "twitterDescription",
+  ]) {
+    if (out[key]) out[key] = cleanText(out[key]);
+  }
+  if (out.imageObjectSchema?.description) {
+    out.imageObjectSchema = {
+      ...out.imageObjectSchema,
+      description: cleanText(out.imageObjectSchema.description),
+    };
+  }
+  return out;
+}
+
 // Single source of truth for the page title — used by BOTH
 // generateMetadata() (<title>, og:title, twitter:title fallback) and the
-// on-page <h1>. Previously these were built separately in two places with
-// the same-looking template string, which meant editing one didn't
-// guarantee the other stayed in sync. Now there's exactly one place that
-// decides what "the title" is.
+// on-page <h1>.
 function buildPageTitle(logo) {
   if (!logo) return "";
   return logo.metaTitle || `${logo.logoName} Logo – Download (SVG, PNG, AI, CDR)`;
@@ -44,7 +93,8 @@ async function fetchLogo(slug) {
     // If API returned an error object, return null
     if (!logo || logo.error || !logo.slug) return { logo: null, related: [] };
 
-    return { logo, related };
+    // Sanitized once here, so metadata, schema and on-page text all read clean data.
+    return { logo: sanitizeLogo(logo), related };
   } catch {
     return { logo: null, related: [] };
   }
@@ -75,7 +125,7 @@ export async function generateMetadata({ params }) {
     if (!logo) {
       return {
         title: buildPageTitle(null),
-        description: "Download vector logos in SVG, PNG, AI, CDR formats.",
+        description: "Download logos in SVG, PNG, AI, CDR formats.",
         robots: { index: false, follow: false },
         other: { title: buildPageTitle(null) },
       };
@@ -87,18 +137,20 @@ export async function generateMetadata({ params }) {
 
     const metaTitle = buildPageTitle(logo);
 
-    const metaDescription = logo.metaDescription ||
-      (logo.description || "").slice(0, 160);
+    // Fallback chain: metaDescription -> description (160 chars) -> generic line.
+    // The generic line guards against the case where cleanText() removed
+    // every sentence and left an empty string.
+    const metaDescription =
+      logo.metaDescription ||
+      (logo.description || "").slice(0, 160) ||
+      `Download ${logo.logoName} logo in SVG, PNG, AI, CDR formats.`;
 
     const ogTitle = logo.ogTitle || metaTitle;
     const ogDescription = logo.ogDescription || metaDescription;
-    // FIX #1 — og:type
-    // Logo/image reference page, not a news/blog article — "website" is the
-    // correct og:type. This is a static value, so every current + future
-    // logo page inherits the fix from this one line. (If a product-style
-    // schema is added later, this can become conditional, e.g.
-    // ogType = someCondition ? "product" : "website".)
-    const ogType = "website";
+
+    // og:type is "article" for logo reference pages (intentional).
+    // Static value, so every current + future logo page inherits it.
+    const ogType = "article";
     const ogImage = logo.ogImageUrl || logo.webpUrl || null;
 
     const twitterCard = logo.twitterCardType || "summary_large_image";
@@ -115,10 +167,7 @@ export async function generateMetadata({ params }) {
       title: metaTitle,
       description: metaDescription,
 
-      // Explicit <meta name="title"> mirroring the h1 / <title>. Some SEO
-      // tools and crawlers read this tag separately from <title>, so it's
-      // kept in sync via the same buildPageTitle() call rather than a
-      // second hardcoded string.
+      // Explicit <meta name="title"> mirroring the h1 / <title>.
       other: { title: metaTitle },
 
       alternates: { canonical: canonicalUrl },
@@ -147,7 +196,7 @@ export async function generateMetadata({ params }) {
     console.error("[generateMetadata]", err);
     return {
       title: buildPageTitle(null),
-      description: "Download vector logos in SVG, PNG, AI, CDR formats.",
+      description: "Download logos in SVG, PNG, AI, CDR formats.",
       robots: { index: false, follow: false },
       other: { title: buildPageTitle(null) },
     };
@@ -168,13 +217,8 @@ export default async function Page({ params }) {
     related = result.related;
     if (logo) {
       if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
-        // FIX #4 — copyrightNotice
-        // GLOBAL_IMAGE_LICENSE_META.copyrightNotice is statically set to
-        // "All trademarks belong to their respective owners" above, and is
-        // spread LAST here so it always overrides any stale/wrong value
-        // ("Copyright 2026 CDRLogo") that might be stored in
-        // logo.imageObjectSchema in the database. One static value, applied
-        // to every page's ImageObject schema.
+        // copyrightNotice etc. are spread LAST so they always override any
+        // stale/wrong value stored in logo.imageObjectSchema in the database.
         imageObjectSchema = {
           ...logo.imageObjectSchema,
           ...GLOBAL_IMAGE_LICENSE_META,
@@ -194,20 +238,9 @@ export default async function Page({ params }) {
   const { categories: logoCategories, isTemplate: categoryIsTemplate } =
     getCategoryInfo(logo);
 
-  // FIX #2 — altText override (systemic bug fix)
-  // The upload/generation pipeline built altText from `brand` (and for some
-  // logos, a fallback value like "Other Football") instead of the actual
-  // `logoName`, producing wrong alt text such as
-  //   "Other Football logo — PNG SVG vector file on cdrlogo.com"
-  // instead of
-  //   "Atletico Madrid Logo — PNG SVG vector file on cdrlogo.com"
-  // Recomputing it here from logoName guarantees every current + future
-  // logo page shows correct alt text regardless of what's stored in the DB.
-  // NOTE: this only fixes what's *displayed* on this page template. The
-  // raw `altText` field saved in the database is still wrong and should
-  // also be corrected at the source (the upload generation script's
-  // altText prompt/rule), otherwise anything reading `logo.altText`
-  // directly from the API/DB elsewhere will still see the old value.
+  // altText override (systemic bug fix): recompute from logoName so alt text
+  // is correct regardless of what's stored in the DB. The DB value itself
+  // should also be fixed at the source (generation script).
   const correctedLogo = logo
     ? {
         ...logo,
@@ -215,14 +248,8 @@ export default async function Page({ params }) {
       }
     : logo;
 
-  // FIX #5 — strip Brand/Website/Country/Industry keys entirely for template
-  // logos, not just hide them in the UI. Without this, the full logo object
-  // (including empty "brand":"", "website":"", "country":"" etc.) still gets
-  // serialized into the page's embedded JSON payload used for client
-  // hydration (the self.__next_f.push(...) script blobs in page source),
-  // even though LogoDetail never visually renders them. Deleting the keys
-  // here — before the object is handed to the client component — means
-  // they never reach the HTML source at all for template logos.
+  // Strip Brand/Website/Country/Industry keys entirely for template logos so
+  // they never reach the serialized hydration payload in the page source.
   if (correctedLogo && categoryIsTemplate) {
     delete correctedLogo.brand;
     delete correctedLogo.website;
@@ -230,13 +257,8 @@ export default async function Page({ params }) {
     delete correctedLogo.industry;
   }
 
-  // Same buildPageTitle() used in generateMetadata — the h1 and the
-  // <title>/og:title are now guaranteed to say the same thing. The h1
-  // itself is rendered inside LogoDetail (as a real, visible, theme-aware
-  // heading) so it sits in the correct spot in the page layout instead of
-  // being bolted on above it. Since correctedLogo/pageTitle are resolved
-  // here on the server, LogoDetail still receives them synchronously on
-  // first render — no client fetch delay, no SEO downside.
+  // Same buildPageTitle() used in generateMetadata, so the h1 and
+  // <title>/og:title always say the same thing.
   const pageTitle = buildPageTitle(correctedLogo);
 
   return (
@@ -262,8 +284,7 @@ export default async function Page({ params }) {
 
       {/* Rendered directly by the server component so it's present in the
           initial HTML (view-source, crawlers) regardless of what LogoDetail
-          does client-side. This is now the single source of the visible H1
-          for the page — LogoDetail must NOT render its own H1 anymore. */}
+          does client-side. */}
       <h1 className="text-2xl md:text-3xl font-bold">
         {pageTitle}
       </h1>
@@ -272,7 +293,7 @@ export default async function Page({ params }) {
         logo={correctedLogo}
         initialRelated={related}
         pageTitle={pageTitle}
-      showH1={true}
+        showH1={true}
       />
     </>
   );
