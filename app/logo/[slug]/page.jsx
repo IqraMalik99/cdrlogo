@@ -1,4 +1,5 @@
 // app/logo/[slug]/page.js
+import { cache } from "react";
 import LogoDetail from "./LogoDetail";
 
 // Global fallback values for ImageObject licensing metadata.
@@ -16,61 +17,109 @@ const GLOBAL_IMAGE_LICENSE_META = {
 
 // Sentences that are internal/generator notes and must never be shown to users.
 const INTERNAL_NOTE_PATTERNS = [
-  /research notes/i,
-  /no specific information/i,
-  /not available from/i,
-  /no information (is )?available/i,
-  /as an ai/i,
+  /research notes?/i,
+  /research (data|findings|results)/i,
+  /no specific (information|details|data)/i,
+  /no (further |additional )?(information|details|data) (is |are |was |were )?(available|found|provided)/i,
+  /(not|isn'?t|aren'?t|unavailable) (publicly )?available (from|in) (the )?(research|provided|given|source)/i,
+  /\bis not available from\b/i,
+  /\bnot available from\b/i,
+  /as an ai\b/i,
+  /i (could not|couldn'?t|was unable to) (find|verify|locate)/i,
 ];
+
+function isInternalNote(sentence) {
+  return INTERNAL_NOTE_PATTERNS.some((re) => re.test(sentence));
+}
+
+const FMT = "(?:PNG|SVG|AI|CDR|EPS|PDF|WEBP|JPG|JPEG)";
 
 // "Vector" is not a file format (SVG, AI, CDR are). Replace it with CDR,
 // or drop it if CDR is already listed.
+// Only the capitalised list-item form ("PNG, SVG, AI, and Vector formats",
+// "SVG, Vector, and AI") is touched, so legitimate prose such as
+// "available in vector formats" stays intact.
 function fixVectorFormat(text) {
-  const hasCdr = /\bCDR\b/.test(text);
-  return text.replace(
-    /,?\s*(?:and\s+)?Vector(?=\s+formats?\b)/gi,
-    hasCdr ? "" : ", and CDR"
+  if (!/Vector/.test(text)) return text;
+  const hasCdr = /\bCDR\b/i.test(text);
+
+  // "<FMT>, and Vector" / "<FMT>, Vector" / "<FMT> and Vector"
+  let out = text.replace(
+    new RegExp(`(\\b${FMT}\\b)(\\s*,)?(\\s+(?:and|or|&)\\s+|\\s*[,/]\\s*|\\s+)Vector\\b`, "gi"),
+    (m, fmt, comma, joiner) => {
+      // "Vector" must be capitalised to be treated as a fake format
+      if (!/Vector/.test(m)) return m;
+      return hasCdr ? fmt : `${fmt}${comma || ""}${joiner}CDR`;
+    }
   );
+
+  // Leading position: "Vector, PNG, SVG ..."
+  out = out.replace(new RegExp(`\\bVector\\s*,\\s*(?=${FMT}\\b)`, "g"), hasCdr ? "" : "CDR, ");
+
+  return out;
 }
 
 function cleanText(text) {
   if (!text || typeof text !== "string") return text;
-  const sentences = text.split(/(?<=[.!?])\s+/);
-  const kept = sentences.filter(
-    (s) => !INTERNAL_NOTE_PATTERNS.some((re) => re.test(s))
+  // Walk sentence by sentence but keep original whitespace / line breaks.
+  const kept = text.replace(/[^.!?]+[.!?]+\s*|[^.!?]+$/g, (s) =>
+    isInternalNote(s) ? "" : s
   );
-  return fixVectorFormat(kept.join(" ")).trim();
+  return fixVectorFormat(kept).trim();
+}
+
+// Recursively clean every string in the logo payload (description, meta,
+// OG, Twitter, FAQ answers, schema descriptions, any field LogoDetail reads).
+// URLs are left alone.
+function deepClean(value) {
+  if (typeof value === "string") {
+    if (/^https?:\/\//i.test(value)) return value;
+    return cleanText(value);
+  }
+  if (Array.isArray(value)) return value.map(deepClean);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = deepClean(v);
+    return out;
+  }
+  return value;
+}
+
+// Drop FAQ entries whose answer was emptied by the cleaner, so the FAQ
+// schema never contains a Question with a blank answer.
+function pruneFaqSchema(schema) {
+  if (!schema || !Array.isArray(schema.mainEntity)) return schema;
+  const mainEntity = schema.mainEntity.filter(
+    (q) => q?.name && q?.acceptedAnswer?.text
+  );
+  return mainEntity.length ? { ...schema, mainEntity } : null;
 }
 
 function sanitizeLogo(logo) {
   if (!logo) return logo;
-  const out = { ...logo };
-  for (const key of [
-    "description",
-    "metaDescription",
-    "ogDescription",
-    "twitterDescription",
-  ]) {
-    if (out[key]) out[key] = cleanText(out[key]);
-  }
-  if (out.imageObjectSchema?.description) {
-    out.imageObjectSchema = {
-      ...out.imageObjectSchema,
-      description: cleanText(out.imageObjectSchema.description),
-    };
-  }
+  const out = deepClean(logo);
+  if (out.faqSchema) out.faqSchema = pruneFaqSchema(out.faqSchema);
   return out;
 }
 
-// Single source of truth for the page title — used by BOTH
-// generateMetadata() (<title>, og:title, twitter:title fallback) and the
-// on-page <h1>.
+// <title> / og:title. Built from the clean logo name instead of the stored
+// metaTitle (which contained filler like "Vector AI PNG Edition").
 function buildPageTitle(logo) {
-  if (!logo) return "";
-  return logo.metaTitle || `${logo.logoName} Logo – Download (SVG, PNG, AI, CDR)`;
+  if (!logo) return "Logo Download | CDRLogo";
+  return `${logo.logoName} – PNG, SVG, AI, CDR | CDRLogo`;
 }
 
-async function fetchLogo(slug) {
+// Cut text at a word boundary instead of mid-word.
+function truncateAtWord(text, max) {
+  if (!text || text.length <= max) return text || "";
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trim();
+}
+
+// cache() de-duplicates the call between generateMetadata() and Page()
+// within one request, so the API is hit once instead of twice.
+const fetchLogo = cache(async (slug) => {
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/logo/fetch/slug`,
@@ -88,17 +137,15 @@ async function fetchLogo(slug) {
     const logo = json.data || json;
     const related = Array.isArray(json.related) ? json.related : [];
 
-    console.log("[fetchLogo]", slug, "logo:", !!logo, "related:", related.length);
-
     // If API returned an error object, return null
     if (!logo || logo.error || !logo.slug) return { logo: null, related: [] };
 
     // Sanitized once here, so metadata, schema and on-page text all read clean data.
-    return { logo: sanitizeLogo(logo), related };
+    return { logo: sanitizeLogo(logo), related: deepClean(related) };
   } catch {
     return { logo: null, related: [] };
   }
-}
+});
 
 // Category list + the "template" exclusion rule are shared between the
 // server-rendered SEO block below and the client-rendered detail page —
@@ -127,7 +174,6 @@ export async function generateMetadata({ params }) {
         title: buildPageTitle(null),
         description: "Download logos in SVG, PNG, AI, CDR formats.",
         robots: { index: false, follow: false },
-        other: { title: buildPageTitle(null) },
       };
     }
 
@@ -137,26 +183,32 @@ export async function generateMetadata({ params }) {
 
     const metaTitle = buildPageTitle(logo);
 
-    // Fallback chain: metaDescription -> description (160 chars) -> generic line.
-    // The generic line guards against the case where cleanText() removed
-    // every sentence and left an empty string.
+    // Fallback chain: metaDescription -> description (160 chars, cut at a
+    // word boundary) -> generic line. The generic line guards against the
+    // case where cleanText() removed every sentence and left an empty string.
+    // cleanText() is applied once more on the final strings as a last guard.
     const metaDescription =
-      logo.metaDescription ||
-      (logo.description || "").slice(0, 160) ||
-      `Download ${logo.logoName} logo in SVG, PNG, AI, CDR formats.`;
+      cleanText(
+        logo.metaDescription ||
+          truncateAtWord(logo.description || "", 160)
+      ) || `Download ${logo.logoName} in SVG, PNG, AI, CDR formats.`;
 
-    const ogTitle = logo.ogTitle || metaTitle;
-    const ogDescription = logo.ogDescription || metaDescription;
+    const ogTitle = metaTitle;
+    const ogDescription = cleanText(logo.ogDescription) || metaDescription;
 
     // og:type is "article" for logo reference pages (intentional).
     // Static value, so every current + future logo page inherits it.
     const ogType = "article";
-    const ogImage = logo.ogImageUrl || logo.webpUrl || null;
+
+    // Use the clean square PNG (falls back to webp) so the shared/indexed
+    // image is the logo itself, not a cropped social card.
+    const ogImage = logo.pngUrl || logo.webpUrl || null;
 
     const twitterCard = logo.twitterCardType || "summary_large_image";
-    const twitterTitle = logo.twitterTitle || ogTitle;
-    const twitterDescription = logo.twitterDescription || ogDescription;
-    const twitterImage = logo.twitterImage || ogImage;
+    const twitterTitle = metaTitle;
+    const twitterDescription =
+      cleanText(logo.twitterDescription) || ogDescription;
+    const twitterImage = ogImage;
 
     const isPublished = logo.publishStatus === "Published";
     const robots = isPublished
@@ -166,9 +218,6 @@ export async function generateMetadata({ params }) {
     return {
       title: metaTitle,
       description: metaDescription,
-
-      // Explicit <meta name="title"> mirroring the h1 / <title>.
-      other: { title: metaTitle },
 
       alternates: { canonical: canonicalUrl },
       robots,
@@ -180,7 +229,7 @@ export async function generateMetadata({ params }) {
         type: ogType,
         siteName: "cdrlogo.com",
         ...(ogImage
-          ? { images: [{ url: ogImage, width: 1200, height: 630, alt: `${logo.logoName} — PNG SVG vector file on cdrlogo.com` }] }
+          ? { images: [{ url: ogImage, width: 1200, height: 1200, alt: logo.logoName }] }
           : {}),
       },
 
@@ -198,7 +247,6 @@ export async function generateMetadata({ params }) {
       title: buildPageTitle(null),
       description: "Download logos in SVG, PNG, AI, CDR formats.",
       robots: { index: false, follow: false },
-      other: { title: buildPageTitle(null) },
     };
   }
 }
@@ -217,11 +265,17 @@ export default async function Page({ params }) {
     related = result.related;
     if (logo) {
       if (logo.imageObjectSchema && Object.keys(logo.imageObjectSchema).length) {
-        // copyrightNotice etc. are spread LAST so they always override any
-        // stale/wrong value stored in logo.imageObjectSchema in the database.
+        // Licensing meta and the image fields are spread LAST so they always
+        // override any stale/wrong value stored in logo.imageObjectSchema.
         imageObjectSchema = {
           ...logo.imageObjectSchema,
           ...GLOBAL_IMAGE_LICENSE_META,
+          contentUrl: logo.pngUrl || logo.webpUrl,
+          thumbnailUrl: logo.webpUrl || logo.pngUrl,
+          name: logo.logoName,
+          caption: logo.logoName,
+          width: 1200,
+          height: 1200,
         };
       }
       if (logo.breadcrumbSchema && Object.keys(logo.breadcrumbSchema).length) {
@@ -235,16 +289,15 @@ export default async function Page({ params }) {
     console.error("[Page schema fetch]", err);
   }
 
-  const { categories: logoCategories, isTemplate: categoryIsTemplate } =
-    getCategoryInfo(logo);
+  const { isTemplate: categoryIsTemplate } = getCategoryInfo(logo);
 
   // altText override (systemic bug fix): recompute from logoName so alt text
-  // is correct regardless of what's stored in the DB. The DB value itself
-  // should also be fixed at the source (generation script).
+  // is correct regardless of what's stored in the DB. logoName already ends
+  // in "Logo", so it is used as-is.
   const correctedLogo = logo
     ? {
         ...logo,
-        altText: `${logo.logoName} — PNG SVG vector file on cdrlogo.com`,
+        altText: logo.logoName,
       }
     : logo;
 
@@ -257,9 +310,9 @@ export default async function Page({ params }) {
     delete correctedLogo.industry;
   }
 
-  // Same buildPageTitle() used in generateMetadata, so the h1 and
-  // <title>/og:title always say the same thing.
-  const pageTitle = buildPageTitle(correctedLogo);
+  // The h1 uses the clean logo name; <title> uses buildPageTitle().
+  const h1Text = correctedLogo?.logoName || "";
+  const pageTitle = h1Text;
 
   return (
     <>
@@ -286,7 +339,7 @@ export default async function Page({ params }) {
           initial HTML (view-source, crawlers) regardless of what LogoDetail
           does client-side. */}
       <h1 className="text-2xl md:text-3xl font-bold">
-        {pageTitle}
+        {h1Text}
       </h1>
 
       <LogoDetail
