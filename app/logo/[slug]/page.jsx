@@ -1,9 +1,8 @@
-// app/logo/[slug]/page.js
 import { cache } from "react";
 import LogoDetail from "./LogoDetail";
 
-// Global fallback values for ImageObject licensing metadata.
-// These are fixed site-wide and applied to every logo page's schema.
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://www.cdrlogo.com";
+
 const GLOBAL_IMAGE_LICENSE_META = {
   copyrightNotice: "All trademarks belong to their respective owners",
   creditText: "CDRLogo Reference Library",
@@ -11,11 +10,7 @@ const GLOBAL_IMAGE_LICENSE_META = {
   acquireLicensePage: "https://www.cdrlogo.com/terms-of-service",
 };
 
-// ---------------------------------------------------------------------------
-// Text sanitizing (display-side safety net)
-// ---------------------------------------------------------------------------
 
-// Sentences that are internal/generator notes and must never be shown to users.
 const INTERNAL_NOTE_PATTERNS = [
   /research notes?/i,
   /research (data|findings|results)/i,
@@ -70,7 +65,7 @@ function cleanText(text) {
 
 // Recursively clean every string in the logo payload (description, meta,
 // OG, Twitter, FAQ answers, schema descriptions, any field LogoDetail reads).
-// URLs are left alone.
+// URLs are left alone. svgContent (large raw SVG markup) is skipped entirely.
 function deepClean(value) {
   if (typeof value === "string") {
     if (/^https?:\/\//i.test(value)) return value;
@@ -79,7 +74,13 @@ function deepClean(value) {
   if (Array.isArray(value)) return value.map(deepClean);
   if (value && typeof value === "object") {
     const out = {};
-    for (const [k, v] of Object.entries(value)) out[k] = deepClean(v);
+    for (const [k, v] of Object.entries(value)) {
+      if (k === "svgContent") {
+        out[k] = v;
+        continue;
+      }
+      out[k] = deepClean(v);
+    }
     return out;
   }
   return value;
@@ -115,6 +116,21 @@ function truncateAtWord(text, max) {
   const cut = text.slice(0, max);
   const lastSpace = cut.lastIndexOf(" ");
   return (lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trim();
+}
+
+// BreadcrumbList is built in code (not read from the DB) because the stored
+// value pointed position 2 at /logos, which is not a real path. Only URLs
+// that actually resolve are used: Home -> this logo page.
+function buildBreadcrumbSchema(logo) {
+  const pageUrl = logo.canonicalUrl || `${SITE_URL}/logo/${logo.slug}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: logo.logoName, item: pageUrl },
+    ],
+  };
 }
 
 // cache() de-duplicates the call between generateMetadata() and Page()
@@ -178,8 +194,7 @@ export async function generateMetadata({ params }) {
     }
 
     const canonicalUrl =
-      logo.canonicalUrl ||
-      `${process.env.NEXT_PUBLIC_BASE_URL}/logo/${logo.slug}`;
+      logo.canonicalUrl || `${SITE_URL}/logo/${logo.slug}`;
 
     const metaTitle = buildPageTitle(logo);
 
@@ -206,8 +221,9 @@ export async function generateMetadata({ params }) {
 
     const twitterCard = logo.twitterCardType || "summary_large_image";
     const twitterTitle = metaTitle;
-    const twitterDescription =
-      cleanText(logo.twitterDescription) || ogDescription;
+    // Uses the OG description (not the stored twitterDescription) so the
+    // full format list (PNG, SVG, AI, CDR) is always consistent.
+    const twitterDescription = ogDescription;
     const twitterImage = ogImage;
 
     const isPublished = logo.publishStatus === "Published";
@@ -278,9 +294,10 @@ export default async function Page({ params }) {
           height: 1200,
         };
       }
-      if (logo.breadcrumbSchema && Object.keys(logo.breadcrumbSchema).length) {
-        breadcrumbSchema = logo.breadcrumbSchema;
-      }
+
+      // Always built from code; the stored breadcrumbSchema is ignored.
+      breadcrumbSchema = buildBreadcrumbSchema(logo);
+
       if (logo.faqSchema && Object.keys(logo.faqSchema).length) {
         faqSchema = logo.faqSchema;
       }
@@ -293,11 +310,13 @@ export default async function Page({ params }) {
 
   // altText override (systemic bug fix): recompute from logoName so alt text
   // is correct regardless of what's stored in the DB. logoName already ends
-  // in "Logo", so it is used as-is.
+  // in "Logo", so it is used as-is. breadcrumbSchema is also replaced so the
+  // serialized payload sent to the client doesn't carry the stale /logos URL.
   const correctedLogo = logo
     ? {
         ...logo,
         altText: logo.logoName,
+        breadcrumbSchema: breadcrumbSchema || logo.breadcrumbSchema,
       }
     : logo;
 
