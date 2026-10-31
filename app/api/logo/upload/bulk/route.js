@@ -568,10 +568,12 @@ function buildImageObjectSchema({ imageUrl, logoName, brand, canonicalUrl, descr
     "name": `${logoName}`,
     "description": description || `${logoPhrase(logoName)} image on cdrlogo.com`,
     "representativeOfPage": true,
-    ...(brand ? { "creator": { "@type": "Organization", "name": brand } } : {}),
+    "creator": { "@type": "Organization", "name": "CDRLogo", "url": "https://www.cdrlogo.com" },
     "mainEntityOfPage": canonicalUrl,
   };
 }
+
+
 function buildFaqSchema(faqPairs) {
   if (!Array.isArray(faqPairs) || !faqPairs.length) return {};  // {} not []
   return {
